@@ -74,10 +74,12 @@ class MediaManager:
     '''Finds appropriate media files for a system or game and manages connection to the media player executable
     '''
 
+    # PLAYER = '/usr/bin/mpv'
+    # for testing:
     PLAYER = '/usr/bin/cvlc'
     "path to media player executable"
     
-    PLAYER_OPTS = [] #["--vo=drm", "--drm-connector=1.HDMI-A-2", "--hwdec=mmal", "--loop"]
+    PLAYER_OPTS = ['--loop'] #["--vo=drm", "--drm-connector=1.HDMI-A-2", "--hwdec=mmal", "--loop"]
     "options passed to media player executable"
 
 
@@ -90,6 +92,11 @@ class MediaManager:
         signal.signal(signal.SIGCHLD, self._playerExited)
 
 
+    def __del__(self):
+        '''Terminate the media player (if running) before shutdown'''
+        self.clearMarquee()
+
+
     def getMarqueeMediaForROM(self, systemId, gameBasename):
         '''Search for ROM-specific media files, and if >1 found, return one at random.
         
@@ -100,17 +107,15 @@ class MediaManager:
             :param str filepath: to path to the media file to display
             :param Any args: any additional args to pass to the media player
         '''
-        # terminate the existing media player if any
+        # terminate running media player if any
         if self._player is not None:
             self._player.terminate()
         
         # launch media player
         try:
-            log.debug('launching media player: %s', ' '.join([self.PLAYER] + self.PLAYER_OPTS + [filepath] + list(args) ))
+            log.debug('launching media player: %s', ' '.join([self.PLAYER] + self.PLAYER_OPTS + [filepath] + list(args)))
             self._player = subprocess.Popen(
                 [self.PLAYER] + self.PLAYER_OPTS + [filepath],
-                
-                # TODO: log stderr to a file?
                 stderr = subprocess.PIPE
             )
         except (OSError, ValueError) as e:
@@ -122,21 +127,24 @@ class MediaManager:
         '''Terminate any running media player subprocess'''
         if self._player is not None:
             self._player.terminate()
-            log.debug("%s.clearMarquee() called: subprocess exited with code %d", __name__, self._player.returncode)
+            log.debug(
+                "%s.clearMarquee() terminating subprocess",
+                self.__class__.__name__
+            )
 
 
     def _playerExited(self, signum, _):
         '''Called when the media player subprocess fails to launch or exits unexpectedly'''
+        log.info("media player subprocess received signal %d", signum)
         # catch any error output and log it
         if self._player is not None:
             _, stderr = self._player.communicate()
             log.error(
-                "%s._playerExited(): media player process exited unexpectedly with code %d",
+                "%s._playerExited(): media player process exited unexpectedly with code %d\n%s",
                 self.__class__.__name__,
-                self._player.returncode
+                self._player.returncode,
+                stderr
             )
-        if stderr is not None:
-            log.error(stderr)
         # clear reference to subprocess
         self._player = None
 
@@ -155,7 +163,7 @@ def testRecalboxMQTTSubscriber():
 
 def testMediaManager():
     mm = MediaManager()
-    mm.showOnMarquee('./media/mame/asteroid.png', '--version', '--hello')
+    mm.showOnMarquee('./media/mame/asteroid.png')
     time.sleep(5)
 
 
