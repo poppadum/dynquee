@@ -19,9 +19,55 @@ log = getLogger(logging.DEBUG);
 
 
 #
-# TODO: so much in common between RecalboxMQTTSubscriber & MediaManager
-#   inherit from a base class?
+# TODO: RecalboxMQTTSubscriber inherit from ChildProcessManager?
 #
+
+class ChildProcessManager:
+    '''Manages a connection to a single child process. Handles failure to launch & unexpected exit gracefully.
+    '''
+
+    def __init__(self):
+        self._childProcess = None
+        "reference to  child process: instance of subprocess.Popen"
+
+        # handle exit of child process gracefully
+        for sig in [signal.SIGCHLD, signal.SIGPIPE]:
+            signal.signal(sig, self._childProcessEnded)
+
+    def __del__(self):
+        '''Terminate any running child process before shutdown'''
+        if self._childProcess is not None:
+            log.info("terminating child process before shutdown")
+            self._childProcess.terminate()
+
+
+    def _launchChild(self, *args):
+        '''Launch a child process. Subclasses must override this method and set self._childProcess'''
+        pass
+
+
+    def _childProcessEnded(self, signum, _):
+        '''Called when the child process fails to launch or exits.
+            :returns: a tuple containing output from child process: stdout, stderr
+        '''
+        log.debug("received signal %d", signum)
+        stdout, stderr = None, None
+        if self._childProcess is not None:
+            # child process terminated unexpectedly so catch any output
+            stdout, stderr = self._childProcess.communicate()
+            log.info(
+                "child process exited unexpectedly with code %d\nstdout:%s\n\nstderr:%s\n",
+                self._childProcess.returncode,
+                stdout,
+                stderr
+            )
+
+            # clear reference to subprocess
+            self._childProcess = None
+        return stdout, stderr
+
+
+
 
 class RecalboxMQTTSubscriber:
     '''MQTT subscriber: handles connection to mosquitto_sub'''
@@ -88,8 +134,7 @@ class RecalboxEventHandler:
         '''Read event params from ES state file, stripping any CR characters'''
     
 
-
-class MediaManager:
+class MediaManager(ChildProcessManager):
     '''Finds appropriate media files for a system or game and manages connection to the media player executable
     '''
 
@@ -102,20 +147,6 @@ class MediaManager:
     "options passed to media player executable"
 
 
-    def __init__(self):
-        self._player = None
-        "reference to media player subprocess"
-
-        # handle exit of media player subprocess gracefully
-        signal.signal(signal.SIGPIPE, self._playerExited)
-        signal.signal(signal.SIGCHLD, self._playerExited)
-
-
-    def __del__(self):
-        '''Terminate the media player (if running) before shutdown'''
-        self.clearMarquee()
-
-
     def getMarqueeMediaForROM(self, systemId, gameBasename):
         '''Search for ROM-specific media files, and if >1 found, return one at random.
         
@@ -126,46 +157,27 @@ class MediaManager:
             :param str filepath: to path to the media file to display
             :param Any args: any additional args to pass to the media player
         '''
+        self._launchChild(filepath, *args)
+
+    
+    def _launchChild(self, filepath, *args):
         # terminate running media player if any
-        if self._player is not None:
-            self._player.terminate()
+        if self._childProcess is not None:
+            self._childProcess.terminate()
         
         # launch media player
         try:
             log.debug('launching media player: %s', ' '.join([self.PLAYER] + self.PLAYER_OPTS + [filepath] + list(args)))
-            self._player = subprocess.Popen(
+            self._childProcess = subprocess.Popen(
                 [self.PLAYER] + self.PLAYER_OPTS + [filepath],
+                stdout = subprocess.PIPE,
                 stderr = subprocess.PIPE
             )
         except (OSError, ValueError) as e:
-            if self._player is None:
+            if self._childProcess is None:
                 log.error("could not start media player subprocess: %s", e)
-    
- 
-    def clearMarquee(self):
-        '''Terminate any running media player subprocess'''
-        if self._player is not None:
-            self._player.terminate()
-            log.debug(
-                "%s.clearMarquee() terminating subprocess",
-                self.__class__.__name__
-            )
 
 
-    def _playerExited(self, signum, _):
-        '''Called when the media player subprocess fails to launch or exits unexpectedly'''
-        log.info("media player subprocess received signal %d", signum)
-        # catch any error output and log it
-        if self._player is not None:
-            _, stderr = self._player.communicate()
-            log.error(
-                "%s._playerExited(): media player process exited unexpectedly with code %d\n%s",
-                self.__class__.__name__,
-                self._player.returncode,
-                stderr
-            )
-        # clear reference to subprocess
-        self._player = None
 
 
 
@@ -183,12 +195,12 @@ def testRecalboxMQTTSubscriber():
 def testMediaManager():
     mm = MediaManager()
     mm.showOnMarquee('./media/mame/asteroid.png')
-    time.sleep(5)
+    time.sleep(15)
 
 
 
 if __name__ == '__main__':
-    testRecalboxMQTTSubscriber()
+    # testRecalboxMQTTSubscriber()
     testMediaManager()
 
 log.info("end of program")
