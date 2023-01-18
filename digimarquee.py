@@ -11,7 +11,11 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
-# MQTT subscriber
+#
+# TODO: so much in common between RecalboxMQTTSubscriber & MediaManager
+#   inherit from a base class?
+#
+
 class RecalboxMQTTSubscriber:
     '''MQTT subscriber: handles connection to mosquitto_sub'''
 
@@ -19,8 +23,12 @@ class RecalboxMQTTSubscriber:
     #"pipe to mosquitto_sub subprocess"
 
     def __init__(self):
+        # handle exit of child process cleanly
         signal.signal(signal.SIGINT, self._shutdown)
         signal.signal(signal.SIGTERM, self._shutdown)
+        signal.signal(signal.SIGCHLD, self._shutdown)
+        self._pipe = None
+
 
 
     def start(self):
@@ -48,7 +56,11 @@ class RecalboxMQTTSubscriber:
 
     def _shutdown(self, *args):
         '''Terminate the mosquitto_sub subprocess and close the pipe'''
-        log.debug("RecalboxMQTTSubscriber.shutdown(%d) requested", args[0])
+        log.debug(
+            "%s.shutdown(%d) requested",
+            self.__class__.__name__,
+            args[0]
+        )
         self._pipe.terminate()
 
 
@@ -169,7 +181,7 @@ def testMediaManager():
 
 
 if __name__ == '__main__':
-    # testRecalboxMQTTSubscriber()
-    testMediaManager()
+    testRecalboxMQTTSubscriber()
+    # testMediaManager()
 
 log.info("end of program")
