@@ -3,12 +3,19 @@
 import subprocess, signal, logging, time
 
 # Logging setup
-logging.basicConfig(
-    format = '%(asctime)-15s %(levelname)-7s %(message)s',
-    datefmt = '%Y-%m-%d %H:%M:%S',
-    level = logging.DEBUG
-)
-log = logging.getLogger(__name__)
+def getLogger(logLevel, **kwargs):
+    '''Script logger
+        :param int logLevel: events at this level or more serious will be logged
+    '''
+    logging.basicConfig(
+        format = '%(asctime)-15s %(levelname)-7s %(message)s',
+        datefmt = '%Y-%m-%d %H:%M:%S',
+        level = logLevel,
+        **kwargs
+    )
+    return logging.getLogger(__name__)
+
+log = getLogger(logging.DEBUG);
 
 
 #
@@ -182,6 +189,6 @@ def testMediaManager():
 
 if __name__ == '__main__':
     testRecalboxMQTTSubscriber()
-    # testMediaManager()
+    testMediaManager()
 
 log.info("end of program")
