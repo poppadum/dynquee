@@ -54,10 +54,6 @@ class ChildProcessManager(object):
             self._childProcess.pid
         )
 
-    def isChildRunning(self):
-        return self._childProcess is not None
-
-
     def _childProcessEnded(self, signum, _):
         '''Called when the child process fails to launch or exits.
             :returns: a tuple containing output from child process: stdout, stderr
@@ -66,15 +62,13 @@ class ChildProcessManager(object):
         stdout, stderr = None, None
         if self._childProcess is not None:
             # catch any output and log it
-            stdout, stderr = self._childProcess.communicate() # causes pipes to close and waits for child to terminate: so readline throws error
+            stdout, stderr = self._childProcess.communicate()
             log.info(
                 "child process exited with code %d\nstdout:%s\n\nstderr:%s\n",
                 self._childProcess.returncode,
                 stdout,
                 stderr
             )
-            # self._childProcess.terminate()
-
             # clear reference to subprocess
             self._childProcess = None
         return stdout, stderr
@@ -147,6 +141,7 @@ class MediaManager(ChildProcessManager):
         '''Search for ROM-specific media files, and if >1 found, return one at random.
         
         '''
+        
 
     def showOnMarquee(self, filepath, *args):
         '''Display a still image or video clip on the marquee.
@@ -156,31 +151,10 @@ class MediaManager(ChildProcessManager):
         # terminate running media player if any
         if self._childProcess is not None:
             self._childProcess.terminate()
-
-        
-        # don't bother catching these: if it tries to run a non-existing program, best to fail instantly
-        # try:
+        # launch player to display media
         self._launchChild(
             [self.PLAYER] + self.PLAYER_OPTS + [filepath] + list(args)
         )
-        # except (OSError, ValueError) as e:
-        #     if self._childProcess is None:
-        #         log.error("could not start media player subprocess: %s", e)
-
-    
-    # def _launchChild(self, filepath, *args):
-    #     # terminate running media player if any
-    #     if self._childProcess is not None:
-    #         self._childProcess.terminate()
-        
-    #     # launch media player
-    #     try:
-    #         super(MediaManager, self)._launchChild(
-    #             [self.PLAYER] + self.PLAYER_OPTS + [filepath] + list(args)
-    #         )
-    #     except (OSError, ValueError) as e:
-    #         if self._childProcess is None:
-    #             log.error("could not start media player subprocess: %s", e)
 
 
 
@@ -190,7 +164,7 @@ class MediaManager(ChildProcessManager):
 def testRecalboxMQTTSubscriber():
     subscriber = RecalboxMQTTSubscriber()
     subscriber.start()
-    while subscriber.isChildRunning():
+    while True:
         event = subscriber.getEvent()
         if not event:
             break
@@ -204,8 +178,10 @@ def testMediaManager():
 
 
 if __name__ == '__main__':
-    testRecalboxMQTTSubscriber()
-    # testMediaManager()
+    # testRecalboxMQTTSubscriber()
+    testMediaManager()
+
+    # TODO: investigate why prog exits immediately when cvlc killed
 
     log.debug('sleep(10)')
     time.sleep(10)
