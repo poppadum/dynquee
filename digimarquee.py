@@ -18,11 +18,8 @@ def getLogger(logLevel, **kwargs):
 log = getLogger(logging.DEBUG);
 
 
-#
-# TODO: RecalboxMQTTSubscriber inherit from ChildProcessManager?
-#
 
-class ChildProcessManager:
+class ChildProcessManager(object):
     '''Manages a connection to a single child process. Handles failure to launch & unexpected exit gracefully.
     '''
 
@@ -41,9 +38,24 @@ class ChildProcessManager:
             self._childProcess.terminate()
 
 
-    def _launchChild(self, *args):
-        '''Launch a child process. Subclasses must override this method and set self._childProcess'''
-        pass
+    def _launchChild(self, cmdline, **kwargs):
+        '''Launch a child process.
+            :param str[] cmd: list of commandline parts to pass to subprocess.Popen
+        '''
+        self._childProcess = subprocess.Popen(
+            cmdline,
+            stdout = subprocess.PIPE,
+            stderr = subprocess.PIPE,
+            **kwargs
+        )
+        log.debug(
+            "launch %s pid=%d",
+            ' '.join(cmdline),
+            self._childProcess.pid
+        )
+
+    def isChildRunning(self):
+        return self._childProcess is not None
 
 
     def _childProcessEnded(self, signum, _):
@@ -53,14 +65,15 @@ class ChildProcessManager:
         log.debug("received signal %d", signum)
         stdout, stderr = None, None
         if self._childProcess is not None:
-            # child process terminated unexpectedly so catch any output
-            stdout, stderr = self._childProcess.communicate()
+            # catch any output and log it
+            stdout, stderr = self._childProcess.communicate() # causes pipes to close and waits for child to terminate: so readline throws error
             log.info(
-                "child process exited unexpectedly with code %d\nstdout:%s\n\nstderr:%s\n",
+                "child process exited with code %d\nstdout:%s\n\nstderr:%s\n",
                 self._childProcess.returncode,
                 stdout,
                 stderr
             )
+            # self._childProcess.terminate()
 
             # clear reference to subprocess
             self._childProcess = None
@@ -69,56 +82,38 @@ class ChildProcessManager:
 
 
 
-class RecalboxMQTTSubscriber:
-    '''MQTT subscriber: handles connection to mosquitto_sub'''
+class RecalboxMQTTSubscriber(ChildProcessManager):
+    '''MQTT subscriber: handles connection to mosquitto_sub, receives events from EmulationStation'''
 
-    #_pipe = None
-    #"pipe to mosquitto_sub subprocess"
+    MQTT_CLIENT = './announce_time.sh' # for testing, really 'mosquitto_sub'
+    MQTT_CLIENT_OPTS = [
+        '-h', '127.0.0.1',
+        '-p', '1883',
+        '-q', '0',
+        '-t', 'Recalbox/EmulationStation/Event'
+    ]
 
-    def __init__(self):
-        # handle exit of child process cleanly
-        signal.signal(signal.SIGINT, self._shutdown)
-        signal.signal(signal.SIGTERM, self._shutdown)
-        signal.signal(signal.SIGCHLD, self._shutdown)
-        self._pipe = None
-
-
-
-    def start(self):
-        '''Start the mosquitto_sub subprocess and open a pipe to it'''
-        self._pipe = subprocess.Popen(
-            [
-                './announce_time.sh'
-                # 'mosquitto_sub',
-                # '-h', '127.0.0.1',
-                # '-p', '1883',
-                # '-q', '0',
-                # '-t', 'Recalbox/EmulationStation/Event'
-            ],
-            stdout = subprocess.PIPE,
-            stderr = subprocess.PIPE,
+    def start(self, *args):
+        self._launchChild(
+            [self.MQTT_CLIENT] + self.MQTT_CLIENT_OPTS + list(args),
             bufsize = 4096
         )
-        log.debug("launched mosquitto_sub pid=%d", self._pipe.pid)
 
     def getEvent(self):
-        '''Read an event from the MQTT server (blocks until data is received)'''
-        line = self._pipe.stdout.readline()
-        return line
-
-
-    def _shutdown(self, *args):
-        '''Terminate the mosquitto_sub subprocess and close the pipe'''
-        log.debug(
-            "%s.shutdown(%d) requested",
-            self.__class__.__name__,
-            args[0]
-        )
-        self._pipe.terminate()
+        '''Read an event from the MQTT server (blocks until data is received)
+            :returns: str an event from the MQTT server, or None if the server terminated
+        '''
+        try: 
+            line = self._childProcess.stdout.readline()
+            return line
+        except IOError as e:
+            # IOError if child process terminates while we're waiting for it to send output
+            log.warn("IOError while waiting for output from child process: %s", e)
+            return None
 
 
 
-class RecalboxEventHandler:
+class RecalboxEventHandler(object):
     
     ES_STATE_FILE = '/tmp/es_state.inf'
     "path to EmulationStation's state file"
@@ -133,6 +128,7 @@ class RecalboxEventHandler:
     def getEventParams():
         '''Read event params from ES state file, stripping any CR characters'''
     
+
 
 class MediaManager(ChildProcessManager):
     '''Finds appropriate media files for a system or game and manages connection to the media player executable
@@ -157,25 +153,34 @@ class MediaManager(ChildProcessManager):
             :param str filepath: to path to the media file to display
             :param Any args: any additional args to pass to the media player
         '''
-        self._launchChild(filepath, *args)
-
-    
-    def _launchChild(self, filepath, *args):
         # terminate running media player if any
         if self._childProcess is not None:
             self._childProcess.terminate()
+
         
-        # launch media player
-        try:
-            log.debug('launching media player: %s', ' '.join([self.PLAYER] + self.PLAYER_OPTS + [filepath] + list(args)))
-            self._childProcess = subprocess.Popen(
-                [self.PLAYER] + self.PLAYER_OPTS + [filepath],
-                stdout = subprocess.PIPE,
-                stderr = subprocess.PIPE
-            )
-        except (OSError, ValueError) as e:
-            if self._childProcess is None:
-                log.error("could not start media player subprocess: %s", e)
+        # don't bother catching these: if it tries to run a non-existing program, best to fail instantly
+        # try:
+        self._launchChild(
+            [self.PLAYER] + self.PLAYER_OPTS + [filepath] + list(args)
+        )
+        # except (OSError, ValueError) as e:
+        #     if self._childProcess is None:
+        #         log.error("could not start media player subprocess: %s", e)
+
+    
+    # def _launchChild(self, filepath, *args):
+    #     # terminate running media player if any
+    #     if self._childProcess is not None:
+    #         self._childProcess.terminate()
+        
+    #     # launch media player
+    #     try:
+    #         super(MediaManager, self)._launchChild(
+    #             [self.PLAYER] + self.PLAYER_OPTS + [filepath] + list(args)
+    #         )
+    #     except (OSError, ValueError) as e:
+    #         if self._childProcess is None:
+    #             log.error("could not start media player subprocess: %s", e)
 
 
 
@@ -185,7 +190,7 @@ class MediaManager(ChildProcessManager):
 def testRecalboxMQTTSubscriber():
     subscriber = RecalboxMQTTSubscriber()
     subscriber.start()
-    while True:
+    while subscriber.isChildRunning():
         event = subscriber.getEvent()
         if not event:
             break
@@ -195,12 +200,14 @@ def testRecalboxMQTTSubscriber():
 def testMediaManager():
     mm = MediaManager()
     mm.showOnMarquee('./media/mame/asteroid.png')
-    time.sleep(15)
 
 
 
 if __name__ == '__main__':
-    # testRecalboxMQTTSubscriber()
-    testMediaManager()
+    testRecalboxMQTTSubscriber()
+    # testMediaManager()
+
+    log.debug('sleep(10)')
+    time.sleep(10)
 
 log.info("end of program")
