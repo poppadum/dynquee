@@ -1,6 +1,10 @@
 #!/usr/bin/python
 
-import subprocess, signal, logging, time
+import subprocess, signal, logging, os, glob, random
+
+# for testing:
+import time
+
 
 # Logging setup
 def getLogger(logLevel, **kwargs):
@@ -128,6 +132,12 @@ class MediaManager(ChildProcessManager):
     '''Finds appropriate media files for a system or game and manages connection to the media player executable
     '''
 
+    #MARQUEE_BASE_PATH = '/recalbox/share/digimarquee/media'
+
+    #for testing:
+    MARQUEE_BASE_PATH = '/net/bungle/chris/projects/Retrocade_2022/recalbox/media'
+    "path where marquee media files are located"
+
     # PLAYER = '/usr/bin/mpv'
     # for testing:
     PLAYER = '/usr/bin/cvlc'
@@ -137,11 +147,51 @@ class MediaManager(ChildProcessManager):
     "options passed to media player executable"
 
 
-    def getMarqueeMediaForROM(self, systemId, gameBasename):
-        '''Search for ROM-specific media files, and if >1 found, return one at random.
-        
+    def _getMediaMatching(self, globPattern):
+        '''Search for media files matching globPattern under MARQUEE_BASE_PATH. If >1 found return one at random.
+            :returns: path of a matching file, or None
         '''
+        log.debug("searching for media files matching %s", globPattern)
+        files = glob.glob("%s/%s" % (self.MARQUEE_BASE_PATH, globPattern))
+        log.debug("found %d files: %s", len(files), files)
+        if len(files) == 0:
+            return None
+        else:
+            return random.choice(files)
+
+
+    def getMedia(self, action, systemId, gamePath, actionData='', publisher='', genre='', imagePath=''):
+        '''Work out which media file to display on the marquee
+            Precedence:
+            1. ROM-specific media file (if browsing or playing a game)
+            2. publisher media file
+            3. genre media file
+            4. system media file
+            5. generic file
+            6. Recalbox logo
+        '''
+        # get game filename without directory and extension (only last extension removed)
+        gameBasename = os.path.splitext(os.path.basename(gamePath))[0]
+        log.debug("gameBasename=%s", gameBasename)
         
+        # TODO: do we even need named categories here? only useful for logging
+        precedence = [
+            ('rom', "%s/%s.*" % (systemId, gameBasename)),
+            ('publisher', "publisher/%s.*" % publisher),
+            ('genre', "genre/%s.*" % genre), # genre may need special handling: split on comma/slash, partial matching?
+            ('system', "system/%s.*" % systemId),
+            ('generic', "generic/*"),
+            ('recalbox_logo', '/recalbox/share_init/system/tft_logos/320p/recalbox.png')
+        ]
+        # find best matching media file for game
+        for cat, globPattern in precedence:
+            log.debug("cat=%s, globPattern=%s", cat, globPattern)
+            # try finding media file for this category
+            file = self._getMediaMatching(globPattern)
+            if file is not None:
+                return file 
+
+
 
     def showOnMarquee(self, filepath, *args):
         '''Display a still image or video clip on the marquee.
@@ -173,8 +223,14 @@ def testRecalboxMQTTSubscriber():
 
 def testMediaManager():
     mm = MediaManager()
-    mm.showOnMarquee('./media/mame/asteroid.png')
-
+    # mm.showOnMarquee('./media/mame/asteroid.png')
+    # print(mm.getMediaForROM('mame', 'chasehq'))
+    # print(mm.getMediaForROM('mame', 'ffight'))
+    # print(mm.getMediaForROM('mame', 'asteroid'))
+    print(mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/chasehq.zip', publisher='Taito'))
+    print(mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/_.zip', publisher='Taito'))
+    print(mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/_.zip', genre='Driving'))
+    print(mm.getMedia(action='gamelistbrowsing', systemId='unknown', gamePath=''))
 
 
 if __name__ == '__main__':
@@ -183,7 +239,7 @@ if __name__ == '__main__':
 
     # TODO: investigate why prog exits immediately when cvlc killed
 
-    log.debug('sleep(10)')
-    time.sleep(10)
+    # log.debug('sleep(10)')
+    # time.sleep(10)
 
 log.info("end of program")
