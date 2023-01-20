@@ -19,6 +19,7 @@ def getLogger(logLevel, **kwargs):
     )
     return logging.getLogger(__name__)
 
+# Should eventually log to /recalbox/share/system/logs/ ?
 log = getLogger(logging.DEBUG);
 
 
