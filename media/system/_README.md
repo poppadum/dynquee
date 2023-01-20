@@ -1,5 +1,6 @@
 # System Logos
 
-Most logos taken from [RetroPie's Carbon theme](https://github.com/RetroPie/es-theme-carbon)
+These are the system logos from Recalbox's `recalbox-next` theme converted to
+PNG by the script [convert_theme_images.py](../../convert_theme_images.py).
 
-MAME logo cropped from https://www.mamedev.org/MAMELogoR.png
+Source: https://gitlab.com/recalbox/recalbox-themes/-/tree/master/themes/recalbox-next

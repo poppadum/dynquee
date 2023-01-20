@@ -11,7 +11,7 @@ THEME: str = 'recalbox-next'
 # input & output paths
 BASEDIR: str = os.path.dirname(__file__)
 IN_PATH: str = f"{BASEDIR}/themes/{THEME}"
-OUT_PATH: str = f"{BASEDIR}/media/out.tmp"
+OUT_PATH: str = f"{BASEDIR}/media/system"
 
 # output sizing
 OUT_WIDTH: int = 1200

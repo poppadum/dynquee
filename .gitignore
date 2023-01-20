@@ -3,6 +3,6 @@ examples/
 media/
 !media/sources.md
 !media/default.png
-
+!media/*/_README.*
 
 themes/recalbox-next/
