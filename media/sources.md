@@ -34,3 +34,8 @@ There are plenty of resources online:
     - [Dave's Clear Logos style 2](https://forums.launchbox-app.com/files/file/787-daves-clear-logos-style-2zip/)
     - [Dan Patrick's Platform Logos](https://forums.launchbox-app.com/files/file/3402-v2-platform-logos-professionally-redrawn-official-versions-new-bigbox-defaults/)
         - SVG set is nice
+
+
+# Included Files
+
+`default.png`: crop/resize of built-in Recalbox logo

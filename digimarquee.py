@@ -182,7 +182,7 @@ class MediaManager(ChildProcessManager):
             ('genre', "genre/%s.*" % genre), # genre may need special handling: split on comma/slash, partial matching?
             ('system', "system/%s.*" % systemId),
             ('generic', "generic/*"),
-            ('recalbox_logo', '/recalbox/share_init/system/tft_logos/320p/recalbox.png')
+            ('default', 'default.png')
         ]
         # find best matching media file for game
         for cat, globPattern in precedence:
