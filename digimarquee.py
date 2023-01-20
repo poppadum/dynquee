@@ -30,7 +30,7 @@ class ChildProcessManager(object):
 
     def __init__(self):
         self._childProcess = None
-        "reference to  child process: instance of subprocess.Popen"
+        "reference to child process: instance of subprocess.Popen"
 
         # handle exit of child process gracefully
         for sig in [signal.SIGCHLD, signal.SIGPIPE]:
@@ -77,7 +77,6 @@ class ChildProcessManager(object):
             # clear reference to subprocess
             self._childProcess = None
         return stdout, stderr
-
 
 
 
@@ -169,7 +168,7 @@ class MediaManager(ChildProcessManager):
             3. genre media file
             4. system media file
             5. generic file
-            6. Recalbox logo
+            6. default logo
         '''
         # get game filename without directory and extension (only last extension removed)
         gameBasename = os.path.splitext(os.path.basename(gamePath))[0]
@@ -181,8 +180,7 @@ class MediaManager(ChildProcessManager):
             ('publisher', "publisher/%s.*" % publisher),
             ('genre', "genre/%s.*" % genre), # genre may need special handling: split on comma/slash, partial matching?
             ('system', "system/%s.*" % systemId),
-            ('generic', "generic/*"),
-            ('default', 'default.png')
+            ('generic', "generic/*")
         ]
         # find best matching media file for game
         for cat, globPattern in precedence:
@@ -191,7 +189,8 @@ class MediaManager(ChildProcessManager):
             file = self._getMediaMatching(globPattern)
             if file is not None:
                 return file 
-
+        # if no other suitable file, found return the default image
+        return 'default.png'
 
 
     def showOnMarquee(self, filepath, *args):
