@@ -8,9 +8,9 @@ media/system/*
 !themes/*/_SOURCE.*
 
 
-# contributed artwork
-themes/recalbox-next/
-#themes/Dan_Patrick_v2_platform_logos/*/
+# artwork fetched from gitlab
+artwork/recalbox-next/
+
 
 # temp
 media/tft_logos
