@@ -1,14 +1,10 @@
 examples/
 
 # exclude generated files in media/system
-media/system/*
+media/system/
+media/publisher/
 
-# include _README files
-!media/*/_README.*
-!themes/*/_SOURCE.*
-
-
-# artwork fetched from gitlab
+# exclude artwork fetched from gitlab
 artwork/recalbox-next/
 
 
