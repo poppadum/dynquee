@@ -146,6 +146,36 @@ class MediaManager(ChildProcessManager):
     PLAYER_OPTS = ['--loop'] #["--vo=drm", "--drm-connector=1.HDMI-A-2", "--hwdec=mmal", "--loop"]
     "options passed to media player executable"
 
+    
+    #
+    # Precedence rules: which order to search for media files
+    #   depending on EmulationStation's action
+    #
+    #   rom: ROM-specific media file
+    #   publisher: publisher media file
+    #   genre: genre media file
+    #   system: system media file
+    #   generic: a media file unrelated to a game, system or publisher
+
+    # TODO: scraped artwork in imagePath should be used somewhere
+
+    _PRECEDENCE = {
+        'gamelistbrowsing': ['rom', 'publisher', 'system', 'genre', 'generic'],
+        'systembrowsing': ['system', 'generic'],
+        # default precedence to use if action does not match one of those above
+        'default': ['generic'],
+    }
+
+
+    # Glob patterns to find media files for each X
+    _GLOB_PATTERNS = {
+        'rom': "%(systemId)s/%(gameBasename)s.*",
+        'publisher': "publisher/%(publisher)s.*",
+        'genre': "genre/%(genre)s.*",
+        'system': "system/%(systemId)s.*",
+        'generic': "generic/*"
+    }
+
 
     def _getMediaMatching(self, globPattern):
         '''Search for media files matching globPattern under MARQUEE_BASE_PATH. If >1 found return one at random.
@@ -161,36 +191,33 @@ class MediaManager(ChildProcessManager):
 
 
     def getMedia(self, action, systemId, gamePath, actionData='', publisher='', genre='', imagePath=''):
-        '''Work out which media file to display on the marquee
-            Precedence:
-            1. ROM-specific media file (if browsing or playing a game)
-            2. publisher media file
-            3. genre media file
-            4. system media file
-            5. generic file
-            6. default logo
+        '''Work out which media file to display on the marquee using the precedence rules for the action
         '''
         # get game filename without directory and extension (only last extension removed)
         gameBasename = os.path.splitext(os.path.basename(gamePath))[0]
         log.debug("gameBasename=%s", gameBasename)
         
-        # TODO: do we even need named categories here? only useful for logging
-        precedence = [
-            ('rom', "%s/%s.*" % (systemId, gameBasename)),
-            ('publisher', "publisher/%s.*" % publisher),
-            ('genre', "genre/%s.*" % genre), # genre may need special handling: split on comma/slash, partial matching?
-            ('system', "system/%s.*" % systemId),
-            ('generic', "generic/*")
-        ]
+        # Look up precedence rules for this action
+        try:
+            precedence = self._PRECEDENCE[action]
+        except KeyError:
+            precedence = self._PRECEDENCE['default']
+
         # find best matching media file for game
-        for cat, globPattern in precedence:
+        for cat in precedence:
+            globPattern = self._GLOB_PATTERNS[cat] % {
+                'gameBasename': gameBasename,
+                'systemId': systemId.lower(),
+                'publisher': publisher.lower(),
+                'genre': genre.lower(),
+            }
             log.debug("cat=%s, globPattern=%s", cat, globPattern)
             # try finding media file for this category
             file = self._getMediaMatching(globPattern)
             if file is not None:
                 return file 
         # if no other suitable file, found return the default image
-        return 'default.png'
+        return '%s/default.png' % self.MARQUEE_BASE_PATH
 
 
     def showOnMarquee(self, filepath, *args):
