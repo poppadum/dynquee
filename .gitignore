@@ -1,8 +1,17 @@
 examples/
 
-media/
-!media/sources.md
-!media/default.png
-!media/*/_README.*
+# exclude generated files in media/system
+media/system/*
 
+# include _README files
+!media/*/_README.*
+!themes/*/_SOURCE.*
+
+
+# contributed artwork
 themes/recalbox-next/
+#themes/Dan_Patrick_v2_platform_logos/*/
+
+# temp
+media/tft_logos
+

@@ -1,5 +1,6 @@
 # Where to find marquee media files?
 
+## Online sources
 There are plenty of resources online:
 
 - [PieMarquee2](https://github.com/losernator/PieMarquee2/tree/main/marquee) is a good source of 1280x400 arcade marquees
@@ -36,6 +37,13 @@ There are plenty of resources online:
         - SVG set is nice
 
 
-# Included Files
+## Included Files
 
-`default.png`: crop/resize of built-in Recalbox logo
+- `default.png`: crop/resize of built-in Recalbox logo
+
+- `system/*.png`: system logos and banners. Includes
+    - system logos from [`recalbox-next`](https://gitlab.com/recalbox/recalbox-themes/-/tree/master/themes/recalbox-next) theme
+    - platform logos from [Dan Patrick's v2 Platform Logos](https://archive.org/details/console-logos-professionally-redrawn-plus-official-versions)
+
+- `publisher/*.png`: publisher logos and banners. Includes
+    - platform logos from [Dan Patrick's v2 Platform Logos](https://archive.org/details/console-logos-professionally-redrawn-plus-official-versions)
