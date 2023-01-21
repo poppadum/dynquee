@@ -2,7 +2,7 @@
 
 Publisher logos from Dan Patrick's v2 Platform Logos
 converted to PNG by the script
-[convert_dp_images.py](../../convert_dp_images.py).
+[convert_artwork.py](../../convert_artwork.py).
 
 Sources:
 - https://archive.org/details/console-logos-professionally-redrawn-plus-official-versions
