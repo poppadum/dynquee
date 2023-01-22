@@ -38,9 +38,7 @@ class ChildProcessManager(object):
 
     def __del__(self):
         '''Terminate any running child process before shutdown'''
-        if self._childProcess is not None:
-            log.info("terminating child process before shutdown")
-            self._childProcess.terminate()
+        self._terminateChild()
 
 
     def _launchChild(self, cmdline, **kwargs):
@@ -58,6 +56,14 @@ class ChildProcessManager(object):
             ' '.join(cmdline),
             self._childProcess.pid
         )
+
+
+    def _terminateChild(self):
+        '''Terminate any running child process'''
+        if self._childProcess is not None:
+            log.info("terminating child process")
+            self._childProcess.terminate()
+
 
     def _childProcessEnded(self, signum, _):
         '''Called when the child process fails to launch or exits.
@@ -80,22 +86,34 @@ class ChildProcessManager(object):
 
 
 
-class RecalboxMQTTSubscriber(ChildProcessManager):
-    '''MQTT subscriber: handles connection to mosquitto_sub, receives events from EmulationStation'''
+class MQTTSubscriber(ChildProcessManager):
+    '''MQTT subscriber: handles connection to mosquitto_sub, receives events from EmulationStation
+        and reads event params from event file
+    '''
 
-    MQTT_CLIENT = './announce_time.sh' # for testing, really 'mosquitto_sub'
-    MQTT_CLIENT_OPTS = [
+    _MQTT_CLIENT = 'mosquitto_sub'
+    _MQTT_CLIENT_OPTS = [
         '-h', '127.0.0.1',
         '-p', '1883',
         '-q', '0',
         '-t', 'Recalbox/EmulationStation/Event'
     ]
 
+    _ES_STATE_FILE = 'test/es_state.inf'
+    "path to EmulationStation's state file"
+
+
     def start(self, *args):
+        '''Start the MQTT client; pass *args to the command line'''
         self._launchChild(
-            [self.MQTT_CLIENT] + self.MQTT_CLIENT_OPTS + list(args),
+            [self._MQTT_CLIENT] + self._MQTT_CLIENT_OPTS + list(args),
             bufsize = 4096
         )
+
+    def stop(self):
+        '''Request the MQTT client process to terminate'''
+        self._terminateChild()
+
 
     def getEvent(self):
         '''Read an event from the MQTT server (blocks until data is received)
@@ -110,21 +128,17 @@ class RecalboxMQTTSubscriber(ChildProcessManager):
             return None
 
 
-
-class RecalboxEventHandler(object):
-    
-    ES_STATE_FILE = '/tmp/es_state.inf'
-    "path to EmulationStation's state file"
-
-    def handleEvent(event):
-        '''Take action based on the event
-            :param dict event: a dict representing the event with keys: Action, ActionData, SystemId, GamePath, ImagePath
+    def getEventParams(self):
+        '''Read event params from ES state file, stripping any CR characters
+            :returns dict: a dict mapping param names to their values
         '''
-        
-
-
-    def getEventParams():
-        '''Read event params from ES state file, stripping any CR characters'''
+        params = {}
+        with open(self._ES_STATE_FILE, 'r') as f:
+            for line in f:
+                key, value = line.strip().split('=', 1)
+                log.debug("key=%s value=%s" % (key, value))
+                params[key] = value
+        return params
     
 
 
@@ -245,18 +259,6 @@ class MediaManager(ChildProcessManager):
 
 
 
-
-# Test harnesses
-def testRecalboxMQTTSubscriber():
-    subscriber = RecalboxMQTTSubscriber()
-    subscriber.start()
-    while True:
-        event = subscriber.getEvent()
-        if not event:
-            break
-        log.info("received event: %s", event)
-
-
 def testMediaManager():
     mm = MediaManager()
     # mm.showOnMarquee('./media/mame/asteroid.png')
@@ -270,8 +272,9 @@ def testMediaManager():
     print(mm.getMedia(action='gamelistbrowsing', systemId='UNKNOWN', gamePath=''))
 
 
+
+
 if __name__ == '__main__':
-    # testRecalboxMQTTSubscriber()
     testMediaManager()
 
     # TODO: investigate why prog exits immediately when cvlc killed

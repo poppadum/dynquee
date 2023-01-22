@@ -1,3 +1,5 @@
+*.pyc
+
 examples/
 
 # exclude generated files in media/system
