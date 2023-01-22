@@ -141,14 +141,13 @@ class MediaManager(ChildProcessManager):
     # for testing:
     _PLAYER = '/usr/bin/cvlc'
     "path to media player executable"
-    
+
     #_PLAYER_OPTS = ["--vo=drm", "--drm-connector=1.HDMI-A-2", "--hwdec=mmal", "--loop"]
     #for testing:
     _PLAYER_OPTS = ['--loop']
     "options passed to media player executable"
 
-    
-    #
+
     # Precedence rules: which order to search for media files
     #   depending on EmulationStation's action
     #
@@ -191,6 +190,7 @@ class MediaManager(ChildProcessManager):
 
     def getMedia(self, action, systemId, gamePath, actionData='', publisher='', genre='', imagePath=''):
         '''Work out which media file to display on the marquee using the precedence rules for the action
+            :returns: str path to a media file
         '''
         # get game filename without directory and extension (only last extension removed)
         gameBasename = os.path.splitext(os.path.basename(gamePath))[0]
@@ -200,26 +200,26 @@ class MediaManager(ChildProcessManager):
         try:
             precedence = self._PRECEDENCE[action]
         except KeyError:
-            # if no rule for this action, use the default rule
+            # if no rules for this action, use the default rules
             precedence = self._PRECEDENCE['default']
 
-        # find best matching media file for game
-        for cat in precedence:
+        # find best matching media file for game trying each rule in turn
+        for rule in precedence:
             # if using scraped image just return its path
-            if cat == 'scraped':
-                log.debug("cat=%s, imagePath=%s", cat, imagePath)
+            if rule == 'scraped':
+                log.debug("rule=%s imagePath=%s", rule, imagePath)
                 if imagePath == '':
                     continue
                 else:
                     return imagePath
 
-            globPattern = self._GLOB_PATTERNS[cat] % {
+            globPattern = self._GLOB_PATTERNS[rule] % {
                 'gameBasename': gameBasename,
                 'systemId': systemId.lower(),
                 'publisher': publisher.lower(),
                 'genre': genre.lower(),
             }
-            log.debug("cat=%s, globPattern=%s", cat, globPattern)
+            log.debug("rule=%s globPattern=%s", rule, globPattern)
             # try finding media file matching this glob pattern
             file = self._getMediaMatching(globPattern)
             if file is not None:
@@ -266,7 +266,8 @@ def testMediaManager():
     print(mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/chasehq.zip', publisher='Taito'))
     print(mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/_.zip', publisher='Taito'))
     print(mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/_.zip', genre='Driving', imagePath='/path/to/scraped_image'))
-    print(mm.getMedia(action='gamelistbrowsing', systemId='unknown', gamePath=''))
+    print(mm.getMedia(action='gamelistbrowsing', systemId='UNKNOWN', gamePath='/recalbox/share_init/roms/_/UNKNOWN.zip', genre='Shooter'))
+    print(mm.getMedia(action='gamelistbrowsing', systemId='UNKNOWN', gamePath=''))
 
 
 if __name__ == '__main__':
