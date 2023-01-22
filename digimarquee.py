@@ -12,7 +12,7 @@ def getLogger(logLevel, **kwargs):
         :param int logLevel: events at this level or more serious will be logged
     '''
     logging.basicConfig(
-        format = '%(asctime)-15s %(levelname)-7s %(funcName)s():%(lineno)d %(message)s',
+        format = '%(asctime)s %(levelname)s %(funcName)s():%(lineno)d %(message)s',
         datefmt = '%H:%M:%S',
         level = logLevel,
         **kwargs
