@@ -132,18 +132,19 @@ class MediaManager(ChildProcessManager):
     '''Finds appropriate media files for a system or game and manages connection to the media player executable
     '''
 
-    #MARQUEE_BASE_PATH = '/recalbox/share/digimarquee/media'
-
+    #_MARQUEE_BASE_PATH = '/recalbox/share/digimarquee/media'
     #for testing:
-    MARQUEE_BASE_PATH = '/net/bungle/chris/projects/Retrocade_2022/recalbox/media'
+    _MARQUEE_BASE_PATH = '/net/bungle/chris/projects/Retrocade_2022/recalbox/media'
     "path where marquee media files are located"
 
     # PLAYER = '/usr/bin/mpv'
     # for testing:
-    PLAYER = '/usr/bin/cvlc'
+    _PLAYER = '/usr/bin/cvlc'
     "path to media player executable"
     
-    PLAYER_OPTS = ['--loop'] #["--vo=drm", "--drm-connector=1.HDMI-A-2", "--hwdec=mmal", "--loop"]
+    #_PLAYER_OPTS = ["--vo=drm", "--drm-connector=1.HDMI-A-2", "--hwdec=mmal", "--loop"]
+    #for testing:
+    _PLAYER_OPTS = ['--loop']
     "options passed to media player executable"
 
     
@@ -156,18 +157,16 @@ class MediaManager(ChildProcessManager):
     #   genre: genre media file
     #   system: system media file
     #   generic: a media file unrelated to a game, system or publisher
-
-    # TODO: scraped artwork in imagePath should be used somewhere
-
+    #   scraped: game's scraped image
     _PRECEDENCE = {
-        'gamelistbrowsing': ['rom', 'publisher', 'system', 'genre', 'generic'],
+        'gamelistbrowsing': ['rom', 'scraped', 'publisher', 'system', 'genre', 'generic'],
         'systembrowsing': ['system', 'generic'],
         # default precedence to use if action does not match one of those above
         'default': ['generic'],
     }
 
 
-    # Glob patterns to find media files for each X
+    # Glob patterns to find media files for each search type
     _GLOB_PATTERNS = {
         'rom': "%(systemId)s/%(gameBasename)s.*",
         'publisher': "publisher/%(publisher)s.*",
@@ -182,7 +181,7 @@ class MediaManager(ChildProcessManager):
             :returns: path of a matching file, or None
         '''
         log.debug("searching for media files matching %s", globPattern)
-        files = glob.glob("%s/%s" % (self.MARQUEE_BASE_PATH, globPattern))
+        files = glob.glob("%s/%s" % (self._MARQUEE_BASE_PATH, globPattern))
         log.debug("found %d files: %s", len(files), files)
         if len(files) == 0:
             return None
@@ -201,10 +200,19 @@ class MediaManager(ChildProcessManager):
         try:
             precedence = self._PRECEDENCE[action]
         except KeyError:
+            # if no rule for this action, use the default rule
             precedence = self._PRECEDENCE['default']
 
         # find best matching media file for game
         for cat in precedence:
+            # if using scraped image just return its path
+            if cat == 'scraped':
+                log.debug("cat=%s, imagePath=%s", cat, imagePath)
+                if imagePath == '':
+                    continue
+                else:
+                    return imagePath
+
             globPattern = self._GLOB_PATTERNS[cat] % {
                 'gameBasename': gameBasename,
                 'systemId': systemId.lower(),
@@ -212,12 +220,13 @@ class MediaManager(ChildProcessManager):
                 'genre': genre.lower(),
             }
             log.debug("cat=%s, globPattern=%s", cat, globPattern)
-            # try finding media file for this category
+            # try finding media file matching this glob pattern
             file = self._getMediaMatching(globPattern)
             if file is not None:
+                # if a matching file was found, stop searching and return it
                 return file 
         # if no other suitable file, found return the default image
-        return '%s/default.png' % self.MARQUEE_BASE_PATH
+        return '%s/default.png' % self._MARQUEE_BASE_PATH
 
 
     def showOnMarquee(self, filepath, *args):
@@ -230,7 +239,7 @@ class MediaManager(ChildProcessManager):
             self._childProcess.terminate()
         # launch player to display media
         self._launchChild(
-            [self.PLAYER] + self.PLAYER_OPTS + [filepath] + list(args)
+            [self._PLAYER] + self._PLAYER_OPTS + [filepath] + list(args)
         )
 
 
@@ -256,7 +265,7 @@ def testMediaManager():
     # print(mm.getMediaForROM('mame', 'asteroid'))
     print(mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/chasehq.zip', publisher='Taito'))
     print(mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/_.zip', publisher='Taito'))
-    print(mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/_.zip', genre='Driving'))
+    print(mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/_.zip', genre='Driving', imagePath='/path/to/scraped_image'))
     print(mm.getMedia(action='gamelistbrowsing', systemId='unknown', gamePath=''))
 
 
