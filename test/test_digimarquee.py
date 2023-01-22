@@ -2,10 +2,12 @@
 
 # Unit tests for digimarquee module
 
-import unittest, os, logging
+import unittest, os, logging, threading, time
 from digimarquee import MQTTSubscriber, log
 
+# only log warnings and errors when running tests
 log.setLevel(logging.WARNING)
+
 
 class TestMQTTSubscriber(unittest.TestCase):
     '''unit tests for MQTTSubscriber'''
@@ -15,7 +17,7 @@ class TestMQTTSubscriber(unittest.TestCase):
         '''create a MQTTSubscriber instance; set paths for testing'''
         self.ms = MQTTSubscriber()
         self.ms._MQTT_CLIENT = '%s/announce_time.sh' % os.path.dirname(__file__)
-        self.ms._MQTT_CLIENT_OPTS = []
+        self.ms._MQTT_CLIENT_OPTS = ['-d', '5']
         self.ms._ES_STATE_FILE = '%s/es_state.inf' % os.path.dirname(__file__)
         return super(TestMQTTSubscriber, self).setUp()
     
@@ -66,5 +68,30 @@ class TestMQTTSubscriber(unittest.TestCase):
         # stop client
         self.ms.stop()
 
-    # TODO: add test that kills mock server and checks exits cleanly
 
+
+    def test_childKilled(self):
+        '''test that getEvent() exits cleanly if subscriber process is unexpectedly terminates'''
+        # thread to kill subscriber process after 17s
+        killer = threading.Thread(target = self._killChild, args=(17,))
+        self.ms.start()
+        killer.start()
+        # read events until child exits
+        count = 0
+        while True:
+            event = self.ms.getEvent()
+            if not event:
+                break
+            count += 1
+            print('event received: %s' % event)
+            self.assertTrue(event.startswith('the time is'))
+        self.assertEqual(count, 4)
+        self.assertIsNone(self.ms._childProcess)
+
+
+
+    def _killChild(self, delay):
+        '''Kill child process after the specified delay in seconds'''
+        time.sleep(delay)
+        print('killing child process now')
+        self.ms._childProcess.kill()
