@@ -118,18 +118,34 @@ class TestMediaManager(unittest.TestCase):
 
     def test_getMedia(self):
         # test getting ROM-specific media
+        precedence = ['rom', 'scraped', 'publisher', 'system', 'genre', 'generic']
         self.assertEqual(
-            self.mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/chasehq.zip', publisher='Taito'),
+            self.mm.getMedia(
+                precedence = precedence,
+                params = {
+                    'systemId':'mame', 'gamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'publisher':'Taito'
+                }
+            ),
             'test/media/mame/chasehq.png'
         )
         # publisher media
         self.assertEqual(
-            self.mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/UNKNOWN.zip', publisher='Taito'),
+            self.mm.getMedia(
+                precedence = precedence,
+                params = {
+                    'systemId': 'mame', 'gamePath': '/recalbox/share_init/roms/mame/UNKNOWN.zip', 'publisher': 'Taito'
+                }
+            ),
             'test/media/publisher/taito.png'
-            )
+        )
         # scraped game image: should return imagePath
         self.assertEqual(
-            self.mm.getMedia(action='gamelistbrowsing', systemId='', gamePath='', imagePath='/path/to/scraped_image'),
+            self.mm.getMedia(
+                precedence = precedence,
+                params = {
+                    'imagePath': '/path/to/scraped_image'
+                }
+            ),
             '/path/to/scraped_image'
         )
         # genre image:
@@ -140,7 +156,10 @@ class TestMediaManager(unittest.TestCase):
         # )
         # generic
         self.assertEqual(
-            self.mm.getMedia(action='gamelistbrowsing', systemId='UNKNOWN', gamePath=''),
+            self.mm.getMedia(
+                precedence=precedence,
+                params = {'systemId': 'UNKNOWN'}
+            ),
             'test/media/generic/generic01.mp4'
         )
 

@@ -2,14 +2,10 @@
 
 import subprocess, signal, logging, os, glob, random
 
-# for testing:
-import time
-
-
-# Logging setup
 def getLogger(logLevel, **kwargs):
-    '''Script logger
+    '''Module logger
         :param int logLevel: events at this level or more serious will be logged
+        :returns: an instance of logging.Logger
     '''
     logging.basicConfig(
         format = '%(asctime)s %(levelname)s %(funcName)s():%(lineno)d %(message)s',
@@ -18,10 +14,6 @@ def getLogger(logLevel, **kwargs):
         **kwargs
     )
     return logging.getLogger(__name__)
-
-# Should eventually log to /recalbox/share/system/logs/ ?
-log = getLogger(logging.DEBUG);
-
 
 
 class ChildProcessManager(object):
@@ -156,23 +148,6 @@ class MediaManager(ChildProcessManager):
     "options to pass to media player executable"
 
 
-    # Precedence rules: which order to search for media files
-    #   depending on EmulationStation's action
-    #
-    #   rom: ROM-specific media file
-    #   publisher: publisher media file
-    #   genre: genre media file
-    #   system: system media file
-    #   generic: a media file unrelated to a game, system or publisher
-    #   scraped: game's scraped image
-    _PRECEDENCE = {
-        'gamelistbrowsing': ['rom', 'scraped', 'publisher', 'system', 'genre', 'generic'],
-        'systembrowsing': ['system', 'generic'],
-        # default precedence to use if action does not match one of those above
-        'default': ['generic'],
-    }
-
-
     # Glob patterns to find media files for each search type
     _GLOB_PATTERNS = {
         'rom': "%(systemId)s/%(gameBasename)s.*",
@@ -196,25 +171,21 @@ class MediaManager(ChildProcessManager):
             return random.choice(files)
 
 
-    def getMedia(self, action, systemId, gamePath, actionData='', publisher='', genre='', imagePath=''):
+    def getMedia(self, precedence, params):
         '''Work out which media file to display on the marquee using the precedence rules for the action
+            :params list[str] precedence: ordered list of search types to try in turn
+            :params dict[str,str] params: a dict of event parameters
             :returns: str path to a media file
         '''
         # get game filename without directory and extension (only last extension removed)
-        gameBasename = os.path.splitext(os.path.basename(gamePath))[0]
+        gameBasename = os.path.splitext(os.path.basename(params.get('gamePath', '')))[0]
         log.debug("gameBasename=%s", gameBasename)
         
-        # Look up precedence rules for this action
-        try:
-            precedence = self._PRECEDENCE[action]
-        except KeyError:
-            # if no rules for this action, use the default rules
-            precedence = self._PRECEDENCE['default']
-
         # find best matching media file for game trying each rule in turn
         for rule in precedence:
             # if using scraped image just return its path
             if rule == 'scraped':
+                imagePath = params.get('imagePath', '')
                 log.debug("rule=%s imagePath=%s", rule, imagePath)
                 if imagePath == '':
                     continue
@@ -223,9 +194,9 @@ class MediaManager(ChildProcessManager):
             # insert event params into rule's glob pattern
             globPattern = self._GLOB_PATTERNS[rule] % {
                 'gameBasename': gameBasename,
-                'systemId': systemId.lower(),
-                'publisher': publisher.lower(),
-                'genre': genre.lower(),
+                'systemId': params.get('systemId', '').lower(),
+                'publisher': params.get('publisher', '').lower(),
+                'genre': params.get('genre', '').lower(),
             }
             log.debug("rule=%s globPattern=%s", rule, globPattern)
             # try finding media file matching this glob pattern
@@ -254,3 +225,68 @@ class MediaManager(ChildProcessManager):
     def clearMarquee(self):
         '''Terminate media player process (if running) to clear marquee'''
         self._terminateChild()
+
+
+
+class EventHandler(object):
+    '''Receives events from MQTTSubscriber and pass to MediaManager'''
+
+    # Precedence rules: which order to search for media files
+    #   depending on the action received
+    #
+    #   rom: ROM-specific media file
+    #   publisher: publisher media file
+    #   genre: genre media file
+    #   system: system media file
+    #   generic: a media file unrelated to a game, system or publisher
+    #   scraped: game's scraped image
+    _PRECEDENCE = {
+        'gamelistbrowsing': ['rom', 'scraped', 'publisher', 'system', 'genre', 'generic'],
+        'systembrowsing': ['system', 'generic'],
+        # default precedence to use if action does not match one of those above
+        'default': ['generic'],
+    }
+
+    def __init__(self):
+        self._ms = MQTTSubscriber()
+        self._ms.start()
+        self._mm = MediaManager()
+    
+    
+    def readEvents(self):
+        '''Read and handle all events from the MQTTSubscriber'''
+        while True:
+            event = self._ms.getEvent()
+            if not event:
+                break
+            log.debug('event received: %s' % event)
+            params = self._ms.getEventParams()
+            self._handleEvent(event, params)
+
+
+    def _handleEvent(self, event, params):
+        log.debug("event=%s, params=%s", event, params)
+        # Look up precedence rules for this action
+        try:
+            precedence = self._PRECEDENCE[event]
+        except KeyError:
+            # if no rules for this action, use the default rules
+            precedence = self._PRECEDENCE['default']
+
+        mediaPath = self._mm.getMedia(event, precedence, params)
+        if mediaPath is not None:
+            self._mm.showOnMarquee(mediaPath)
+
+
+
+### main ###
+
+# Logging setup
+# TODO: Should eventually log to /recalbox/share/system/logs/ ?
+# for now, just log to stderr
+log = getLogger(logging.DEBUG);
+
+if __name__ == '__main__':
+    eh = EventHandler()
+    eh.readEvents()
+    log.debug('exiting')
