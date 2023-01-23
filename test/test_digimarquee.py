@@ -2,14 +2,13 @@
 
 # Unit tests for digimarquee module
 
-import unittest, os, logging, threading, subprocess, time
+import unittest, os, logging, threading, time
 from digimarquee import MQTTSubscriber, MediaManager, log
 
 # only log warnings and errors when running tests
 log.setLevel(logging.WARNING)
 
 
-@unittest.skip('temp disabled while writing tests')
 class TestMQTTSubscriber(unittest.TestCase):
     '''unit tests for MQTTSubscriber'''
 
@@ -18,7 +17,7 @@ class TestMQTTSubscriber(unittest.TestCase):
         '''create a MQTTSubscriber instance; set paths for testing'''
         self.ms = MQTTSubscriber()
         self.ms._MQTT_CLIENT = '%s/announce_time.sh' % os.path.dirname(__file__)
-        self.ms._MQTT_CLIENT_OPTS = ['-d', '5']
+        self.ms._MQTT_CLIENT_OPTS = ['-d', '3']
         self.ms._ES_STATE_FILE = '%s/es_state.inf' % os.path.dirname(__file__)
         return super(TestMQTTSubscriber, self).setUp()
     
@@ -57,7 +56,7 @@ class TestMQTTSubscriber(unittest.TestCase):
 
 
     def test_getEvent(self):
-        '''test getting events from the mock MQTT server'''
+        '''test getting events from the mock MQTT client'''
         # start MQTT client
         self.ms.start()
         # read 3 events
@@ -86,7 +85,7 @@ class TestMQTTSubscriber(unittest.TestCase):
             count += 1
             print('event received: %s' % event)
             self.assertTrue(event.startswith('the time is'))
-        self.assertEqual(count, 4)
+        self.assertEqual(count, 6)
         self.assertIsNone(self.ms._childProcess)
 
 
@@ -153,4 +152,4 @@ class TestMediaManager(unittest.TestCase):
         time.sleep(2)
         self.assertNotEqual(self.mm._childProcess.pid, 0)
         time.sleep(1)
-        self.mm._terminateChild()
+        self.mm.clearMarquee()
