@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import subprocess, signal, logging, os, glob, random
+import subprocess, signal, logging, os, glob, random, ConfigParser
 
 def getLogger(logLevel, **kwargs):
     '''Module logger
@@ -14,6 +14,22 @@ def getLogger(logLevel, **kwargs):
         **kwargs
     )
     return logging.getLogger(__name__)
+
+
+# Module config file
+_CONFIG_FILE = "digimarquee.config.txt"
+
+def loadConfig():
+    '''Load config file into ConfigParser instance and return it'''
+    config = ConfigParser.ConfigParser()
+    _configFilesRead = config.read([
+        "/boot/%s" % _CONFIG_FILE,
+        "%s/%s" % (os.path.dirname(__file__), _CONFIG_FILE),
+        _CONFIG_FILE
+    ])
+    log.info("loaded config file(s): %s", _configFilesRead)
+    return config
+
 
 
 class ChildProcessManager(object):
@@ -84,22 +100,14 @@ class MQTTSubscriber(ChildProcessManager):
         and reads event params from event file
     '''
 
-    _MQTT_CLIENT = 'mosquitto_sub'
-    _MQTT_CLIENT_OPTS = [
-        '-h', '127.0.0.1',
-        '-p', '1883',
-        '-q', '0',
-        '-t', 'Recalbox/EmulationStation/Event'
-    ]
-
-    _ES_STATE_FILE = '/tmp/es_state.inf'
-    "path to EmulationStation's state file"
+    _CONFIG_SECTION = 'recalbox'
+    "config file section for class"
 
 
     def start(self, *args):
         '''Start the MQTT client; pass *args to the command line'''
         self._launchChild(
-            [self._MQTT_CLIENT] + self._MQTT_CLIENT_OPTS + list(args),
+            [config.get(self._CONFIG_SECTION, 'MQTT_CLIENT')] + config.get(self._CONFIG_SECTION, 'MQTT_CLIENT_OPTS').split() + list(args),
             bufsize = 4096
         )
 
@@ -125,7 +133,7 @@ class MQTTSubscriber(ChildProcessManager):
             :returns dict: a dict mapping param names to their values
         '''
         params = {}
-        with open(self._ES_STATE_FILE) as f:
+        with open(config.get(self._CONFIG_SECTION, 'ES_STATE_FILE')) as f:
             for line in f:
                 key, value = line.strip().split('=', 1)
                 log.debug("key=%s value=%s" % (key, value))
@@ -138,14 +146,8 @@ class MediaManager(ChildProcessManager):
     '''Finds appropriate media files for a system or game and manages connection to the media player executable
     '''
 
-    _MARQUEE_BASE_PATH = '/recalbox/share/digimarquee/media'
-    "path where marquee media files are located"
-
-    _PLAYER = '/usr/bin/mpv'
-    "path to media player executable"
-
-    _PLAYER_OPTS = ["--vo=drm", "--drm-connector=1.HDMI-A-2", "--hwdec=mmal", "--loop"]
-    "options to pass to media player executable"
+    _CONFIG_SECTION = 'media'
+    "config file section for MediaManager"
 
 
     # Glob patterns to find media files for each search type
@@ -159,11 +161,11 @@ class MediaManager(ChildProcessManager):
 
 
     def _getMediaMatching(self, globPattern):
-        '''Search for media files matching globPattern under MARQUEE_BASE_PATH. If >1 found return one at random.
+        '''Search for media files matching globPattern under BASE_PATH. If >1 found return one at random.
             :returns: path of a matching file, or None
         '''
         log.debug("searching for media files matching %s", globPattern)
-        files = glob.glob("%s/%s" % (self._MARQUEE_BASE_PATH, globPattern))
+        files = glob.glob("%s/%s" % (config.get(self._CONFIG_SECTION, 'BASE_PATH'), globPattern))
         log.debug("found %d files: %s", len(files), files)
         if len(files) == 0:
             return None
@@ -218,7 +220,7 @@ class MediaManager(ChildProcessManager):
             self._childProcess.terminate()
         # launch player to display media
         self._launchChild(
-            [self._PLAYER] + self._PLAYER_OPTS + [filepath] + list(args)
+            [config.get(self._CONFIG_SECTION,'PLAYER')] + config.get(self._CONFIG_SECTION, 'PLAYER_OPTS').split() + [filepath] + list(args)
         )
 
 
@@ -279,12 +281,16 @@ class EventHandler(object):
 
 
 
-### main ###
-
 # Logging setup
 # TODO: Should eventually log to /recalbox/share/system/logs/ ?
 # for now, just log to stderr
-log = getLogger(logging.DEBUG);
+log = getLogger(logging.DEBUG)
+
+# Read config file
+config = loadConfig()
+
+
+### main ###
 
 if __name__ == '__main__':
     eh = EventHandler()

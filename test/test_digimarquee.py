@@ -2,11 +2,21 @@
 
 # Unit tests for digimarquee module
 
-import unittest, os, logging, threading, time
-from digimarquee import MQTTSubscriber, MediaManager, log
+import unittest, os, logging, ConfigParser, threading, time
+from digimarquee import MQTTSubscriber, MediaManager, log, config
 
 # only log warnings and errors when running tests
 log.setLevel(logging.WARNING)
+
+# set up config for test environment
+def setupTestConfig():
+    '''read test config file'''
+    configFile = "%s/test_digimarquee.config.txt" % os.path.dirname(__file__)
+    print("loading test config file: %s" % configFile)
+    config.read(configFile)
+
+setupTestConfig()
+
 
 
 class TestMQTTSubscriber(unittest.TestCase):
@@ -14,14 +24,17 @@ class TestMQTTSubscriber(unittest.TestCase):
 
     
     def setUp(self):
-        '''create a MQTTSubscriber instance; set paths for testing'''
+        '''create a MQTTSubscriber instance'''
         self.ms = MQTTSubscriber()
-        self.ms._MQTT_CLIENT = '%s/announce_time.sh' % os.path.dirname(__file__)
-        self.ms._MQTT_CLIENT_OPTS = ['-d', '3']
-        self.ms._ES_STATE_FILE = '%s/es_state.inf' % os.path.dirname(__file__)
         return super(TestMQTTSubscriber, self).setUp()
     
 
+    def testConfigLoaded(self):
+        self.assertEqual(config.get('recalbox', 'MQTT_CLIENT'), 'test/announce_time.sh')
+        self.assertEqual(config.get('recalbox', 'MQTT_CLIENT_OPTS'), '-d 3')
+        self.assertEqual(config.get('recalbox', 'ES_STATE_FILE'), 'test/es_state.inf')
+
+        
     def test_getEventParams(self):
         '''test reading event params from mock ES state file'''
         params = self.ms.getEventParams()
@@ -54,7 +67,7 @@ class TestMQTTSubscriber(unittest.TestCase):
             'TestKey': 'a long = string',
         })
 
-
+    
     def test_getEvent(self):
         '''test getting events from the mock MQTT client'''
         # start MQTT client
@@ -102,12 +115,15 @@ class TestMediaManager(unittest.TestCase):
     '''unit tests for MediaManager'''
     
     def setUp(self):
-        '''create a MediaManager instance; set paths for testing'''
+        '''create a MediaManager instance'''
         self.mm = MediaManager()
-        self.mm._MARQUEE_BASE_PATH = '%s/media' %  os.path.dirname(__file__)
-        self.mm._PLAYER = '/usr/bin/cvlc'
-        self.mm._PLAYER_OPTS = ['--loop']
         return super(TestMediaManager, self).setUp()
+
+
+    def test_configLoaded(self):
+        self.assertEqual(config.get('media', 'BASE_PATH'), 'test/media')
+        self.assertEqual(config.get('media', 'PLAYER'), '/usr/bin/cvlc')
+        self.assertEqual(config.get('media', 'PLAYER_OPTS'), '--loop')
 
 
     def test_getMediaMatching(self):

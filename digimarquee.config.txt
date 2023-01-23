@@ -1,0 +1,52 @@
+#
+# digimarquee config file
+#
+
+
+[recalbox]
+#
+# Recalbox settings: shouldn't need to be changed
+#
+# path to MQTT client
+MQTT_CLIENT = mosquitto_sub
+
+# MQTT client options
+MQTT_CLIENT_OPTS = "-h 127.0.0.1 -p 1883 -q 0 -t Recalbox/EmulationStation/Event"
+
+# path to EmulationStation's state file
+ES_STATE_FILE = '/tmp/es_state.inf'
+
+
+
+[media]
+#
+# Media player settings
+#
+# path where marquee media files are located
+BASE_PATH = "/recalbox/share/digimarquee/media"
+
+# path to media player executable
+PLAYER = "/usr/bin/mpv"
+
+# options to pass to media player executable
+PLAYER_OPTS = "--vo=drm --drm-connector=1.HDMI-A-2 --hwdec=mmal --loop"
+
+
+
+[search]
+# Media search precedence rules
+#
+# For each EmulationStation action, define a rule for the search order
+# Rule meanings:
+#   rom: ROM-specific media file
+#   publisher: publisher media file
+#   genre: genre media file (not implemented yet)
+#   system: system media file
+#   generic: a media file unrelated to a game, system or publisher
+#   scraped: game's scraped image
+#
+rungame = rom,scraped,publisher,system,genre,generic
+gamelistbrowsing = system,genre,generic
+systembrowsing = system,generic
+# default precedence to use if action does not match one of those above
+default = generic
