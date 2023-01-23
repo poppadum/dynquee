@@ -100,7 +100,7 @@ class MQTTSubscriber(ChildProcessManager):
         '-t', 'Recalbox/EmulationStation/Event'
     ]
 
-    _ES_STATE_FILE = 'test/es_state.inf'
+    _ES_STATE_FILE = '/tmp/es_state.inf'
     "path to EmulationStation's state file"
 
 
@@ -117,12 +117,11 @@ class MQTTSubscriber(ChildProcessManager):
 
 
     def getEvent(self):
-        '''Read an event from the MQTT server (blocks until data is received)
-            :returns: str an event from the MQTT server, or None if the server terminated
+        '''Read an event from the MQTT client (blocks until data is received)
+            :returns: str an event from the MQTT client, or None if the client terminated
         '''
         try: 
-            line = self._childProcess.stdout.readline()
-            return line
+            return self._childProcess.stdout.readline().strip()
         except IOError as e:
             # IOError if child process terminates while we're waiting for it to send output
             log.warn("IOError while waiting for output from child process: %s", e)
@@ -134,7 +133,7 @@ class MQTTSubscriber(ChildProcessManager):
             :returns dict: a dict mapping param names to their values
         '''
         params = {}
-        with open(self._ES_STATE_FILE, 'r') as f:
+        with open(self._ES_STATE_FILE) as f:
             for line in f:
                 key, value = line.strip().split('=', 1)
                 log.debug("key=%s value=%s" % (key, value))
@@ -221,7 +220,7 @@ class MediaManager(ChildProcessManager):
                     continue
                 else:
                     return imagePath
-
+            # insert event params into rule's glob pattern
             globPattern = self._GLOB_PATTERNS[rule] % {
                 'gameBasename': gameBasename,
                 'systemId': systemId.lower(),
@@ -251,3 +250,7 @@ class MediaManager(ChildProcessManager):
             [self._PLAYER] + self._PLAYER_OPTS + [filepath] + list(args)
         )
 
+
+    def clearMarquee(self):
+        '''Terminate media player process (if running) to clear marquee'''
+        self._terminateChild()
