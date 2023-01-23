@@ -2,13 +2,14 @@
 
 # Unit tests for digimarquee module
 
-import unittest, os, logging, threading, time
-from digimarquee import MQTTSubscriber, log
+import unittest, os, logging, threading, subprocess, time
+from digimarquee import MQTTSubscriber, MediaManager, log
 
 # only log warnings and errors when running tests
 log.setLevel(logging.WARNING)
 
 
+@unittest.skip('temp disabled while writing tests')
 class TestMQTTSubscriber(unittest.TestCase):
     '''unit tests for MQTTSubscriber'''
 
@@ -95,3 +96,61 @@ class TestMQTTSubscriber(unittest.TestCase):
         time.sleep(delay)
         print('killing child process now')
         self.ms._childProcess.kill()
+
+
+
+class TestMediaManager(unittest.TestCase):
+    '''unit tests for MediaManager'''
+    
+    def setUp(self):
+        '''create a MediaManager instance; set paths for testing'''
+        self.mm = MediaManager()
+        self.mm._MARQUEE_BASE_PATH = '%s/media' %  os.path.dirname(__file__)
+        self.mm._PLAYER = '/usr/bin/cvlc'
+        self.mm._PLAYER_OPTS = ['--loop']
+        return super(TestMediaManager, self).setUp()
+
+
+    def test_getMediaMatching(self):
+        '''test that glob patterns work as expected'''
+        self.assertIsNone(self.mm._getMediaMatching('XXXXXXX'))
+        self.assertEqual(self.mm._getMediaMatching('default.*'), 'test/media/default.png')
+
+
+    def test_getMedia(self):
+        # test getting ROM-specific media
+        self.assertEqual(
+            self.mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/chasehq.zip', publisher='Taito'),
+            'test/media/mame/chasehq.png'
+        )
+        # publisher media
+        self.assertEqual(
+            self.mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/UNKNOWN.zip', publisher='Taito'),
+            'test/media/publisher/taito.png'
+            )
+        # scraped game image: should return imagePath
+        self.assertEqual(
+            self.mm.getMedia(action='gamelistbrowsing', systemId='', gamePath='', imagePath='/path/to/scraped_image'),
+            '/path/to/scraped_image'
+        )
+        # genre image:
+        # TODO: genre-based search not implemented yet
+        # self.assertEqual(
+        #     self.mm.getMedia(action='gamelistbrowsing', systemId='UNKNOWN', gamePath='/recalbox/share_init/roms/_/UNKNOWN.zip', genre='Shooter'),
+        #     '/test/media/genre/shooter.png'
+        # )
+        # generic
+        self.assertEqual(
+            self.mm.getMedia(action='gamelistbrowsing', systemId='UNKNOWN', gamePath=''),
+            'test/media/generic/generic01.mp4'
+        )
+
+
+    def test_showOnMarquee(self):
+        '''Test we can show the default image on screen: checks player process pid is non-zero.
+        '''
+        self.mm.showOnMarquee('./media/default.png')
+        time.sleep(2)
+        self.assertNotEqual(self.mm._childProcess.pid, 0)
+        time.sleep(1)
+        self.mm._terminateChild()

@@ -43,7 +43,8 @@ class ChildProcessManager(object):
 
     def _launchChild(self, cmdline, **kwargs):
         '''Launch a child process.
-            :param str[] cmd: list of commandline parts to pass to subprocess.Popen
+            :param str[] cmdline: list of commandline parts to pass to subprocess.Popen
+            :param **kwargs: any additional args to pass to subprocess.Popen
         '''
         self._childProcess = subprocess.Popen(
             cmdline,
@@ -146,20 +147,14 @@ class MediaManager(ChildProcessManager):
     '''Finds appropriate media files for a system or game and manages connection to the media player executable
     '''
 
-    #_MARQUEE_BASE_PATH = '/recalbox/share/digimarquee/media'
-    #for testing:
-    _MARQUEE_BASE_PATH = '/net/bungle/chris/projects/Retrocade_2022/recalbox/media'
+    _MARQUEE_BASE_PATH = '/recalbox/share/digimarquee/media'
     "path where marquee media files are located"
 
-    # PLAYER = '/usr/bin/mpv'
-    # for testing:
-    _PLAYER = '/usr/bin/cvlc'
+    _PLAYER = '/usr/bin/mpv'
     "path to media player executable"
 
-    #_PLAYER_OPTS = ["--vo=drm", "--drm-connector=1.HDMI-A-2", "--hwdec=mmal", "--loop"]
-    #for testing:
-    _PLAYER_OPTS = ['--loop']
-    "options passed to media player executable"
+    _PLAYER_OPTS = ["--vo=drm", "--drm-connector=1.HDMI-A-2", "--hwdec=mmal", "--loop"]
+    "options to pass to media player executable"
 
 
     # Precedence rules: which order to search for media files
@@ -256,30 +251,3 @@ class MediaManager(ChildProcessManager):
             [self._PLAYER] + self._PLAYER_OPTS + [filepath] + list(args)
         )
 
-
-
-
-def testMediaManager():
-    mm = MediaManager()
-    # mm.showOnMarquee('./media/mame/asteroid.png')
-    # print(mm.getMediaForROM('mame', 'chasehq'))
-    # print(mm.getMediaForROM('mame', 'ffight'))
-    # print(mm.getMediaForROM('mame', 'asteroid'))
-    print(mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/chasehq.zip', publisher='Taito'))
-    print(mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/_.zip', publisher='Taito'))
-    print(mm.getMedia(action='gamelistbrowsing', systemId='mame', gamePath='/recalbox/share_init/roms/mame/_.zip', genre='Driving', imagePath='/path/to/scraped_image'))
-    print(mm.getMedia(action='gamelistbrowsing', systemId='UNKNOWN', gamePath='/recalbox/share_init/roms/_/UNKNOWN.zip', genre='Shooter'))
-    print(mm.getMedia(action='gamelistbrowsing', systemId='UNKNOWN', gamePath=''))
-
-
-
-
-if __name__ == '__main__':
-    testMediaManager()
-
-    # TODO: investigate why prog exits immediately when cvlc killed
-
-    # log.debug('sleep(10)')
-    # time.sleep(10)
-
-log.info("end of program")
