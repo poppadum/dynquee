@@ -11,10 +11,10 @@
 MQTT_CLIENT = mosquitto_sub
 
 # MQTT client options
-MQTT_CLIENT_OPTS = "-h 127.0.0.1 -p 1883 -q 0 -t Recalbox/EmulationStation/Event"
+MQTT_CLIENT_OPTS = -h 127.0.0.1 -p 1883 -q 0 -t Recalbox/EmulationStation/Event
 
 # path to EmulationStation's state file
-ES_STATE_FILE = '/tmp/es_state.inf'
+ES_STATE_FILE = /tmp/es_state.inf
 
 
 
@@ -23,13 +23,13 @@ ES_STATE_FILE = '/tmp/es_state.inf'
 # Media player settings
 #
 # path where marquee media files are located
-BASE_PATH = "/recalbox/share/digimarquee/media"
+BASE_PATH = /recalbox/share/digimarquee/media
 
 # path to media player executable
-PLAYER = "/usr/bin/mpv"
+PLAYER = /usr/bin/mpv
 
 # options to pass to media player executable
-PLAYER_OPTS = "--vo=drm --drm-connector=1.HDMI-A-2 --hwdec=mmal --loop"
+PLAYER_OPTS = --vo=drm --drm-connector=1.HDMI-A-2 --hwdec=mmal --loop
 
 
 

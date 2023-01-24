@@ -7,7 +7,7 @@
 #
 # Recalbox settings: shouldn't need to be changed
 #
-# path to MQTT client
+# path to mock MQTT client
 MQTT_CLIENT = test/announce_time.sh
 
 # MQTT client options
@@ -25,10 +25,10 @@ ES_STATE_FILE = test/es_state.inf
 # path where marquee media files are located
 BASE_PATH = test/media
 
-# path to media player executable
+# path to test media player executable
 PLAYER = /usr/bin/cvlc
 
-# options to pass to media player executable
+# options to pass to test media player executable
 PLAYER_OPTS = --loop
 
 

@@ -60,11 +60,7 @@ class ChildProcessManager(object):
             stderr = subprocess.PIPE,
             **kwargs
         )
-        log.debug(
-            "launch %s pid=%d",
-            ' '.join(cmdline),
-            self._childProcess.pid
-        )
+        log.debug("cmd=%s pid=%d", cmdline, self._childProcess.pid)
 
 
     def _terminateChild(self):
@@ -81,11 +77,12 @@ class ChildProcessManager(object):
         log.debug("received signal %d", signum)
         stdout, stderr = None, None
         if self._childProcess is not None:
-            # catch any output and log it
+            # capture return code &  any output and log it
+            rc = self._childProcess.returncode 
             stdout, stderr = self._childProcess.communicate()
             log.info(
-                "child process exited with code %d\nstdout:%s\n\nstderr:%s\n",
-                self._childProcess.returncode,
+                "child process exited with code %s\nstdout:%s\n\nstderr:%s\n",
+                rc,
                 stdout,
                 stderr
             )
@@ -150,7 +147,14 @@ class MediaManager(ChildProcessManager):
     "config file section for MediaManager"
 
 
-    # Glob patterns to find media files for each search type
+    # Glob patterns to find media files for each search rule
+    # Valid search rules:
+    #   rom: ROM-specific media file
+    #   publisher: publisher media file
+    #   genre: genre media file
+    #   system: system media file
+    #   generic: a media file unrelated to a game, system or publisher
+    #   scraped: game's scraped image
     _GLOB_PATTERNS = {
         'rom': "%(systemId)s/%(gameBasename)s.*",
         'publisher': "publisher/%(publisher)s.*",
@@ -159,6 +163,13 @@ class MediaManager(ChildProcessManager):
         'generic': "generic/*"
     }
 
+
+    def __init__(self):
+        '''Override constructor to add currentMedia property'''
+        super(MediaManager, self).__init__()
+        self._currentMedia = None
+        "path to media file currently displayed, or None"
+    
 
     def _getMediaMatching(self, globPattern):
         '''Search for media files matching globPattern under BASE_PATH. If >1 found return one at random.
@@ -179,6 +190,7 @@ class MediaManager(ChildProcessManager):
             :params dict[str,str] params: a dict of event parameters
             :returns: str path to a media file
         '''
+        log.debug("precedence=%s params=%s", precedence, params)
         # get game filename without directory and extension (only last extension removed)
         gameBasename = os.path.splitext(os.path.basename(params.get('gamePath', '')))[0]
         log.debug("gameBasename=%s", gameBasename)
@@ -215,46 +227,39 @@ class MediaManager(ChildProcessManager):
             :param str filepath: to path to the media file to display
             :param Any args: any additional args to pass to the media player
         '''
+        # if we're already showing the media file, do nothing
+        if filepath == self._currentMedia:
+            log.debug("already showing %s" % filepath)
+            return
         # terminate running media player if any
-        if self._childProcess is not None:
-            self._childProcess.terminate()
+        self._terminateChild()
         # launch player to display media
         self._launchChild(
             [config.get(self._CONFIG_SECTION,'PLAYER')] + config.get(self._CONFIG_SECTION, 'PLAYER_OPTS').split() + [filepath] + list(args)
         )
+        self._currentMedia = filepath
 
 
     def clearMarquee(self):
         '''Terminate media player process (if running) to clear marquee'''
         self._terminateChild()
+        self._currentMedia = None
 
 
 
 class EventHandler(object):
     '''Receives events from MQTTSubscriber and pass to MediaManager'''
 
-    # Precedence rules: which order to search for media files
-    #   depending on the action received
-    #
-    #   rom: ROM-specific media file
-    #   publisher: publisher media file
-    #   genre: genre media file
-    #   system: system media file
-    #   generic: a media file unrelated to a game, system or publisher
-    #   scraped: game's scraped image
-    _PRECEDENCE = {
-        'gamelistbrowsing': ['rom', 'scraped', 'publisher', 'system', 'genre', 'generic'],
-        'systembrowsing': ['system', 'generic'],
-        # default precedence to use if action does not match one of those above
-        'default': ['generic'],
-    }
+    _CONFIG_SECTION = 'search'
+    "config file section for EventHandler"
 
+    
     def __init__(self):
         self._ms = MQTTSubscriber()
         self._ms.start()
         self._mm = MediaManager()
-    
-    
+
+
     def readEvents(self):
         '''Read and handle all events from the MQTTSubscriber'''
         while True:
@@ -266,16 +271,22 @@ class EventHandler(object):
             self._handleEvent(event, params)
 
 
+    def _getPrecedence(self, action):
+        '''Get precedence rules for this action from config file'''
+        try:
+            precedence = config.get(self._CONFIG_SECTION, action).split(',')
+        except ConfigParser.NoOptionError:
+            # if no rules for this action, use the default rules
+            precedence = config.get(self._CONFIG_SECTION, 'default').split(',')
+        log.debug("action=%s precedence=%s", action, precedence)
+        return precedence
+
+
     def _handleEvent(self, event, params):
         log.debug("event=%s, params=%s", event, params)
-        # Look up precedence rules for this action
-        try:
-            precedence = self._PRECEDENCE[event]
-        except KeyError:
-            # if no rules for this action, use the default rules
-            precedence = self._PRECEDENCE['default']
-
-        mediaPath = self._mm.getMedia(event, precedence, params)
+        precedence = self._getPrecedence(event)
+        mediaPath = self._mm.getMedia(precedence, params)
+        # display media file if not already showing
         if mediaPath is not None:
             self._mm.showOnMarquee(mediaPath)
 
