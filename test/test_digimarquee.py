@@ -3,7 +3,7 @@
 # Unit tests for digimarquee module
 
 import unittest, os, logging, threading, time
-from digimarquee import MQTTSubscriber, MediaManager, EventHandler, log, config
+from digimarquee import ProcessManager, MQTTSubscriber, MediaManager, EventHandler, log, config
 
 # only log warnings and errors when running tests
 log.setLevel(logging.WARNING)
@@ -16,6 +16,19 @@ def setupTestConfig():
     config.read(configFile)
 
 setupTestConfig()
+
+
+
+class TestProcessManager(unittest.TestCase):
+    '''unit tests for ProcessManager'''
+
+    def testLaunchFailure(self):
+        pm = ProcessManager()
+        with self.assertRaises(OSError) as oe:
+            pm._launch('/invalid/path')
+        self.assertEqual(oe.exception.errno, 2)
+        self.assertIsNone(pm._subprocess)
+        time.sleep(1)
 
 
 
@@ -82,10 +95,10 @@ class TestMQTTSubscriber(unittest.TestCase):
 
     
     def test_childKilled(self):
-        '''test that getEvent() exits cleanly if subscriber process is unexpectedly terminates'''
+        '''test that getEvent() exits cleanly if subscriber process unexpectedly terminates'''
         self.ms.start()
         # thread to kill subscriber process after 17s
-        killer = threading.Timer(17.0, __killProcess, args=(self.ms._childProcess,))
+        killer = threading.Timer(17.0, __killProcess, args=(self.ms._subprocess,))
         killer.start()
         # read events until child exits
         count = 0
@@ -97,13 +110,13 @@ class TestMQTTSubscriber(unittest.TestCase):
             print('event received: %s' % event)
             self.assertTrue(event.startswith('the time is'))
         self.assertEqual(count, 6)
-        self.assertIsNone(self.ms._childProcess)
+        self.assertIsNone(self.ms._subprocess)
 
 
 # Not sure why name has to be as it is, but that's what the test runner looks for
 def _TestMQTTSubscriber__killProcess(process):
     '''Kill process'''
-    print('killing child process now')
+    log.info('killing process now pid=%d' % process.pid)
     process.kill()
 
 
@@ -161,11 +174,15 @@ class TestMediaManager(unittest.TestCase):
             '/path/to/scraped_image'
         )
         # genre image:
-        # TODO: genre-based search not implemented yet
-        # self.assertEqual(
-        #     self.mm.getMedia(action='gamelistbrowsing', systemId='UNKNOWN', gamePath='/recalbox/share_init/roms/_/UNKNOWN.zip', genre='Shooter'),
-        #     '/test/media/genre/shooter.png'
-        # )
+        self.assertEqual(
+            self.mm.getMedia(
+                precedence = precedence,
+                params = {
+                    'systemId': 'UNKNOWN', 'gamePath': '/recalbox/share_init/roms/_/UNKNOWN.zip', 'genre': 'Shooter'
+                }
+            ),
+            'test/media/genre/shooter.png'
+        )
         # generic
         self.assertEqual(
             self.mm.getMedia(
@@ -183,11 +200,11 @@ class TestMediaManager(unittest.TestCase):
         self.mm.showOnMarquee('./media/default.png')
         time.sleep(2)
         self.assertEqual(self.mm._currentMedia, './media/default.png')
-        self.assertNotEqual(self.mm._childProcess.pid, 0)
+        self.assertNotEqual(self.mm._subprocess.pid, 0)
         self.mm.clearMarquee()
         time.sleep(1)
         self.assertIsNone(self.mm._currentMedia)
-        self.assertIsNone(self.mm._childProcess)
+        self.assertIsNone(self.mm._subprocess)
 
 
 

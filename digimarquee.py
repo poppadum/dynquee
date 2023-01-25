@@ -20,7 +20,12 @@ def getLogger(logLevel, **kwargs):
 _CONFIG_FILE = "digimarquee.config.txt"
 
 def loadConfig():
-    '''Load config file into ConfigParser instance and return it'''
+    '''Load config file into ConfigParser instance and return it.
+        Search order:
+        1. /boot
+        2. module directory
+        3. current directory
+    '''
     config = ConfigParser.ConfigParser()
     _configFilesRead = config.read([
         "/boot/%s" % _CONFIG_FILE,
@@ -32,67 +37,61 @@ def loadConfig():
 
 
 
-class ChildProcessManager(object):
-    '''Manages a connection to a single child process. Handles failure to launch & unexpected exit gracefully.
+class ProcessManager(object):
+    '''Manages a connection to a single subprocess. Handles failure to launch & unexpected exit gracefully.
     '''
 
     def __init__(self):
-        self._childProcess = None
-        "reference to child process: instance of subprocess.Popen"
+        self._subprocess = None
+        "reference to subprocess (instance of subprocess.Popen)"
 
-        # handle exit of child process gracefully
-        for sig in [signal.SIGCHLD, signal.SIGPIPE]:
-            signal.signal(sig, self._childProcessEnded)
+        # handle exit of subprocess gracefully
+        signal.signal(signal.SIGCHLD, self._subprocessEnded)
 
     def __del__(self):
-        '''Terminate any running child process before shutdown'''
-        self._terminateChild()
+        '''Terminate any running subprocess before shutdown'''
+        self._terminate()
 
 
-    def _launchChild(self, cmdline, **kwargs):
-        '''Launch a child process.
+    def _launch(self, cmdline, **kwargs):
+        '''Launch a subprocess
             :param str[] cmdline: list of commandline parts to pass to subprocess.Popen
-            :param **kwargs: any additional args to pass to subprocess.Popen
+            :param **kwargs: additional args to pass to subprocess.Popen
         '''
-        self._childProcess = subprocess.Popen(
+        self._subprocess = subprocess.Popen(
             cmdline,
             stdout = subprocess.PIPE,
             stderr = subprocess.PIPE,
             **kwargs
         )
-        log.debug("cmd=%s pid=%d", cmdline, self._childProcess.pid)
+        log.debug("cmd=%s pid=%d", cmdline, self._subprocess.pid)
 
 
-    def _terminateChild(self):
-        '''Terminate any running child process'''
-        if self._childProcess is not None:
-            log.info("terminating child process")
-            self._childProcess.terminate()
+    def _terminate(self):
+        '''Terminate subprocess if running'''
+        if self._subprocess is not None:
+            log.info("terminating subprocess")
+            self._subprocess.terminate()
 
 
-    def _childProcessEnded(self, signum, _):
-        '''Called when the child process fails to launch or exits.
-            :returns: a tuple containing output from child process: stdout, stderr
+    def _subprocessEnded(self, signum, _):
+        '''Called when the subprocess fails to launch or exits.
+            :returns: a tuple containing output from subprocess: stdout, stderr
         '''
         log.debug("received signal %d", signum)
-        stdout, stderr = None, None
-        if self._childProcess is not None:
-            # capture return code &  any output and log it
-            rc = self._childProcess.returncode 
-            stdout, stderr = self._childProcess.communicate()
-            log.info(
-                "child process exited with code %s\nstdout:%s\n\nstderr:%s\n",
-                rc,
-                stdout,
-                stderr
-            )
+        # stdout, stderr = None, None
+        if self._subprocess is not None:
+            # capture return code & output and log it
+            stdout, stderr = self._subprocess.communicate()
+            rc = self._subprocess.returncode if self._subprocess is not None else None
+            log.info("subprocess exited with code %s\nstdout:%s\n\nstderr:%s", rc, stdout, stderr)
             # clear reference to subprocess
-            self._childProcess = None
-        return stdout, stderr
+            self._subprocess = None
+        # return stdout, stderr
 
 
 
-class MQTTSubscriber(ChildProcessManager):
+class MQTTSubscriber(ProcessManager):
     '''MQTT subscriber: handles connection to mosquitto_sub, receives events from EmulationStation
         and reads event params from event file
     '''
@@ -103,14 +102,14 @@ class MQTTSubscriber(ChildProcessManager):
 
     def start(self, *args):
         '''Start the MQTT client; pass *args to the command line'''
-        self._launchChild(
+        self._launch(
             [config.get(self._CONFIG_SECTION, 'MQTT_CLIENT')] + config.get(self._CONFIG_SECTION, 'MQTT_CLIENT_OPTS').split() + list(args),
             bufsize = 4096
         )
 
     def stop(self):
         '''Request the MQTT client process to terminate'''
-        self._terminateChild()
+        self._terminate()
 
 
     def getEvent(self):
@@ -118,7 +117,7 @@ class MQTTSubscriber(ChildProcessManager):
             :returns: str an event from the MQTT client, or None if the client terminated
         '''
         try: 
-            return self._childProcess.stdout.readline().strip()
+            return self._subprocess.stdout.readline().strip()
         except IOError as e:
             # IOError if child process terminates while we're waiting for it to send output
             log.warn("IOError while waiting for output from child process: %s", e)
@@ -139,7 +138,7 @@ class MQTTSubscriber(ChildProcessManager):
     
 
 
-class MediaManager(ChildProcessManager):
+class MediaManager(ProcessManager):
     '''Finds appropriate media files for a system or game and manages connection to the media player executable
     '''
 
@@ -187,7 +186,7 @@ class MediaManager(ChildProcessManager):
     def getMedia(self, precedence, params):
         '''Work out which media file to display on the marquee using the precedence rules for the action
             :params list[str] precedence: ordered list of search types to try in turn
-            :params dict[str,str] params: a dict of event parameters
+            :param dict[str,str] params: a dict of event parameters
             :returns: str path to a media file
         '''
         log.debug("precedence=%s params=%s", precedence, params)
@@ -219,7 +218,7 @@ class MediaManager(ChildProcessManager):
                 # if a matching file was found, stop searching and return it
                 return file 
         # if no other suitable file, found return the default image
-        return '%s/default.png' % self._MARQUEE_BASE_PATH
+        return '%s/default.png' % config.get(self._CONFIG_SECTION, 'MARQUEE_BASE_PATH')
 
 
     def showOnMarquee(self, filepath, *args):
@@ -232,9 +231,9 @@ class MediaManager(ChildProcessManager):
             log.debug("already showing %s" % filepath)
             return
         # terminate running media player if any
-        self._terminateChild()
+        self._terminate()
         # launch player to display media
-        self._launchChild(
+        self._launch(
             [config.get(self._CONFIG_SECTION,'PLAYER')] + config.get(self._CONFIG_SECTION, 'PLAYER_OPTS').split() + [filepath] + list(args)
         )
         self._currentMedia = filepath
@@ -242,7 +241,7 @@ class MediaManager(ChildProcessManager):
 
     def clearMarquee(self):
         '''Terminate media player process (if running) to clear marquee'''
-        self._terminateChild()
+        self._terminate()
         self._currentMedia = None
 
 
