@@ -6,7 +6,7 @@ import unittest, os, logging, threading, time
 from digimarquee import ProcessManager, MQTTSubscriber, MediaManager, EventHandler, log, config
 
 # only log warnings and errors when running tests
-log.setLevel(logging.WARNING)
+log.setLevel(logging.INFO)
 
 # set up config for test environment
 def setupTestConfig():
@@ -120,7 +120,7 @@ class TestMQTTSubscriber(unittest.TestCase):
 # Not sure why name has to be as it is, but that's what the test runner looks for
 def _TestMQTTSubscriber__killProcess(process):
     '''Kill process'''
-    log.info('killing process now pid=%d' % process.pid)
+    log.info('killing process pid=%d' % process.pid)
     process.kill()
 
 
@@ -195,6 +195,23 @@ class TestMediaManager(unittest.TestCase):
             ),
             'test/media/generic/generic01.mp4'
         )
+        # test ROM it won't know: should return default media file
+        self.assertEqual(
+            self.mm.getMedia(
+                precedence=['rom'],
+                params = {'systemId': 'UNKNOWN', 'gamePath': 'XXXX'}
+            ),
+            'test/media/default.png'
+        )
+        # test unrecognised rule
+        self.assertEqual(
+            self.mm.getMedia(
+                precedence=['XXX'],
+                params = {'systemId': 'UNKNOWN'}
+            ),
+            'test/media/default.png'
+        )
+
 
 
     def test_show(self):
@@ -227,10 +244,10 @@ class TestEventHandler(unittest.TestCase):
     
     def test_handleEvent(self):
         self.eh._handleEvent(
-            event = 'rungame',
+            action = 'rungame',
             params = {
                 'systemId':'mame', 'gamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'publisher':'Taito'
             }
         )
         self.assertEqual(self.eh._mm._currentMedia, 'test/media/mame/chasehq.png')
-        time.sleep(1)
+        time.sleep(2)

@@ -70,24 +70,20 @@ class ProcessManager(object):
     def _terminate(self):
         '''Terminate subprocess if running'''
         if self._subprocess is not None:
-            log.info("terminating subprocess")
+            log.debug("terminating subprocess pid=%d", self._subprocess.pid)
             self._subprocess.terminate()
 
 
     def _subprocessEnded(self, signum, _):
-        '''Called when the subprocess fails to launch or exits.
-            :returns: a tuple containing output from subprocess: stdout, stderr
-        '''
+        '''Called when the subprocess fails to launch or exits: capture output & return code and log it'''
         log.debug("received signal %d", signum)
-        # stdout, stderr = None, None
         if self._subprocess is not None:
             # capture return code & output and log it
             stdout, stderr = self._subprocess.communicate()
             rc = self._subprocess.returncode if self._subprocess is not None else None
-            log.info("subprocess exited with code %s\nstdout:%s\n\nstderr:%s", rc, stdout, stderr)
+            log.debug("subprocess exited with code %s\nstdout:%s\n\nstderr:%s", rc, stdout, stderr)
             # clear reference to subprocess
             self._subprocess = None
-        # return stdout, stderr
 
 
 
@@ -97,7 +93,7 @@ class MQTTSubscriber(ProcessManager):
     '''
 
     _CONFIG_SECTION = 'recalbox'
-    "config file section for class"
+    "config file section for MQTTSubscriber"
 
 
     def start(self, *args):
@@ -114,7 +110,7 @@ class MQTTSubscriber(ProcessManager):
 
     def getEvent(self):
         '''Read an event from the MQTT client (blocks until data is received)
-            :returns: str an event from the MQTT client, or None if the client terminated
+            :returns str: an event from the MQTT client, or None if the client terminated
         '''
         try: 
             return self._subprocess.stdout.readline().strip()
@@ -139,7 +135,7 @@ class MQTTSubscriber(ProcessManager):
 
 
 class MediaManager(ProcessManager):
-    '''Finds appropriate media files for a system or game and manages connection to the media player executable
+    '''Finds appropriate media files for an EmulationStation action and manages connection to the media player executable
     '''
 
     _CONFIG_SECTION = 'media'
@@ -172,38 +168,43 @@ class MediaManager(ProcessManager):
 
     def _getMediaMatching(self, globPattern):
         '''Search for media files matching globPattern under BASE_PATH. If >1 found return one at random.
-            :returns: path of a matching file, or None
+            :returns str: path of a matching file, or None
         '''
         log.debug("searching for media files matching %s", globPattern)
         files = glob.glob("%s/%s" % (config.get(self._CONFIG_SECTION, 'BASE_PATH'), globPattern))
         log.debug("found %d files: %s", len(files), files)
-        if len(files) == 0:
+        if files == []:
             return None
         else:
             return random.choice(files)
 
 
     def getMedia(self, precedence, params):
-        '''Work out which media file to display on the marquee using the precedence rules for the action
-            :params list[str] precedence: ordered list of search types to try in turn
+        '''Work out which media file to display on the marquee using precedence rules
+            :params list[str] precedence: ordered list of search rules to try in turn
             :param dict[str,str] params: a dict of event parameters
-            :returns: str path to a media file
+            :returns str: path to a media file
         '''
         log.debug("precedence=%s params=%s", precedence, params)
         # get game filename without directory and extension (only last extension removed)
         gameBasename = os.path.splitext(os.path.basename(params.get('gamePath', '')))[0]
         log.debug("gameBasename=%s", gameBasename)
         
-        # find best matching media file for game trying each rule in turn
+        # find best matching media file for game, trying each rule in turn
         for rule in precedence:
             # if using scraped image just return its path
             if rule == 'scraped':
                 imagePath = params.get('imagePath', '')
                 log.debug("rule=%s imagePath=%s", rule, imagePath)
                 if imagePath == '':
+                    # skip rule if no scraped image exists
                     continue
                 else:
                     return imagePath
+            # skip unrecognised rules
+            if rule not in self._GLOB_PATTERNS:
+                log.warning("skipped unrecognised rule name '%s'", rule)
+                continue
             # insert event params into rule's glob pattern
             globPattern = self._GLOB_PATTERNS[rule] % {
                 'gameBasename': gameBasename,
@@ -218,7 +219,7 @@ class MediaManager(ProcessManager):
                 # if a matching file was found, stop searching and return it
                 return file 
         # if no other suitable file, found return the default image
-        return '%s/default.png' % config.get(self._CONFIG_SECTION, 'MARQUEE_BASE_PATH')
+        return '%s/default.png' % config.get(self._CONFIG_SECTION, 'BASE_PATH')
 
 
     def show(self, filepath, *args):
@@ -271,7 +272,8 @@ class EventHandler(object):
 
 
     def _getPrecedence(self, action):
-        '''Get precedence rules for this action from config file'''
+        '''Get precedence rules for this action from config file
+            :returns list[str]: ordered list of precedence rules'''
         try:
             precedence = config.get(self._CONFIG_SECTION, action).split(',')
         except ConfigParser.NoOptionError:
@@ -281,9 +283,13 @@ class EventHandler(object):
         return precedence
 
 
-    def _handleEvent(self, event, params):
-        log.debug("event=%s, params=%s", event, params)
-        precedence = self._getPrecedence(event)
+    def _handleEvent(self, action, params):
+        '''Find appropriate media file for the event and display it
+            :param str event: EmulationStation action 
+            :param dict[str,str] params: a dict of event parameters
+        '''
+        log.debug("action=%s, params=%s", action, params)
+        precedence = self._getPrecedence(action)
         mediaPath = self._mm.getMedia(precedence, params)
         # display media file if not already showing
         if mediaPath is not None:
