@@ -221,7 +221,7 @@ class MediaManager(ProcessManager):
         return '%s/default.png' % config.get(self._CONFIG_SECTION, 'MARQUEE_BASE_PATH')
 
 
-    def showOnMarquee(self, filepath, *args):
+    def show(self, filepath, *args):
         '''Display a still image or video clip on the marquee.
             :param str filepath: to path to the media file to display
             :param Any args: any additional args to pass to the media player
@@ -239,7 +239,7 @@ class MediaManager(ProcessManager):
         self._currentMedia = filepath
 
 
-    def clearMarquee(self):
+    def clear(self):
         '''Terminate media player process (if running) to clear marquee'''
         self._terminate()
         self._currentMedia = None
@@ -287,7 +287,7 @@ class EventHandler(object):
         mediaPath = self._mm.getMedia(precedence, params)
         # display media file if not already showing
         if mediaPath is not None:
-            self._mm.showOnMarquee(mediaPath)
+            self._mm.show(mediaPath)
 
 
 

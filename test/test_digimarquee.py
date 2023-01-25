@@ -12,8 +12,8 @@ log.setLevel(logging.WARNING)
 def setupTestConfig():
     '''read test config file'''
     configFile = "%s/test_digimarquee.config.txt" % os.path.dirname(__file__)
-    print("loading test config file: %s" % configFile)
     config.read(configFile)
+    log.info("loaded test config file: %s" % configFile)
 
 setupTestConfig()
 
@@ -38,6 +38,10 @@ class TestMQTTSubscriber(unittest.TestCase):
     def setUp(self):
         '''create a MQTTSubscriber instance'''
         self.ms = MQTTSubscriber()
+
+    def tearDown(self):
+        '''wait between tests to give subprocesses time to clean up'''
+        time.sleep(2)
 
 
     def testConfigLoaded(self):
@@ -84,7 +88,7 @@ class TestMQTTSubscriber(unittest.TestCase):
         # start MQTT client
         self.ms.start()
         # read 3 events
-        for i in range(1, 3):
+        for i in range(1, 4):
             event = self.ms.getEvent()
             if not event:
                 break
@@ -193,15 +197,15 @@ class TestMediaManager(unittest.TestCase):
         )
 
 
-    def test_showOnMarquee(self):
+    def test_show(self):
         '''Test we can show the default image on screen: checks player process pid is non-zero.
             Also test clearing image
         '''
-        self.mm.showOnMarquee('./media/default.png')
+        self.mm.show('./media/default.png')
         time.sleep(2)
         self.assertEqual(self.mm._currentMedia, './media/default.png')
         self.assertNotEqual(self.mm._subprocess.pid, 0)
-        self.mm.clearMarquee()
+        self.mm.clear()
         time.sleep(1)
         self.assertIsNone(self.mm._currentMedia)
         self.assertIsNone(self.mm._subprocess)
