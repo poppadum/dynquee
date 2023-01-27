@@ -2,7 +2,7 @@
 
 import subprocess, signal, logging, os, glob, random, io
 from configparser import ConfigParser, NoOptionError
-from typing import ClassVar, Dict, Any, List, Tuple, Union
+from typing import ClassVar, Dict, List, Union
 
 def getLogger(logLevel: int, **kwargs) -> logging.Logger:
     '''Module logger
@@ -30,11 +30,11 @@ def loadConfig() -> ConfigParser:
     '''
     config: ConfigParser = ConfigParser()
     _configFilesRead: List[str] = config.read([
-        "/boot/%s" % _CONFIG_FILE,
-        "%s/%s" % (os.path.dirname(__file__), _CONFIG_FILE),
+        f"/boot/{_CONFIG_FILE}",
+        f"{os.path.dirname(__file__)}/{_CONFIG_FILE}",
         _CONFIG_FILE
     ])
-    log.info("loaded config file(s): %s", _configFilesRead)
+    log.info(f"loaded config file(s): {_configFilesRead}")
     return config
 
 
@@ -47,12 +47,26 @@ class ProcessManager(object):
         self._subprocess: subprocess.Popen = None
         "reference to subprocess (instance of subprocess.Popen)"
 
+        self._signum: int = None
+        "signal received by subprocess, or None"
+
+        self._pid: int = None
+        "pid of subprocess, or None"
+
+        self._hasSubprocessExited = False
+        "flag to indicate if subprocess has exited"
+
         # handle exit of subprocess gracefully
         signal.signal(signal.SIGCHLD, self._subprocessEnded)
+
 
     def __del__(self):
         '''Terminate any running subprocess before shutdown'''
         self._terminate()
+
+    @property
+    def hasSubprocessExited(self) -> bool:
+        return self._hasSubprocessExited
 
 
     def _launch(self, cmdline: List[str], **kwargs):
@@ -67,28 +81,41 @@ class ProcessManager(object):
             universal_newlines = True,
             **kwargs
         )
-        log.debug("cmd=%s pid=%d", cmdline, self._subprocess.pid)
+        self._pid = self._subprocess.pid
+        log.debug(f"cmd={cmdline} pid={self._pid}")
 
 
     def _terminate(self):
         '''Terminate subprocess if running'''
         if self._subprocess is not None:
-            log.debug("terminating subprocess pid=%d", self._subprocess.pid)
+            log.debug(f"terminating subprocess pid={self._pid}")
             self._subprocess.terminate()
+        self._cleanup()
 
 
-    def _subprocessEnded(self, signum, _):
-        '''Called when the subprocess fails to launch or exits: capture output & return code and log it'''
-        if self._subprocess is None:
-            log.debug("subprocess failed to launch")
-        else:
-            log.debug("pid %s received signal %d", self._subprocess.pid, signum)
-            # capture return code & output and log it
-            stdout, stderr  = self._subprocess.communicate()
+    def _subprocessEnded(self, signum: int, _):
+        '''Called when the subprocess fails to launch or exits: raise exception to be caught in main thread'''
+        # record signal received
+        self._signum = signum
+        self._hasSubprocessExited = True
+        signame: str = signal.Signals(signum).name
+        log.debug(f'subprocess pid {self._pid} received signal {signame} ({signum})')
+    
+
+    def _cleanup(self):
+        '''Capture subprocess output and return code; clear reference to subprocess'''
+        if self._subprocess is not None:
+            log.debug("pid %s received signal %s", self._pid, self._signum)
+            # capture return code & output (if any) and log it
+            stdout, stderr = None, None
+            try:
+                stdout, stderr  = self._subprocess.communicate(timeout = 2.0)
+            except subprocess.TimeoutExpired:
+                pass
             rc: int = self._subprocess.returncode if self._subprocess is not None else None
-            log.debug("subprocess exited with code %s\nstdout:%s\n\nstderr:%s", rc, stdout, stderr)
+            log.debug(f"subprocess exited with code {rc}\nstdout:{stdout}\n\nstderr:{stderr}")
             # clear reference to subprocess
-            self._subprocess = None
+            self._subprocess, self._pid, self._signum = None, None, None
 
 
 
@@ -121,7 +148,7 @@ class MQTTSubscriber(ProcessManager):
             return self._subprocess.stdout.readline().strip()
         except IOError as e:
             # IOError if child process terminates while we're waiting for it to send output
-            log.warn("IOError while waiting for output from child process: %s", e)
+            log.warning(f"IOError while waiting for output from subprocess: {e}")
             return None
 
 
@@ -166,7 +193,7 @@ class MediaManager(ProcessManager):
 
     def __init__(self):
         '''Override constructor to add currentMedia property'''
-        super(MediaManager, self).__init__()
+        super().__init__()
         self._currentMedia: str = None
         "path to media file currently displayed, or None"
     
@@ -177,7 +204,7 @@ class MediaManager(ProcessManager):
         '''
         log.debug("searching for media files matching %s", globPattern)
         files: List[str] = glob.glob("%s/%s" % (config.get(self._CONFIG_SECTION, 'BASE_PATH'), globPattern))
-        log.debug("found %d files: %s", len(files), files)
+        log.debug(f"found {len(files)} files: {files}")
         if files == []:
             return None
         else:
@@ -190,17 +217,17 @@ class MediaManager(ProcessManager):
             :param dict[str,str] params: a dict of event parameters
             :returns str: path to a media file
         '''
-        log.debug("precedence=%s params=%s", precedence, params)
+        log.debug(f"precedence={precedence} params={params}")
         # get game filename without directory and extension (only last extension removed)
         gameBasename: str = os.path.splitext(os.path.basename(params.get('GamePath', '')))[0]
-        log.debug("gameBasename=%s", gameBasename)
+        log.debug("gameBasename={gameBasename}")
         
         # find best matching media file for game, trying each rule in turn
         for rule in precedence:
             # if using scraped image just return its path
             if rule == 'scraped':
                 imagePath: str = params.get('ImagePath', '')
-                log.debug("rule=%s ImagePath=%s", rule, imagePath)
+                log.debug(f"rule={rule} ImagePath={imagePath}")
                 if imagePath == '':
                     # skip rule if no scraped image exists
                     continue
@@ -208,7 +235,7 @@ class MediaManager(ProcessManager):
                     return imagePath
             # skip unrecognised rules
             if rule not in self._GLOB_PATTERNS:
-                log.warning("skipped unrecognised rule name '%s'", rule)
+                log.warning(f"skipped unrecognised rule name '{rule}'")
                 continue
             # insert event params into rule's glob pattern
             globPattern: str = self._GLOB_PATTERNS[rule] % {
@@ -217,7 +244,7 @@ class MediaManager(ProcessManager):
                 'publisher': params.get('Publisher', '').lower(),
                 'genre': params.get('Genre', '').lower(),
             }
-            log.debug("rule=%s globPattern=%s", rule, globPattern)
+            log.debug(f"rule={rule} globPattern={globPattern}")
             # try finding media file matching this glob pattern
             file: Union[str, None] = self._getMediaMatching(globPattern)
             if file is not None:
@@ -234,7 +261,7 @@ class MediaManager(ProcessManager):
         '''
         # if we're already showing the media file, do nothing
         if filepath == self._currentMedia:
-            log.debug("already showing %s" % filepath)
+            log.debug(f"already showing {filepath}")
             return
         # terminate running media player if any
         self._terminate()
@@ -284,7 +311,7 @@ class EventHandler(object):
         except NoOptionError:
             # if no rules for this action, use the default rules
             precedence = config.get(self._CONFIG_SECTION, 'default').split(',')
-        log.debug("action=%s precedence=%s", action, precedence)
+        log.debug(f"action={action} precedence={precedence}")
         return precedence
 
 

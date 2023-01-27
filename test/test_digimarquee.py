@@ -6,7 +6,7 @@ import unittest, os, logging, threading, time
 from digimarquee import ProcessManager, MQTTSubscriber, MediaManager, EventHandler, log, config
 
 # only log warnings and errors when running tests
-log.setLevel(logging.INFO)
+# log.setLevel(logging.INFO)
 
 # set up config for test environment
 def setupTestConfig():
@@ -41,15 +41,16 @@ class TestMQTTSubscriber(unittest.TestCase):
 
     def tearDown(self):
         '''wait between tests to give subprocesses time to clean up'''
-        time.sleep(2)
+        del(self.ms)
+        # time.sleep(2)
 
-
+    
     def testConfigLoaded(self):
         self.assertEqual(config.get('recalbox', 'MQTT_CLIENT'), 'test/announce_time.sh')
         self.assertEqual(config.get('recalbox', 'MQTT_CLIENT_OPTS'), '-d 3')
         self.assertEqual(config.get('recalbox', 'ES_STATE_FILE'), 'test/es_state.inf')
 
-
+    
     def test_getEventParams(self):
         '''test reading event params from mock ES state file'''
         params = self.ms.getEventParams()
@@ -82,7 +83,7 @@ class TestMQTTSubscriber(unittest.TestCase):
             'TestKey': 'a long = string',
         })
 
-
+    
     def test_getEvent(self):
         '''test getting events from the mock MQTT client'''
         # start MQTT client
@@ -97,7 +98,7 @@ class TestMQTTSubscriber(unittest.TestCase):
         self.ms.stop()
 
 
-    @unittest.skip('skip failing test')
+    
     def test_childKilled(self):
         '''test that getEvent() exits cleanly if subscriber process unexpectedly terminates'''
         self.ms.start()
@@ -106,7 +107,7 @@ class TestMQTTSubscriber(unittest.TestCase):
         killer.start()
         # read events until child exits
         count = 0
-        while True:
+        while not self.ms.hasSubprocessExited:
             event = self.ms.getEvent()
             if not event:
                 break
@@ -114,6 +115,7 @@ class TestMQTTSubscriber(unittest.TestCase):
             print('event received: %s' % event)
             self.assertTrue(event.startswith('the time is'))
         self.assertEqual(count, 6)
+        self.ms._terminate()
         self.assertIsNone(self.ms._subprocess)
 
 
@@ -131,6 +133,9 @@ class TestMediaManager(unittest.TestCase):
     def setUp(self):
         '''create a MediaManager instance'''
         self.mm = MediaManager()
+
+    def tearDown(self):
+        del(self.mm)
 
 
     def test_configLoaded(self):
@@ -235,13 +240,15 @@ class TestEventHandler(unittest.TestCase):
     def setUp(self):
         self.eh = EventHandler()
 
+    def tearDown(self):
+        del(self.eh)
 
     def test_getPrecedence(self):
         self.assertEqual(self.eh._getPrecedence('default'), ['generic'])
         self.assertEqual(self.eh._getPrecedence('__NOT_FOUND'), ['generic'])
         self.assertEqual(self.eh._getPrecedence('gamelistbrowsing'), ['system', 'genre', 'generic'])
 
-    @unittest.skip('skip failing test')
+
     def test_handleEvent(self):
         self.eh._handleEvent(
             action = 'rungame',
@@ -250,4 +257,4 @@ class TestEventHandler(unittest.TestCase):
             }
         )
         self.assertEqual(self.eh._mm._currentMedia, 'test/media/mame/chasehq.png')
-        time.sleep(2)
+
