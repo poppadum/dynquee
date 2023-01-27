@@ -90,7 +90,7 @@ class ProcessManager(object):
         if self._subprocess is not None:
             log.debug(f"terminating subprocess pid={self._pid}")
             self._subprocess.terminate()
-        self._cleanup()
+            self._cleanup()
 
 
     def _subprocessEnded(self, signum: int, _):
@@ -113,7 +113,7 @@ class ProcessManager(object):
             except subprocess.TimeoutExpired:
                 pass
             rc: int = self._subprocess.returncode if self._subprocess is not None else None
-            log.debug(f"subprocess exited with code {rc}\nstdout:{stdout}\n\nstderr:{stderr}")
+            log.debug(f"subprocess pid={self._pid} exited with code {rc}\nstdout:{stdout}\n\nstderr:{stderr}")
             # clear reference to subprocess
             self._subprocess, self._pid, self._signum = None, None, None
 
