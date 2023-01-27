@@ -1,8 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
-import subprocess, signal, logging, os, glob, random, ConfigParser
+import subprocess, signal, logging, os, glob, random, io
+from configparser import ConfigParser, NoOptionError
+from typing import ClassVar, Dict, Any, List, Tuple, Union
 
-def getLogger(logLevel, **kwargs):
+def getLogger(logLevel: int, **kwargs) -> logging.Logger:
     '''Module logger
         :param int logLevel: events at this level or more serious will be logged
         :returns: an instance of logging.Logger
@@ -17,17 +19,17 @@ def getLogger(logLevel, **kwargs):
 
 
 # Module config file
-_CONFIG_FILE = "digimarquee.config.txt"
+_CONFIG_FILE: str = "digimarquee.config.txt"
 
-def loadConfig():
+def loadConfig() -> ConfigParser:
     '''Load config file into ConfigParser instance and return it.
         Search order:
         1. /boot
         2. module directory
         3. current directory
     '''
-    config = ConfigParser.ConfigParser()
-    _configFilesRead = config.read([
+    config: ConfigParser = ConfigParser()
+    _configFilesRead: List[str] = config.read([
         "/boot/%s" % _CONFIG_FILE,
         "%s/%s" % (os.path.dirname(__file__), _CONFIG_FILE),
         _CONFIG_FILE
@@ -42,7 +44,7 @@ class ProcessManager(object):
     '''
 
     def __init__(self):
-        self._subprocess = None
+        self._subprocess: subprocess.Popen = None
         "reference to subprocess (instance of subprocess.Popen)"
 
         # handle exit of subprocess gracefully
@@ -53,7 +55,7 @@ class ProcessManager(object):
         self._terminate()
 
 
-    def _launch(self, cmdline, **kwargs):
+    def _launch(self, cmdline: List[str], **kwargs):
         '''Launch a subprocess
             :param str[] cmdline: list of commandline parts to pass to subprocess.Popen
             :param **kwargs: additional args to pass to subprocess.Popen
@@ -62,6 +64,7 @@ class ProcessManager(object):
             cmdline,
             stdout = subprocess.PIPE,
             stderr = subprocess.PIPE,
+            universal_newlines = True,
             **kwargs
         )
         log.debug("cmd=%s pid=%d", cmdline, self._subprocess.pid)
@@ -76,11 +79,13 @@ class ProcessManager(object):
 
     def _subprocessEnded(self, signum, _):
         '''Called when the subprocess fails to launch or exits: capture output & return code and log it'''
-        log.debug("received signal %d", signum)
-        if self._subprocess is not None:
+        if self._subprocess is None:
+            log.debug("subprocess failed to launch")
+        else:
+            log.debug("pid %s received signal %d", self._subprocess.pid, signum)
             # capture return code & output and log it
-            stdout, stderr = self._subprocess.communicate()
-            rc = self._subprocess.returncode if self._subprocess is not None else None
+            stdout, stderr  = self._subprocess.communicate()
+            rc: int = self._subprocess.returncode if self._subprocess is not None else None
             log.debug("subprocess exited with code %s\nstdout:%s\n\nstderr:%s", rc, stdout, stderr)
             # clear reference to subprocess
             self._subprocess = None
@@ -92,7 +97,7 @@ class MQTTSubscriber(ProcessManager):
         and reads event params from event file
     '''
 
-    _CONFIG_SECTION = 'recalbox'
+    _CONFIG_SECTION: ClassVar[str] = 'recalbox'
     "config file section for MQTTSubscriber"
 
 
@@ -108,7 +113,7 @@ class MQTTSubscriber(ProcessManager):
         self._terminate()
 
 
-    def getEvent(self):
+    def getEvent(self) -> Union[str, None]:
         '''Read an event from the MQTT client (blocks until data is received)
             :returns str: an event from the MQTT client, or None if the client terminated
         '''
@@ -120,11 +125,11 @@ class MQTTSubscriber(ProcessManager):
             return None
 
 
-    def getEventParams(self):
+    def getEventParams(self) -> Dict[str, str]:
         '''Read event params from ES state file, stripping any CR characters
             :returns dict: a dict mapping param names to their values
         '''
-        params = {}
+        params: Dict[str,str] = {}
         with open(config.get(self._CONFIG_SECTION, 'ES_STATE_FILE')) as f:
             for line in f:
                 key, value = line.strip().split('=', 1)
@@ -138,7 +143,7 @@ class MediaManager(ProcessManager):
     '''Finds appropriate media files for an EmulationStation action and manages connection to the media player executable
     '''
 
-    _CONFIG_SECTION = 'media'
+    _CONFIG_SECTION: ClassVar[str] = 'media'
     "config file section for MediaManager"
 
 
@@ -150,7 +155,7 @@ class MediaManager(ProcessManager):
     #   system: system media file
     #   generic: a media file unrelated to a game, system or publisher
     #   scraped: game's scraped image
-    _GLOB_PATTERNS = {
+    _GLOB_PATTERNS: ClassVar[Dict[str, str]] = {
         'rom': "%(systemId)s/%(gameBasename)s.*",
         'publisher': "publisher/%(publisher)s.*",
         'genre': "genre/%(genre)s.*",
@@ -162,16 +167,16 @@ class MediaManager(ProcessManager):
     def __init__(self):
         '''Override constructor to add currentMedia property'''
         super(MediaManager, self).__init__()
-        self._currentMedia = None
+        self._currentMedia: str = None
         "path to media file currently displayed, or None"
     
 
-    def _getMediaMatching(self, globPattern):
+    def _getMediaMatching(self, globPattern: str) -> Union[str, None]:
         '''Search for media files matching globPattern under BASE_PATH. If >1 found return one at random.
             :returns str: path of a matching file, or None
         '''
         log.debug("searching for media files matching %s", globPattern)
-        files = glob.glob("%s/%s" % (config.get(self._CONFIG_SECTION, 'BASE_PATH'), globPattern))
+        files: List[str] = glob.glob("%s/%s" % (config.get(self._CONFIG_SECTION, 'BASE_PATH'), globPattern))
         log.debug("found %d files: %s", len(files), files)
         if files == []:
             return None
@@ -179,7 +184,7 @@ class MediaManager(ProcessManager):
             return random.choice(files)
 
 
-    def getMedia(self, precedence, params):
+    def getMedia(self, precedence: List[str], params: Dict[str, str]) -> str:
         '''Work out which media file to display on the marquee using precedence rules
             :params list[str] precedence: ordered list of search rules to try in turn
             :param dict[str,str] params: a dict of event parameters
@@ -187,15 +192,15 @@ class MediaManager(ProcessManager):
         '''
         log.debug("precedence=%s params=%s", precedence, params)
         # get game filename without directory and extension (only last extension removed)
-        gameBasename = os.path.splitext(os.path.basename(params.get('gamePath', '')))[0]
+        gameBasename: str = os.path.splitext(os.path.basename(params.get('GamePath', '')))[0]
         log.debug("gameBasename=%s", gameBasename)
         
         # find best matching media file for game, trying each rule in turn
         for rule in precedence:
             # if using scraped image just return its path
             if rule == 'scraped':
-                imagePath = params.get('imagePath', '')
-                log.debug("rule=%s imagePath=%s", rule, imagePath)
+                imagePath: str = params.get('ImagePath', '')
+                log.debug("rule=%s ImagePath=%s", rule, imagePath)
                 if imagePath == '':
                     # skip rule if no scraped image exists
                     continue
@@ -206,15 +211,15 @@ class MediaManager(ProcessManager):
                 log.warning("skipped unrecognised rule name '%s'", rule)
                 continue
             # insert event params into rule's glob pattern
-            globPattern = self._GLOB_PATTERNS[rule] % {
+            globPattern: str = self._GLOB_PATTERNS[rule] % {
                 'gameBasename': gameBasename,
-                'systemId': params.get('systemId', '').lower(),
-                'publisher': params.get('publisher', '').lower(),
-                'genre': params.get('genre', '').lower(),
+                'systemId': params.get('SystemId', '').lower(),
+                'publisher': params.get('Publisher', '').lower(),
+                'genre': params.get('Genre', '').lower(),
             }
             log.debug("rule=%s globPattern=%s", rule, globPattern)
             # try finding media file matching this glob pattern
-            file = self._getMediaMatching(globPattern)
+            file: Union[str, None] = self._getMediaMatching(globPattern)
             if file is not None:
                 # if a matching file was found, stop searching and return it
                 return file 
@@ -222,7 +227,7 @@ class MediaManager(ProcessManager):
         return '%s/default.png' % config.get(self._CONFIG_SECTION, 'BASE_PATH')
 
 
-    def show(self, filepath, *args):
+    def show(self, filepath: str, *args):
         '''Display a still image or video clip on the marquee.
             :param str filepath: to path to the media file to display
             :param Any args: any additional args to pass to the media player
@@ -250,47 +255,47 @@ class MediaManager(ProcessManager):
 class EventHandler(object):
     '''Receives events from MQTTSubscriber and pass to MediaManager'''
 
-    _CONFIG_SECTION = 'search'
+    _CONFIG_SECTION: ClassVar[str] = 'search'
     "config file section for EventHandler"
 
     
     def __init__(self):
-        self._ms = MQTTSubscriber()
+        self._ms: MQTTSubscriber = MQTTSubscriber()
         self._ms.start()
-        self._mm = MediaManager()
+        self._mm: MediaManager = MediaManager()
 
 
     def readEvents(self):
         '''Read and handle all events from the MQTTSubscriber'''
         while True:
-            event = self._ms.getEvent()
+            event: str = self._ms.getEvent()
             if not event:
                 break
             log.debug('event received: %s' % event)
-            params = self._ms.getEventParams()
-            self._handleEvent(event, params)
+            params: Dict[str, str] = self._ms.getEventParams()
+            self._handleEvent(params.get('Action'), params)
 
 
-    def _getPrecedence(self, action):
+    def _getPrecedence(self, action: str) -> List[str]:
         '''Get precedence rules for this action from config file
             :returns list[str]: ordered list of precedence rules'''
         try:
-            precedence = config.get(self._CONFIG_SECTION, action).split(',')
-        except ConfigParser.NoOptionError:
+            precedence: List[str] = config.get(self._CONFIG_SECTION, action).split(',')
+        except NoOptionError:
             # if no rules for this action, use the default rules
             precedence = config.get(self._CONFIG_SECTION, 'default').split(',')
         log.debug("action=%s precedence=%s", action, precedence)
         return precedence
 
 
-    def _handleEvent(self, action, params):
+    def _handleEvent(self, action: str, params: Dict[str, str]):
         '''Find appropriate media file for the event and display it
             :param str event: EmulationStation action 
             :param dict[str,str] params: a dict of event parameters
         '''
         log.debug("action=%s, params=%s", action, params)
-        precedence = self._getPrecedence(action)
-        mediaPath = self._mm.getMedia(precedence, params)
+        precedence: List[str] = self._getPrecedence(action)
+        mediaPath:str  = self._mm.getMedia(precedence, params)
         # display media file if not already showing
         if mediaPath is not None:
             self._mm.show(mediaPath)
@@ -300,15 +305,15 @@ class EventHandler(object):
 # Logging setup
 # TODO: Should eventually log to /recalbox/share/system/logs/ ?
 # for now, just log to stderr
-log = getLogger(logging.DEBUG)
+log: logging.Logger = getLogger(logging.DEBUG)
 
 # Read config file
-config = loadConfig()
+config: ConfigParser = loadConfig()
 
 
 ### main ###
 
 if __name__ == '__main__':
-    eh = EventHandler()
+    eh: EventHandler = EventHandler()
     eh.readEvents()
     log.debug('exiting')

@@ -1,6 +1,9 @@
+# generated and cache files
 *.pyc
+.mypy_cache/
 
-examples/
+# generated pid file
+digimarquee.pid
 
 # exclude generated files in media/system
 media/system/
@@ -12,4 +15,4 @@ artwork/recalbox-next/
 
 # temp
 media/tft_logos
-
+examples/

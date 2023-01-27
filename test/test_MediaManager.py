@@ -1,8 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # tests for digimarquee.MediaManager class
 
-import os, time, threading, StringIO
+import os, time, threading, io
 from digimarquee import MediaManager, log, config
 
 
@@ -19,7 +19,7 @@ def test_playerKilled():
     mm.show('./media/default.png')
     
     # capture output
-    out = StringIO.StringIO()
+    out = io.StringIO()
     # thread to kill media player process after 5s
     killer = threading.Timer(5.0, __killProcess, args=(mm._subprocess,))
     killer.start()
