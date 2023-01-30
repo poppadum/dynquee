@@ -1,20 +1,18 @@
 #!/usr/bin/python3
 
-# Convert Recalbox EmulationStation theme's SVG images to PNG for display by mpv or ffplay
+# Convert sourced artwork in SVG format to PNG
+# 1. Recalbox EmulationStation theme's system images
+# 2. Dan Patrick's v2 Platform Logos
 
-import os, logging, cairosvg, re
-from typing import List, Dict
+import os, logging, cairosvg, re  # type: ignore  # suppress mypy error for cairosvg
+from typing import List
 
 # Uncomment for DEBUG
-#logging.basicConfig(level=logging.DEBUG)
-
-# top-level project directory
-BASEDIR: str = os.path.dirname(__file__)
-logging.debug(f"BASEDIR={BASEDIR}")
+# logging.basicConfig(level=logging.DEBUG)
 
 
 # preferred output sizing
-OUT_WIDTH: int = 1200
+OUT_WIDTH: int = 1280
 OUT_HEIGHT: int = 360
 
 # preferred region: eu, us or jp
@@ -31,33 +29,33 @@ def convertToPNG(infile: str, outfile: str) -> None:
     )
 
 
-def convertTheme(inPath: str, outPath: str, dryrun = False) -> None:
+def convertTheme(inPath: str, outPath: str, dryrun: bool = False) -> None:
     '''Convert a theme's logo.svg files to PNG and place them in outPath named [systemId].png'''
 
     # system directories to skip: virtual systems
-    _SKIP_SYSTEMS: List[str] = ['auto-allgames', 'auto-lastplayed', 'auto-multiplayer', 'default', 'favorites', 'imageviewer']
+    SKIP_SYSTEMS: List[str] = ['auto-allgames', 'auto-lastplayed', 'auto-multiplayer', 'default', 'favorites', 'imageviewer']
 
     # Look through all first level directories in inPath
     with os.scandir(inPath) as it:
         for systemId in it:
             logging.debug(f"found system: {systemId.name}")
             # skip non-directories and virtual systems
-            if systemId.is_dir() and (systemId.name not in _SKIP_SYSTEMS):
+            if systemId.is_dir() and (systemId.name not in SKIP_SYSTEMS):
                 # look for a file named data/logo.svg, or /data/$REGION/logo.svg
                 for dir in ["data", f"data/{REGION}"]:
-                    infile = f"{inPath}/{systemId.name}/{dir}/logo.svg"
-                    logging.debug(f'looking for {infile}... ', end='')
+                    infile: str = f"{inPath}/{systemId.name}/{dir}/logo.svg"
+                    print(f'looking for {infile}: ', end = '')
                     if os.path.isfile(infile):
-                        print(f"converting '{infile}' -> {outPath}/{systemId.name}.png")
+                        print(f"converting to {outPath}/{systemId.name}.png")
                         if not dryrun: convertToPNG(infile, f"{outPath}/{systemId.name}.png")
                         # found a logo: no need to look further for this system
                         break
                     else:
-                        logging.debug(f"'{infile}' not found")
+                        print(f"not found")
         it.close()
 
 
-def convertDanPatrick(inPath: str, outPath: str, dryrun = False) -> None:
+def convertDanPatrick(inPath: str, outPath: str, dryrun: bool = False) -> None:
     '''Convert SVG files in inPath/[category] to PNG and place them in outPath/[category]'''
     CATEGORIES: List[str] = ['publisher', 'system']
 
@@ -68,7 +66,7 @@ def convertDanPatrick(inPath: str, outPath: str, dryrun = False) -> None:
             for image in it:
                 if image.is_file() and image.name.endswith(".svg"):
                     # strip .svg extension & force lower case
-                    basename = os.path.splitext(image.name)[0].lower()
+                    basename: str = os.path.splitext(image.name)[0].lower()
                     # replace spaces, brackets & dashes with dots
                     basename = re.sub('[ \(\)\-]', '.', basename)
                     # strip non-standard characters ; : , 
@@ -82,7 +80,7 @@ def convertDanPatrick(inPath: str, outPath: str, dryrun = False) -> None:
 
                     # TODO: multiword publishers e.g. 'Sammy Atomiswave', 'Video System Co' have dots instead of spaces
 
-                    outFullPath = getUniqueFilename(f"{outPath}/{cat}", basename, 'png')
+                    outFullPath: str = getUniqueFilename(f"{outPath}/{cat}", basename, 'png')
                     print(f"converting '{inPath}/{cat}/{image.name}' -> {outFullPath}")
                     if not dryrun: convertToPNG(
                         infile = f"{inPath}/{cat}/{image.name}",
@@ -92,34 +90,44 @@ def convertDanPatrick(inPath: str, outPath: str, dryrun = False) -> None:
 
 
 def getUniqueFilename(dir: str, basename: str, ext: str) -> str:
-    '''Compute a unique file name to ensure we don't overwrite existing files'''
-    _index = 1
+    '''Compute a unique file name to ensure we don't overwrite existing files
+        :param str dir: target directory
+        :param str basename: base name of the file without extension
+        :param str ext: file extension
+        :returns str: full path to a non-existing file in the target directory
+    '''
+    index: int = 1
+    outFullPath: str
     while True:
         # add index to end of output filename unless this is only file with that name
-        if _index == 1:
-            _outFullPath = f"{dir}/{basename}.{ext}"
+        if index == 1:
+            outFullPath = f"{dir}/{basename}.{ext}"
         else:
-            _outFullPath = f"{dir}/{basename}_{_index:02}.{ext}"
-        if not os.path.exists(_outFullPath):
+            outFullPath = f"{dir}/{basename}_{index:02}.{ext}"
+        if not os.path.exists(outFullPath):
             # found a unique output filename: stop searching
             break
         else:
             # increment index and try again
-            _index += 1
-    logging.debug(f"getUniqueFilename({dir}, {basename}, {ext}) -> {_outFullPath}")
-    return _outFullPath
+            index += 1
+    logging.debug(f"getUniqueFilename({dir}, {basename}, {ext}) -> {outFullPath}")
+    return outFullPath
 
 
 ### main ###
+if __name__ == '__main__':
+    # BASEDIR = top-level project directory
+    BASEDIR: str = os.path.dirname(__file__)
+    logging.debug(f"BASEDIR={BASEDIR}")
 
-convertTheme(
-    inPath = f"{BASEDIR}/artwork/recalbox-next",
-    outPath = f"{BASEDIR}/media/system",
-    # dryrun = True
-)
+    convertTheme(
+        inPath = f"{BASEDIR}/artwork/recalbox-next",
+        outPath = f"{BASEDIR}/media/system",
+        dryrun = True
+    )
 
-convertDanPatrick(
-    inPath = f"{BASEDIR}/artwork/Dan_Patrick_v2_platform_logos",
-    outPath = f"{BASEDIR}/media",
-    # dryrun = True
-)
+    convertDanPatrick(
+        inPath = f"{BASEDIR}/artwork/Dan_Patrick_v2_platform_logos",
+        outPath = f"{BASEDIR}/media",
+        dryrun = True
+    )
