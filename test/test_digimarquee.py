@@ -6,7 +6,7 @@ import unittest, os, logging, threading, time
 from digimarquee import ProcessManager, MQTTSubscriber, MediaManager, EventHandler, log, config
 
 # only log warnings and errors when running tests
-# log.setLevel(logging.INFO)
+log.setLevel(logging.INFO)
 
 # set up config for test environment
 def setupTestConfig():
@@ -115,7 +115,7 @@ class TestMQTTSubscriber(unittest.TestCase):
             print('event received: %s' % event)
             self.assertTrue(event.startswith('the time is'))
         self.assertEqual(count, 6)
-        self.ms._terminate()
+        self.ms.terminate()
         self.assertIsNone(self.ms._subprocess)
 
 

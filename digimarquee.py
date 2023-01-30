@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import subprocess, signal, logging, os, glob, random, io
+import subprocess, signal, logging, os, glob, random
 from configparser import ConfigParser, NoOptionError
 from typing import ClassVar, Dict, List, Union
 
@@ -53,7 +53,7 @@ class ProcessManager(object):
         self._pid: int = None
         "pid of subprocess, or None"
 
-        self._hasSubprocessExited = False
+        self._hasSubprocessExited: bool = False
         "flag to indicate if subprocess has exited"
 
         # handle exit of subprocess gracefully
@@ -62,7 +62,7 @@ class ProcessManager(object):
 
     def __del__(self):
         '''Terminate any running subprocess before shutdown'''
-        self._terminate()
+        self.terminate()
 
     @property
     def hasSubprocessExited(self) -> bool:
@@ -74,6 +74,7 @@ class ProcessManager(object):
             :param str[] cmdline: list of commandline parts to pass to subprocess.Popen
             :param **kwargs: additional args to pass to subprocess.Popen
         '''
+        self._hasSubprocessExited = False
         self._subprocess = subprocess.Popen(
             cmdline,
             stdout = subprocess.PIPE,
@@ -85,7 +86,7 @@ class ProcessManager(object):
         log.debug(f"cmd={cmdline} pid={self._pid}")
 
 
-    def _terminate(self):
+    def terminate(self):
         '''Terminate subprocess if running'''
         if self._subprocess is not None:
             log.debug(f"terminating subprocess pid={self._pid}")
@@ -121,7 +122,17 @@ class ProcessManager(object):
 
 class MQTTSubscriber(ProcessManager):
     '''MQTT subscriber: handles connection to mosquitto_sub, receives events from EmulationStation
-        and reads event params from event file
+        and reads event params from event file.
+
+        Usage:
+        ```
+        start()
+        while not hasSubprocessExited:
+            event = getEvent()
+            if not event:
+                break
+        stop()
+        ```
     '''
 
     _CONFIG_SECTION: ClassVar[str] = 'recalbox'
@@ -137,7 +148,7 @@ class MQTTSubscriber(ProcessManager):
 
     def stop(self):
         '''Request the MQTT client process to terminate'''
-        self._terminate()
+        self.terminate()
 
 
     def getEvent(self) -> Union[str, None]:
@@ -147,7 +158,7 @@ class MQTTSubscriber(ProcessManager):
         try: 
             return self._subprocess.stdout.readline().strip()
         except IOError as e:
-            # IOError if child process terminates while we're waiting for it to send output
+            # IOError if subprocess terminates while we're waiting for it to send output
             log.warning(f"IOError while waiting for output from subprocess: {e}")
             return None
 
@@ -264,7 +275,7 @@ class MediaManager(ProcessManager):
             log.debug(f"already showing {filepath}")
             return
         # terminate running media player if any
-        self._terminate()
+        self.terminate()
         # launch player to display media
         self._launch(
             [config.get(self._CONFIG_SECTION,'PLAYER')] + config.get(self._CONFIG_SECTION, 'PLAYER_OPTS').split() + [filepath] + list(args)
@@ -274,7 +285,7 @@ class MediaManager(ProcessManager):
 
     def clear(self):
         '''Terminate media player process (if running) to clear marquee'''
-        self._terminate()
+        self.terminate()
         self._currentMedia = None
 
 
