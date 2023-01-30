@@ -47,26 +47,13 @@ class ProcessManager(object):
         self._subprocess: subprocess.Popen = None
         "reference to subprocess (instance of subprocess.Popen)"
 
-        self._signum: int = None
-        "signal received by subprocess, or None"
-
         self._pid: int = None
         "pid of subprocess, or None"
-
-        self._hasSubprocessExited: bool = False
-        "flag to indicate if subprocess has exited"
-
-        # handle exit of subprocess gracefully
-        signal.signal(signal.SIGCHLD, self._subprocessEnded)
 
 
     def __del__(self):
         '''Terminate any running subprocess before shutdown'''
         self.terminate()
-
-    @property
-    def hasSubprocessExited(self) -> bool:
-        return self._hasSubprocessExited
 
 
     def _launch(self, cmdline: List[str], **kwargs):
@@ -74,16 +61,18 @@ class ProcessManager(object):
             :param str[] cmdline: list of commandline parts to pass to subprocess.Popen
             :param **kwargs: additional args to pass to subprocess.Popen
         '''
-        self._hasSubprocessExited = False
-        self._subprocess = subprocess.Popen(
-            cmdline,
-            stdout = subprocess.PIPE,
-            stderr = subprocess.PIPE,
-            universal_newlines = True,
-            **kwargs
-        )
-        self._pid = self._subprocess.pid
-        log.debug(f"cmd={cmdline} pid={self._pid}")
+        try:
+            self._subprocess = subprocess.Popen(
+                cmdline,
+                stdout = subprocess.PIPE,
+                stderr = subprocess.PIPE,
+                universal_newlines = True,
+                **kwargs
+            )
+            self._pid = self._subprocess.pid
+            log.debug(f"cmd={cmdline} pid={self._pid}")
+        except OSError as e:
+            log.error(f"unable to launch #{cmdline}: {e}")
 
 
     def terminate(self):
@@ -91,32 +80,16 @@ class ProcessManager(object):
         if self._subprocess is not None:
             log.debug(f"terminating subprocess pid={self._pid}")
             self._subprocess.terminate()
-            self._cleanup()
-
-
-    def _subprocessEnded(self, signum: int, _):
-        '''Called when the subprocess fails to launch or exits: raise exception to be caught in main thread'''
-        # record signal received
-        self._signum = signum
-        self._hasSubprocessExited = True
-        signame: str = signal.Signals(signum).name
-        log.debug(f'subprocess pid {self._pid} received signal {signame} ({signum})')
-    
-
-    def _cleanup(self):
-        '''Capture subprocess output and return code; clear reference to subprocess'''
-        if self._subprocess is not None:
-            log.debug("pid %s received signal %s", self._pid, self._signum)
             # capture return code & output (if any) and log it
             stdout, stderr = None, None
             try:
                 stdout, stderr  = self._subprocess.communicate(timeout = 2.0)
             except subprocess.TimeoutExpired:
                 pass
-            rc: int = self._subprocess.returncode if self._subprocess is not None else None
+            rc: int = self._subprocess.wait()
             log.debug(f"subprocess pid={self._pid} exited with code {rc}\nstdout:{stdout}\n\nstderr:{stderr}")
             # clear reference to subprocess
-            self._subprocess, self._pid, self._signum = None, None, None
+            self._subprocess, self._pid = None, None
 
 
 
@@ -127,7 +100,7 @@ class MQTTSubscriber(ProcessManager):
         Usage:
         ```
         start()
-        while not hasSubprocessExited:
+        while True:
             event = getEvent()
             if not event:
                 break

@@ -24,9 +24,9 @@ class TestProcessManager(unittest.TestCase):
 
     def testLaunchFailure(self):
         pm = ProcessManager()
-        with self.assertRaises(OSError) as oe:
+        with self.assertLogs(log, logging.ERROR) as cm:
             pm._launch('/invalid/path')
-        self.assertEqual(oe.exception.errno, 2)
+        self.assertTrue('unable to launch' in cm.output[0])
         self.assertIsNone(pm._subprocess)
         time.sleep(1)
 
@@ -40,9 +40,8 @@ class TestMQTTSubscriber(unittest.TestCase):
         self.ms = MQTTSubscriber()
 
     def tearDown(self):
-        '''wait between tests to give subprocesses time to clean up'''
+        '''delete MQTTSubscriber instance'''
         del(self.ms)
-        # time.sleep(2)
 
     
     def testConfigLoaded(self):
@@ -96,6 +95,7 @@ class TestMQTTSubscriber(unittest.TestCase):
             self.assertTrue(event.startswith('the time is'))
         # stop client
         self.ms.stop()
+        time.sleep(2)
 
 
     
@@ -107,7 +107,7 @@ class TestMQTTSubscriber(unittest.TestCase):
         killer.start()
         # read events until child exits
         count = 0
-        while not self.ms.hasSubprocessExited:
+        while True:
             event = self.ms.getEvent()
             if not event:
                 break
