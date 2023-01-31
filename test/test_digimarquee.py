@@ -18,7 +18,6 @@ def setupTestConfig():
 setupTestConfig()
 
 
-
 class TestProcessManager(unittest.TestCase):
     '''unit tests for ProcessManager'''
 
@@ -29,7 +28,6 @@ class TestProcessManager(unittest.TestCase):
         self.assertTrue('unable to launch' in cm.output[0])
         self.assertIsNone(pm._subprocess)
         time.sleep(1)
-
 
 
 class TestMQTTSubscriber(unittest.TestCase):
@@ -126,7 +124,6 @@ def _TestMQTTSubscriber__killProcess(process):
     process.kill()
 
 
-
 class TestMediaManager(unittest.TestCase):
     '''unit tests for MediaManager'''
     
@@ -218,22 +215,19 @@ class TestMediaManager(unittest.TestCase):
         )
 
 
-    
-    def test_show(self):
-        '''Test we can show the default image on screen: checks player process pid is non-zero.
-            Also test clearing image
-        '''
-        self.mm.show(['./media/default.png', './media/mame/chasehq.png'])
-        time.sleep(15)
-        self.assertNotEqual(self.mm._subprocess.pid, 0)
-        self.mm.clear()
-        time.sleep(1)
-        self.assertIsNone(self.mm._subprocess)
-
-
 
 class TestEventHandler(unittest.TestCase):
     '''unit tests for TestHandler'''
+
+    _INIT_EV_PARAMS = {
+        'SystemId': None,
+        'GamePath': None
+    }
+
+    _NEW_EV_PARAMS = {
+        'SystemId': 'mame',
+        'GamePath': ''
+    }
 
     def setUp(self):
         self.eh = EventHandler()
@@ -241,6 +235,23 @@ class TestEventHandler(unittest.TestCase):
     def tearDown(self):
         del(self.eh)
 
+    def test_updateState(self):
+        self.assertIsNone(self.eh._currentAction)
+        self.assertIsNone(self.eh._currentSystem)
+        self.assertIsNone(self.eh._currentGame)
+        self.eh._updateState(action = 'systembrowsing', evParams=self._NEW_EV_PARAMS)
+        self.assertEqual(self.eh._currentAction, 'systembrowsing')
+        self.assertEqual(self.eh._currentSystem, 'mame')
+        self.assertEqual(self.eh._currentGame, '')
+
+
+    def test_hasStateChanged(self):
+        self.assertFalse(self.eh._hasStateChanged(None, evParams=self._INIT_EV_PARAMS))
+        self.assertTrue(self.eh._hasStateChanged(None, evParams=self._NEW_EV_PARAMS))
+        self.eh._updateState(action='systembrowsing', evParams=self._NEW_EV_PARAMS)
+        self.assertFalse(self.eh._hasStateChanged('systembrowsing', evParams=self._NEW_EV_PARAMS))
+    
+    
     def test_getPrecedence(self):
         self.assertEqual(self.eh._getPrecedence('default'), ['generic'])
         self.assertEqual(self.eh._getPrecedence('__NOT_FOUND'), ['generic'])
@@ -248,11 +259,58 @@ class TestEventHandler(unittest.TestCase):
 
 
     def test_handleEvent(self):
+        #test systembrowsing
+        with self.assertLogs(log, level=logging.INFO) as cm:
+            self.eh._handleEvent(
+                action = 'systembrowsing',
+                evParams = {
+                    'SystemId':'mame', 'GamePath':''
+                }
+            )
+        self.assertEqual(cm.output, ['INFO:digimarquee:EmulationStation state changed', "INFO:digimarquee:new slideshow paths=['test/media/generic/generic01.mp4']"])
+
+        #still systembrowsing - should not change slideshow
         self.eh._handleEvent(
-            action = 'rungame',
-            params = {
-                'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'
+            action = 'systembrowsing',
+            evParams = {
+                'SystemId':'mame', 'GamePath':''
             }
         )
 
+        #now gamelistbrowsing
+        with self.assertLogs(log, level=logging.INFO) as cm:
+            self.eh._handleEvent(
+                action = 'gamelistbrowsing',
+                evParams = {
+                    'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'
+                }
+            )
+        self.assertEqual(cm.output, ['INFO:digimarquee:EmulationStation state changed', "INFO:digimarquee:new slideshow paths=['test/media/generic/generic01.mp4']"])
 
+        #still gamelistbrowsing - should not change slideshow
+        self.eh._handleEvent(
+            action = 'gamelistbrowsing',
+            evParams = {
+                'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/asteroid.zip', 'Publisher':'Atari'
+            }
+        )
+
+        # test rungame
+        with self.assertLogs(log, level=logging.INFO) as cm:
+            self.eh._handleEvent(
+                action = 'rungame',
+                evParams = {
+                    'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'
+                }
+            )
+        self.assertEqual(cm.output, ['INFO:digimarquee:EmulationStation state changed', "INFO:digimarquee:new slideshow paths=['test/media/mame/chasehq.png']"])
+
+        # test rungame with only publisher image available
+        with self.assertLogs(log, level=logging.INFO) as cm:
+            self.eh._handleEvent(
+                action = 'rungame',
+                evParams = {
+                    'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/bublbobl.zip', 'Publisher':'Taito'
+                }
+            )
+        self.assertEqual(cm.output, ['INFO:digimarquee:EmulationStation state changed', "INFO:digimarquee:new slideshow paths=['test/media/publisher/taito.png']"])

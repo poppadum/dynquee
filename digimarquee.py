@@ -89,6 +89,9 @@ class ProcessManager(object):
                 pass
             rc: int = self._subprocess.wait()
             log.debug(f"subprocess pid={self._pid} exited with code {rc}\nstdout:{stdout}\n\nstderr:{stderr}")
+            # close stdout/stderr to prevent python ResourceWarning: unclosed file
+            self._subprocess.stdout.close()
+            self._subprocess.stderr.close()
             # clear reference to subprocess
             self._subprocess, self._pid = None, None
 
@@ -230,28 +233,9 @@ class MediaManager(ProcessManager):
         return ['%s/default.png' % config.get(self._CONFIG_SECTION, 'BASE_PATH')]
 
 
-    def show(self, filepaths: List[str], *args):
-        '''Display a slideshow of images on the marquee.
-            :param list[str] filepaths: list of paths to the media files to display
-            :param Any args: any additional args to pass to the media player
-        '''
-        # terminate running media player if any
-        self.terminate()
-        # launch player to display media
-        self._launch(
-            [config.get(self._CONFIG_SECTION,'PLAYER')] + config.get(self._CONFIG_SECTION, 'PLAYER_OPTS').split() + filepaths + list(args)
-        )
-
-
-    def clear(self):
-        '''Terminate media player process (if running) to clear marquee'''
-        self.terminate()
-        self._currentMedia = None
-
-
 
 class EventHandler(object):
-    '''Receives events from MQTTSubscriber and pass to MediaManager'''
+    '''Receives events from MQTTSubscriber, uses MediaManager to find images and Slideshow to show them'''
 
     _CONFIG_SECTION: ClassVar[str] = 'search'
     "config file section for EventHandler"
@@ -261,6 +245,10 @@ class EventHandler(object):
         self._ms: MQTTSubscriber = MQTTSubscriber()
         self._ms.start()
         self._mm: MediaManager = MediaManager()
+        # record current state of EmulationStation
+        self._currentAction = None
+        self._currentSystem = None
+        self._currentGame = None
 
 
     def readEvents(self):
@@ -286,18 +274,47 @@ class EventHandler(object):
         return precedence
 
 
-    def _handleEvent(self, action: str, params: Dict[str, str]):
+    def _handleEvent(self, action: str, evParams: Dict[str, str]):
         '''Find appropriate media file for the event and display it
             :param str event: EmulationStation action 
             :param dict[str,str] params: a dict of event parameters
         '''
-        log.debug("action=%s, params=%s", action, params)
+        log.debug("action=%s, params=%s", action, evParams)
+        # do we need to change the marquee slideshow?
+        stateChanged: bool = self._hasStateChanged(action, evParams)
+        self._updateState(action, evParams)
+        if not stateChanged:
+            return
+        log.info(f"EmulationStation state changed")
         precedence: List[str] = self._getPrecedence(action)
-        mediaPaths: List[str]  = self._mm.getMedia(precedence, params)
+        mediaPaths: List[str]  = self._mm.getMedia(precedence, evParams)
         # display media file if not already showing
         if mediaPaths is not []:
-            self._mm.show(mediaPaths)
+            # self._mm.show(mediaPaths)
+            log.info(f'new slideshow paths={mediaPaths}')
 
+
+    def _updateState(self, action: str, evParams: Dict[str, str]):
+        self._currentAction = action
+        self._currentSystem = evParams.get('SystemId')
+        self._currentGame = evParams.get('GamePath')
+        log.debug(f"_currentAction={self._currentAction} _currentSystem={self._currentSystem} _currentGame={self._currentGame}")
+
+
+    def _hasStateChanged(self, action: str, evParams: Dict[str, str]) -> bool:
+            '''Determine if EmulationStation's state has changed enough for us to change the marquee'''
+            newSystem: str = evParams.get('SystemId')
+            newGame: str = evParams.get('GamePath')
+            log.debug(f"_currentAction={self._currentAction} action={action}")
+            log.debug(f"currentSystem={self._currentSystem} newSystem={newSystem}")
+            log.debug(f"_currentGame={self._currentGame} newGame={newGame}")
+            # rungame always causes a state change
+            if action == 'rungame': return True
+            # same action and same system: no state change (keep same marquee)
+            if action == self._currentAction and newSystem == self._currentSystem:
+                return False
+            # otherwise state has changed enough: change marquee
+            return True
 
 
 class Slideshow(object):
@@ -306,13 +323,12 @@ class Slideshow(object):
     "config file section for Slideshow"
 
 
-    def __init__(self, imgPaths: List[str]) -> None:
-        self._imgPaths = imgPaths
+    def __init__(self):
         self._imgTime: float = config.getfloat(self._CONFIG_SECTION, 'IMAGE_TIME', fallback=10.0)
         self._exitSignalled: Event = Event()
         signal.signal(signal.SIGTERM, self._sigHandler)
 
-
+    
     def _runCmd(self, cmd: List[str], capture_output=True) -> bool:
         '''Run external command; capture output on failure
             :returns bool: True if command ran successfully, or False otherwise
@@ -345,20 +361,22 @@ class Slideshow(object):
         self._runCmd(cmd)
 
 
-    def run(self):
-        '''Run slideshow in infinite loop until we received SIGTERM signal'''
+    def run(self, imgPaths: List[str]):
+        '''Run randomised slideshow of images in infinite loop until we received SIGTERM signal'''
         self._exitSignalled.clear()
         while not self._exitSignalled.is_set():
-            for imgPath in self._imgPaths:
+            # random order of images each time through slideshow
+            random.shuffle(imgPaths)
+            for imgPath in imgPaths:
                 self.showImage(imgPath)
-                # wait for timeout to expire or be interrupteded by signal
+                # wait for timeout to expire or be interrupted by signal
                 self._exitSignalled.wait(timeout=self._imgTime)
                 self.clearImage()
                 # log.debug(f'_exitSignalled={self._exitSignalled.is_set()}')
                 if self._exitSignalled.is_set():
                     break
         # cleanup code here
-        pass
+        
 
 
     def _sigHandler(self, signum: int, _stackframe):
