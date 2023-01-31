@@ -146,8 +146,8 @@ class TestMediaManager(unittest.TestCase):
 
     def test_getMediaMatching(self):
         '''test that glob patterns work as expected'''
-        self.assertIsNone(self.mm._getMediaMatching('XXXXXXX'))
-        self.assertEqual(self.mm._getMediaMatching('default.*'), 'test/media/default.png')
+        self.assertEqual(self.mm._getMediaMatching('XXXXXXX'), [])
+        self.assertEqual(self.mm._getMediaMatching('default.*'), ['test/media/default.png'])
 
 
     def test_getMedia(self):
@@ -160,7 +160,7 @@ class TestMediaManager(unittest.TestCase):
                     'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'
                 }
             ),
-            'test/media/mame/chasehq.png'
+            ['test/media/mame/chasehq.png']
         )
         # publisher media
         self.assertEqual(
@@ -170,7 +170,7 @@ class TestMediaManager(unittest.TestCase):
                     'SystemId': 'mame', 'GamePath': '/recalbox/share_init/roms/mame/UNKNOWN.zip', 'Publisher': 'Taito'
                 }
             ),
-            'test/media/publisher/taito.png'
+            ['test/media/publisher/taito.png']
         )
         # scraped game image: should return imagePath
         self.assertEqual(
@@ -180,7 +180,7 @@ class TestMediaManager(unittest.TestCase):
                     'ImagePath': '/path/to/scraped_image'
                 }
             ),
-            '/path/to/scraped_image'
+            ['/path/to/scraped_image']
         )
         # genre image:
         self.assertEqual(
@@ -190,7 +190,7 @@ class TestMediaManager(unittest.TestCase):
                     'SystemId': 'UNKNOWN', 'GamePath': '/recalbox/share_init/roms/_/UNKNOWN.zip', 'Genre': 'Shooter'
                 }
             ),
-            'test/media/genre/shooter.png'
+            ['test/media/genre/shooter.png']
         )
         # generic
         self.assertEqual(
@@ -198,7 +198,7 @@ class TestMediaManager(unittest.TestCase):
                 precedence=precedence,
                 params = {'SystemId': 'UNKNOWN'}
             ),
-            'test/media/generic/generic01.mp4'
+            ['test/media/generic/generic01.mp4']
         )
         # test ROM it won't know: should return default media file
         self.assertEqual(
@@ -206,7 +206,7 @@ class TestMediaManager(unittest.TestCase):
                 precedence=['rom'],
                 params = {'SystemId': 'UNKNOWN', 'GamePath': 'XXXX'}
             ),
-            'test/media/default.png'
+            ['test/media/default.png']
         )
         # test unrecognised rule
         self.assertEqual(
@@ -214,22 +214,20 @@ class TestMediaManager(unittest.TestCase):
                 precedence=['XXX'],
                 params = {'SystemId': 'UNKNOWN'}
             ),
-            'test/media/default.png'
+            ['test/media/default.png']
         )
 
 
-
+    
     def test_show(self):
         '''Test we can show the default image on screen: checks player process pid is non-zero.
             Also test clearing image
         '''
-        self.mm.show('./media/default.png')
-        time.sleep(2)
-        self.assertEqual(self.mm._currentMedia, './media/default.png')
+        self.mm.show(['./media/default.png', './media/mame/chasehq.png'])
+        time.sleep(15)
         self.assertNotEqual(self.mm._subprocess.pid, 0)
         self.mm.clear()
         time.sleep(1)
-        self.assertIsNone(self.mm._currentMedia)
         self.assertIsNone(self.mm._subprocess)
 
 
@@ -256,5 +254,5 @@ class TestEventHandler(unittest.TestCase):
                 'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'
             }
         )
-        self.assertEqual(self.eh._mm._currentMedia, 'test/media/mame/chasehq.png')
+
 

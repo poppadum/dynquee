@@ -2,6 +2,7 @@
 
 import subprocess, signal, logging, os, glob, random
 from configparser import ConfigParser, NoOptionError
+from threading import Event
 from typing import ClassVar, Dict, List, Union
 
 def getLogger(logLevel: int, **kwargs) -> logging.Logger:
@@ -175,28 +176,19 @@ class MediaManager(ProcessManager):
     }
 
 
-    def __init__(self):
-        '''Override constructor to add currentMedia property'''
-        super().__init__()
-        self._currentMedia: str = None
-        "path to media file currently displayed, or None"
-    
-
-    def _getMediaMatching(self, globPattern: str) -> Union[str, None]:
-        '''Search for media files matching globPattern under BASE_PATH. If >1 found return one at random.
-            :returns str: path of a matching file, or None
+    def _getMediaMatching(self, globPattern: str) -> List[str]:
+        '''Search for media files matching globPattern under BASE_PATH
+            :returns list[str]: list of paths of matching files, or None
         '''
         log.debug("searching for media files matching %s", globPattern)
         files: List[str] = glob.glob("%s/%s" % (config.get(self._CONFIG_SECTION, 'BASE_PATH'), globPattern))
         log.debug(f"found {len(files)} files: {files}")
-        if files == []:
-            return None
-        else:
-            return random.choice(files)
+        random.shuffle(files)
+        return files
 
 
-    def getMedia(self, precedence: List[str], params: Dict[str, str]) -> str:
-        '''Work out which media file to display on the marquee using precedence rules
+    def getMedia(self, precedence: List[str], params: Dict[str, str]) -> List[str]:
+        '''Work out which media files to display on the marquee using precedence rules
             :params list[str] precedence: ordered list of search rules to try in turn
             :param dict[str,str] params: a dict of event parameters
             :returns str: path to a media file
@@ -204,7 +196,7 @@ class MediaManager(ProcessManager):
         log.debug(f"precedence={precedence} params={params}")
         # get game filename without directory and extension (only last extension removed)
         gameBasename: str = os.path.splitext(os.path.basename(params.get('GamePath', '')))[0]
-        log.debug("gameBasename={gameBasename}")
+        log.debug(f"gameBasename={gameBasename}")
         
         # find best matching media file for game, trying each rule in turn
         for rule in precedence:
@@ -216,7 +208,7 @@ class MediaManager(ProcessManager):
                     # skip rule if no scraped image exists
                     continue
                 else:
-                    return imagePath
+                    return [imagePath]
             # skip unrecognised rules
             if rule not in self._GLOB_PATTERNS:
                 log.warning(f"skipped unrecognised rule name '{rule}'")
@@ -230,30 +222,25 @@ class MediaManager(ProcessManager):
             }
             log.debug(f"rule={rule} globPattern={globPattern}")
             # try finding media file matching this glob pattern
-            file: Union[str, None] = self._getMediaMatching(globPattern)
-            if file is not None:
-                # if a matching file was found, stop searching and return it
-                return file 
-        # if no other suitable file, found return the default image
-        return '%s/default.png' % config.get(self._CONFIG_SECTION, 'BASE_PATH')
+            files: List[str] = self._getMediaMatching(globPattern)
+            if len(files) > 0:
+                # if matching files were found, stop searching and return them
+                return files
+        # if no other suitable files, found return the default image
+        return ['%s/default.png' % config.get(self._CONFIG_SECTION, 'BASE_PATH')]
 
 
-    def show(self, filepath: str, *args):
-        '''Display a still image or video clip on the marquee.
-            :param str filepath: to path to the media file to display
+    def show(self, filepaths: List[str], *args):
+        '''Display a slideshow of images on the marquee.
+            :param list[str] filepaths: list of paths to the media files to display
             :param Any args: any additional args to pass to the media player
         '''
-        # if we're already showing the media file, do nothing
-        if filepath == self._currentMedia:
-            log.debug(f"already showing {filepath}")
-            return
         # terminate running media player if any
         self.terminate()
         # launch player to display media
         self._launch(
-            [config.get(self._CONFIG_SECTION,'PLAYER')] + config.get(self._CONFIG_SECTION, 'PLAYER_OPTS').split() + [filepath] + list(args)
+            [config.get(self._CONFIG_SECTION,'PLAYER')] + config.get(self._CONFIG_SECTION, 'PLAYER_OPTS').split() + filepaths + list(args)
         )
-        self._currentMedia = filepath
 
 
     def clear(self):
@@ -306,10 +293,78 @@ class EventHandler(object):
         '''
         log.debug("action=%s, params=%s", action, params)
         precedence: List[str] = self._getPrecedence(action)
-        mediaPath:str  = self._mm.getMedia(precedence, params)
+        mediaPaths: List[str]  = self._mm.getMedia(precedence, params)
         # display media file if not already showing
-        if mediaPath is not None:
-            self._mm.show(mediaPath)
+        if mediaPaths is not []:
+            self._mm.show(mediaPaths)
+
+
+
+class Slideshow(object):
+
+    _CONFIG_SECTION: ClassVar[str] = 'slideshow'
+    "config file section for Slideshow"
+
+
+    def __init__(self, imgPaths: List[str]) -> None:
+        self._imgPaths = imgPaths
+        self._imgTime: float = config.getfloat(self._CONFIG_SECTION, 'IMAGE_TIME', fallback=10.0)
+        self._exitSignalled: Event = Event()
+        signal.signal(signal.SIGTERM, self._sigHandler)
+
+
+    def _runCmd(self, cmd: List[str], capture_output=True) -> bool:
+        '''Run external command; capture output on failure
+            :returns bool: True if command ran successfully, or False otherwise
+        '''
+        log.debug(f"run {cmd}")
+        try:
+            subprocess.run(
+                cmd,
+                capture_output=capture_output,
+                check=True,
+                text=True,
+                timeout=1.0
+            )
+            return True
+        except subprocess.CalledProcessError as cpe:
+            log.error(f"failed to run {cmd}: {cpe}: exit code {cpe.returncode}\nstdout:{cpe.stdout}\nstderr:{cpe.stderr}")
+            return False
+
+
+    def showImage(self, imgPath: str):
+        '''Display a single image on the framebuffer; exit leaving the image visible
+        '''
+        cmd: List[str] = [config.get(self._CONFIG_SECTION,'VIEWER')] + config.get(self._CONFIG_SECTION, 'VIEWER_OPTS').split() + [imgPath]
+        self._runCmd(cmd)
+
+
+    def clearImage(self):
+        '''Clear the framebuffer'''
+        cmd: List[str] = [config.get(self._CONFIG_SECTION,'CLEAR_CMD')] + config.get(self._CONFIG_SECTION, 'CLEAR_CMD_OPTS').split()
+        self._runCmd(cmd)
+
+
+    def run(self):
+        '''Run slideshow in infinite loop until we received SIGTERM signal'''
+        self._exitSignalled.clear()
+        while not self._exitSignalled.is_set():
+            for imgPath in self._imgPaths:
+                self.showImage(imgPath)
+                # wait for timeout to expire or be interrupteded by signal
+                self._exitSignalled.wait(timeout=self._imgTime)
+                self.clearImage()
+                # log.debug(f'_exitSignalled={self._exitSignalled.is_set()}')
+                if self._exitSignalled.is_set():
+                    break
+        # cleanup code here
+        pass
+
+
+    def _sigHandler(self, signum: int, _stackframe):
+        log.info(f'received signal {signal.Signals(signum).name}')
+        self._exitSignalled.set()
+
 
 
 

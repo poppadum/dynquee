@@ -16,7 +16,7 @@ def test_playerKilled():
     
     mm = MediaManager()
     config.read('%s/test_digimarquee.config.txt' % os.path.dirname(__file__))
-    mm.show('./media/default.png')
+    mm.show(['./media/mame/chasehq.png', './media/default.png'])
     
     # capture output
     out = io.StringIO()
