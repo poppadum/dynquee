@@ -29,7 +29,7 @@ def loadConfig() -> ConfigParser:
         2. module directory
         3. current directory
     '''
-    config: ConfigParser = ConfigParser()
+    config: ConfigParser = ConfigParser(empty_lines_in_values = False)
     _configFilesRead: List[str] = config.read([
         f"/boot/{_CONFIG_FILE}",
         f"{os.path.dirname(__file__)}/{_CONFIG_FILE}",

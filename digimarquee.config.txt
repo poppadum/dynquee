@@ -25,11 +25,6 @@ ES_STATE_FILE = /tmp/es_state.inf
 # path where marquee media files are located
 BASE_PATH = /recalbox/share/digimarquee/media
 
-# path to media player executable
-PLAYER = /usr/bin/mpv
-
-# options to pass to media player executable
-PLAYER_OPTS = --vo=drm --drm-connector=1.HDMI-A-2 --hwdec=mmal --loop
 
 
 
@@ -47,6 +42,23 @@ PLAYER_OPTS = --vo=drm --drm-connector=1.HDMI-A-2 --hwdec=mmal --loop
 #
 rungame = rom,scraped,publisher,system,genre,generic
 gamelistbrowsing = system,genre,generic
-systembrowsing = system,generic
+systembrowsing = generic
 # default precedence to use if action does not match one of those above
 default = generic
+
+
+[slideshow]
+#
+# Slideshow settings
+#
+# path to slideshow executable
+VIEWER = ./test/mock_cmd
+
+# options to pass to slideshow executable
+VIEWER_OPTS = /usr/bin/fbv2 --noinfo --stretch
+
+# time in seconds to show each image
+IMAGE_TIME = 10
+
+CLEAR_CMD = ./test/mock_cmd
+CLEAR_CMD_OPTS = dd if=/dev/zero of=/dev/fb0
