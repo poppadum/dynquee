@@ -3,21 +3,17 @@
 # tests for digimarquee.Slideshow class
 
 import logging, glob, time, multiprocessing, io
-from digimarquee import Slideshow, log, config
+from digimarquee import Slideshow, log
+
+log.setLevel(logging.DEBUG)
 
 def test_slideshow():
     '''test that slideshow exits gracefully when terminated'''
     
     sl = Slideshow()
     imagePaths = glob.glob('./media/mame/*.png')
-    imagePaths += ['./media/default.png']
-    # start slideshow in separate thread
-    slPs = multiprocessing.Process(
-        name = 'slideshow_ps',
-        target = sl.run,
-        args = (imagePaths,)
-    )
-    slPs.start()
+    imagePaths += ['./media/default.png']   
+    sl.run(imgPaths = imagePaths)
    
     # capture output
     out = io.StringIO()
@@ -30,7 +26,7 @@ def test_slideshow():
         time.sleep(1)
         if c == 25:
             # end slideshow thread after 25s
-            slPs.terminate()
+            sl.stop()
     log.info('finished')
     out.flush()
 

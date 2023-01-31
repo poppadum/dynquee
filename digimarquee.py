@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
-import subprocess, signal, logging, os, glob, random
+import subprocess, signal, logging, os, glob, random, time
 from configparser import ConfigParser, NoOptionError
-from threading import Event
+from threading import Thread, Event
 from typing import ClassVar, Dict, List, Union
 
 def getLogger(logLevel: int, **kwargs) -> logging.Logger:
@@ -245,6 +245,7 @@ class EventHandler(object):
         self._ms: MQTTSubscriber = MQTTSubscriber()
         self._ms.start()
         self._mm: MediaManager = MediaManager()
+        self._sl: Slideshow = Slideshow()
         # record current state of EmulationStation
         self._currentAction = None
         self._currentSystem = None
@@ -284,14 +285,22 @@ class EventHandler(object):
         stateChanged: bool = self._hasStateChanged(action, evParams)
         self._updateState(action, evParams)
         if not stateChanged:
+            # do nothing if ES state not changed
             return
-        log.info(f"EmulationStation state changed")
+        log.info(f"EmulationStation state changed: action={action} system={self._currentSystem} game={self._currentGame}")
         precedence: List[str] = self._getPrecedence(action)
         mediaPaths: List[str]  = self._mm.getMedia(precedence, evParams)
-        # display media file if not already showing
-        if mediaPaths is not []:
-            # self._mm.show(mediaPaths)
+        # display media slideshow
+        if len(mediaPaths) == 0:
+            log.warning(f"MediaManager.getMedia() returned no files")
+            return
+        else:
             log.info(f'new slideshow paths={mediaPaths}')
+            # stop existing slideshow if running
+            self._sl.stop()
+            time.sleep(0.2)
+            self._sl.run(mediaPaths)
+
 
 
     def _updateState(self, action: str, evParams: Dict[str, str]):
@@ -361,8 +370,8 @@ class Slideshow(object):
         self._runCmd(cmd)
 
 
-    def run(self, imgPaths: List[str]):
-        '''Run randomised slideshow of images in infinite loop until we received SIGTERM signal'''
+    def _doRun(self, imgPaths: List[str]):
+        '''Start thread to run image slideshow; loops for ever until stop() called or we receive SIGTERM signal'''
         self._exitSignalled.clear()
         while not self._exitSignalled.is_set():
             # random order of images each time through slideshow
@@ -372,11 +381,27 @@ class Slideshow(object):
                 # wait for timeout to expire or be interrupted by signal
                 self._exitSignalled.wait(timeout=self._imgTime)
                 self.clearImage()
-                # log.debug(f'_exitSignalled={self._exitSignalled.is_set()}')
                 if self._exitSignalled.is_set():
                     break
-        # cleanup code here
-        
+        # clear reference to slideshow thread
+        self._thread = None
+    
+
+    def run(self, imgPaths: List[str]):
+        '''Run randomised slideshow of images until stop() called or we receive SIGTERM signal'''
+        self._thread = Thread(
+            name = 'slideshow_thread',
+            target = self._doRun,
+            args = (imgPaths,),
+            daemon=True
+        )
+        self._thread.start()
+
+
+    def stop(self):
+        '''Stop the slideshow'''
+        log.debug("stop requested")
+        self._exitSignalled.set()
 
 
     def _sigHandler(self, signum: int, _stackframe):
