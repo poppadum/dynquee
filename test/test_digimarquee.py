@@ -2,8 +2,8 @@
 
 # Unit tests for digimarquee module
 
-import unittest, os, logging, threading, time
-from digimarquee import ProcessManager, MQTTSubscriber, MediaManager, EventHandler, log, config
+import unittest, os, logging, threading, time, random
+from digimarquee import MQTTSubscriber, MediaManager, EventHandler, Slideshow, log, config
 
 # only log warnings and errors when running tests
 log.setLevel(logging.INFO)
@@ -18,18 +18,16 @@ def setupTestConfig():
 setupTestConfig()
 
 
-
-class TestProcessManager(unittest.TestCase):
-    '''unit tests for ProcessManager'''
-
-    def testLaunchFailure(self):
-        pm = ProcessManager()
-        with self.assertLogs(log, logging.ERROR) as cm:
-            pm._launch('/invalid/path')
-        self.assertTrue('unable to launch' in cm.output[0])
-        self.assertIsNone(pm._subprocess)
-        time.sleep(1)
-
+class MockMQTTSubscriber(MQTTSubscriber):
+    _VALID_ACTIONS = ['systembrowsing','gamelistbrowsing','rungame','endgame']
+    def start(self):
+        pass
+    def stop(self):
+        pass
+    def getEvent(self) -> str:
+        action:str = random.choice(self._VALID_ACTIONS)
+        log.info(f"generate action {action}")
+        return action
 
 
 class TestMQTTSubscriber(unittest.TestCase):
@@ -37,7 +35,7 @@ class TestMQTTSubscriber(unittest.TestCase):
 
     def setUp(self):
         '''create a MQTTSubscriber instance'''
-        self.ms = MQTTSubscriber()
+        self.ms = MockMQTTSubscriber()
 
     def tearDown(self):
         '''delete MQTTSubscriber instance'''
@@ -45,8 +43,9 @@ class TestMQTTSubscriber(unittest.TestCase):
 
     
     def testConfigLoaded(self):
-        self.assertEqual(config.get('recalbox', 'MQTT_CLIENT'), 'test/announce_time.sh')
-        self.assertEqual(config.get('recalbox', 'MQTT_CLIENT_OPTS'), '-d 3')
+        self.assertEqual(config.get('recalbox', 'host'), '127.0.0.1')
+        self.assertEqual(config.getint('recalbox', 'port'), 1883)
+        self.assertEqual(config.getint('recalbox', 'keepalive'), 60)
         self.assertEqual(config.get('recalbox', 'ES_STATE_FILE'), 'test/es_state.inf')
 
     
@@ -82,6 +81,7 @@ class TestMQTTSubscriber(unittest.TestCase):
             'TestKey': 'a long = string',
         })
 
+
     
     def test_getEvent(self):
         '''test getting events from the mock MQTT client'''
@@ -92,40 +92,13 @@ class TestMQTTSubscriber(unittest.TestCase):
             event = self.ms.getEvent()
             if not event:
                 break
-            self.assertTrue(event.startswith('the time is'))
+            self.assertIn(event, self.ms._VALID_ACTIONS)
         # stop client
         self.ms.stop()
         time.sleep(2)
 
 
     
-    def test_childKilled(self):
-        '''test that getEvent() exits cleanly if subscriber process unexpectedly terminates'''
-        self.ms.start()
-        # thread to kill subscriber process after 17s
-        killer = threading.Timer(17.0, __killProcess, args=(self.ms._subprocess,))
-        killer.start()
-        # read events until child exits
-        count = 0
-        while True:
-            event = self.ms.getEvent()
-            if not event:
-                break
-            count += 1
-            print('event received: %s' % event)
-            self.assertTrue(event.startswith('the time is'))
-        self.assertEqual(count, 6)
-        self.ms.terminate()
-        self.assertIsNone(self.ms._subprocess)
-
-
-# Not sure why name has to be as it is, but that's what the test runner looks for
-def _TestMQTTSubscriber__killProcess(process):
-    '''Kill process'''
-    log.info('killing process pid=%d' % process.pid)
-    process.kill()
-
-
 
 class TestMediaManager(unittest.TestCase):
     '''unit tests for MediaManager'''
@@ -218,6 +191,17 @@ class TestMediaManager(unittest.TestCase):
         )
 
 
+class MockEventHandler(EventHandler):
+    def __init__(self):
+        self._ms: MQTTSubscriber = MockMQTTSubscriber()
+        self._mm: MediaManager = MediaManager()
+        self._sl: Slideshow = Slideshow(timeout=5.0)
+        # record current state of EmulationStation
+        self._currentAction = None
+        self._currentSystem = None
+        self._currentGame = None
+
+
 
 class TestEventHandler(unittest.TestCase):
     '''unit tests for TestHandler'''
@@ -233,7 +217,7 @@ class TestEventHandler(unittest.TestCase):
     }
 
     def setUp(self):
-        self.eh = EventHandler()
+        self.eh = MockEventHandler()
 
     def tearDown(self):
         del(self.eh)

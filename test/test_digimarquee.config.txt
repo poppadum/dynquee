@@ -7,11 +7,10 @@
 #
 # Recalbox settings: shouldn't need to be changed
 #
-# path to mock MQTT client
-MQTT_CLIENT = test/announce_time.sh
-
-# MQTT client options
-MQTT_CLIENT_OPTS = -d 3
+host = 127.0.0.1
+port = 1883
+topic = Recalbox/EmulationStation/Event
+keepalive = 60
 
 # path to EmulationStation's state file
 ES_STATE_FILE = test/es_state.inf
@@ -50,3 +49,20 @@ gamelistbrowsing = system,genre,generic
 systembrowsing = system,generic
 # default precedence to use if action does not match one of those above
 default = generic
+
+
+[slideshow]
+#
+# Slideshow settings
+#
+# path to slideshow executable
+VIEWER = /usr/bin/cvlc
+
+# options to pass to slideshow executable
+VIEWER_OPTS = --no-audio --no-video-title-show --image-duration 5 --play-and-exit
+
+# time in seconds to show each image
+IMAGE_TIME = 5
+
+CLEAR_CMD = echo
+CLEAR_CMD_OPTS = clear framebuffer

@@ -3,7 +3,9 @@
 import subprocess, signal, logging, os, glob, random, time
 from configparser import ConfigParser, NoOptionError
 from threading import Thread, Event
-from typing import ClassVar, Dict, List, Union
+import paho.mqtt.client as mqtt
+from queue import SimpleQueue
+from typing import ClassVar, Dict, List
 
 def getLogger(logLevel: int, **kwargs) -> logging.Logger:
     '''Module logger
@@ -40,66 +42,9 @@ def loadConfig() -> ConfigParser:
 
 
 
-class ProcessManager(object):
-    '''Manages a connection to a single subprocess. Handles failure to launch & unexpected exit gracefully.
-    '''
-
-    def __init__(self):
-        self._subprocess: subprocess.Popen = None
-        "reference to subprocess (instance of subprocess.Popen)"
-
-        self._pid: int = None
-        "pid of subprocess, or None"
-
-
-    def __del__(self):
-        '''Terminate any running subprocess before shutdown'''
-        self.terminate()
-
-
-    def _launch(self, cmdline: List[str], **kwargs):
-        '''Launch a subprocess
-            :param str[] cmdline: list of commandline parts to pass to subprocess.Popen
-            :param **kwargs: additional args to pass to subprocess.Popen
-        '''
-        try:
-            self._subprocess = subprocess.Popen(
-                cmdline,
-                stdout = subprocess.PIPE,
-                stderr = subprocess.PIPE,
-                universal_newlines = True,
-                **kwargs
-            )
-            self._pid = self._subprocess.pid
-            log.debug(f"cmd={cmdline} pid={self._pid}")
-        except OSError as e:
-            log.error(f"unable to launch #{cmdline}: {e}")
-
-
-    def terminate(self):
-        '''Terminate subprocess if running'''
-        if self._subprocess is not None:
-            log.debug(f"terminating subprocess pid={self._pid}")
-            self._subprocess.terminate()
-            # capture return code & output (if any) and log it
-            stdout, stderr = None, None
-            try:
-                stdout, stderr  = self._subprocess.communicate(timeout = 2.0)
-            except subprocess.TimeoutExpired:
-                pass
-            rc: int = self._subprocess.wait()
-            log.debug(f"subprocess pid={self._pid} exited with code {rc}\nstdout:{stdout}\n\nstderr:{stderr}")
-            # close stdout/stderr to prevent python ResourceWarning: unclosed file
-            self._subprocess.stdout.close()
-            self._subprocess.stderr.close()
-            # clear reference to subprocess
-            self._subprocess, self._pid = None, None
-
-
-
-class MQTTSubscriber(ProcessManager):
-    '''MQTT subscriber: handles connection to mosquitto_sub, receives events from EmulationStation
-        and reads event params from event file.
+class MQTTSubscriber(object):
+    '''MQTT subscriber: handles connection to broker to receive events from EmulationStation
+        and read event params from event file.
 
         Usage:
         ```
@@ -108,7 +53,6 @@ class MQTTSubscriber(ProcessManager):
             event = getEvent()
             if not event:
                 break
-        stop()
         ```
     '''
 
@@ -116,28 +60,58 @@ class MQTTSubscriber(ProcessManager):
     "config file section for MQTTSubscriber"
 
 
+    def __init__(self):
+        self._client = mqtt.Client()
+        self._client.enable_logger(logger = log)
+        self._messageQueue: SimpleQueue = SimpleQueue()
+        self._client.on_connect = self._onConnect
+        self._client.on_disconnect = self._onDisconnect
+        self._client.on_message = self._onMessage
+
+
+    def __del__(self):
+        self._client.disconnect()
+
+
     def start(self, *args):
-        '''Start the MQTT client; pass *args to the command line'''
-        self._launch(
-            [config.get(self._CONFIG_SECTION, 'MQTT_CLIENT')] + config.get(self._CONFIG_SECTION, 'MQTT_CLIENT_OPTS').split() + list(args),
-            bufsize = 4096
+        '''Start the MQTT client'''
+        host: str = config.get(self._CONFIG_SECTION, 'host')
+        port: int = config.getint(self._CONFIG_SECTION, 'port')
+        keepalive: int = config.getint(self._CONFIG_SECTION, 'keepalive', fallback=60)
+        log.info(f"connecting to MQTT broker host={host} port={port} keepalive={keepalive}")
+        self._client.connect(
+            host = host,
+            port = port,
+            keepalive = keepalive,
         )
+        self._client.loop_start()
 
+    
     def stop(self):
-        '''Request the MQTT client process to terminate'''
-        self.terminate()
+        self._client.disconnect()
+
+    
+    def _onConnect(self, client, user, flags, rc):
+        log.info(f"connected to MQTT broker rc={rc}")
+        self._client.subscribe(config.get(self._CONFIG_SECTION, 'topic'))
 
 
-    def getEvent(self) -> Union[str, None]:
-        '''Read an event from the MQTT client (blocks until data is received)
-            :returns str: an event from the MQTT client, or None if the client terminated
+    def _onDisconnect(self, client, userdata, rc):
+        log.info(f"disconnected from MQTT broker rc={rc}")
+        self._client.loop_stop()
+
+
+    def _onMessage(self, client, userdata, message):
+        '''Add incoming message to message queue'''
+        log.debug(f"message topic={message.topic} payload={message.payload}")
+        self._messageQueue.put(message)
+
+
+    def getEvent(self) -> str:
+        '''Read an event from the message queue (blocks until data is received)
+            :returns str: an event from the MQTT broker
         '''
-        try: 
-            return self._subprocess.stdout.readline().strip()
-        except IOError as e:
-            # IOError if subprocess terminates while we're waiting for it to send output
-            log.warning(f"IOError while waiting for output from subprocess: {e}")
-            return None
+        return self._messageQueue.get().payload.decode("utf-8")
 
 
     def getEventParams(self) -> Dict[str, str]:
@@ -151,11 +125,11 @@ class MQTTSubscriber(ProcessManager):
                 log.debug("key=%s value=%s" % (key, value))
                 params[key] = value
         return params
-    
 
 
-class MediaManager(ProcessManager):
-    '''Finds appropriate media files for an EmulationStation action and manages connection to the media player executable
+
+class MediaManager(object):
+    '''Finds appropriate media files for an EmulationStation action
     '''
 
     _CONFIG_SECTION: ClassVar[str] = 'media'
@@ -326,14 +300,16 @@ class EventHandler(object):
             return True
 
 
+
 class Slideshow(object):
 
     _CONFIG_SECTION: ClassVar[str] = 'slideshow'
     "config file section for Slideshow"
 
 
-    def __init__(self):
+    def __init__(self, timeout=1.0):
         self._imgTime: float = config.getfloat(self._CONFIG_SECTION, 'IMAGE_TIME', fallback=10.0)
+        self._timeout = timeout
         self._exitSignalled: Event = Event()
         signal.signal(signal.SIGTERM, self._sigHandler)
 
@@ -349,7 +325,7 @@ class Slideshow(object):
                 capture_output=capture_output,
                 check=True,
                 text=True,
-                timeout=1.0
+                timeout=self._timeout
             )
             return True
         except subprocess.CalledProcessError as cpe:

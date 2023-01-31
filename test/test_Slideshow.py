@@ -2,12 +2,21 @@
 
 # tests for digimarquee.Slideshow class
 
-import logging, glob, time, multiprocessing, io
-from digimarquee import Slideshow, log
+import logging, glob, time, io, os
+from digimarquee import Slideshow, log, config
 
 log.setLevel(logging.DEBUG)
 
-def test_slideshow():
+# set up config for test environment
+def setupTestConfig():
+    '''read test config file'''
+    configFile = "%s/test_digimarquee.config.txt" % os.path.dirname(__file__)
+    config.read(configFile)
+    log.info("loaded test config file: %s" % configFile)
+
+
+
+def test_slideshowExit():
     '''test that slideshow exits gracefully when terminated'''
     
     sl = Slideshow()
@@ -34,6 +43,14 @@ def test_slideshow():
     assert out.getvalue().endswith('sleeping 40\n'), "output:\n%s" % out.getvalue()
 
 
+def test_slideshow():
+    sl = Slideshow(timeout=10.0)
+    imagePaths = glob.glob('./media/mame/*.png')
+    imagePaths += ['./media/default.png']   
+    sl.run(imgPaths = imagePaths)
+    time.sleep(1 * 60)
+
 
 if __name__ == '__main__':
+    setupTestConfig()
     test_slideshow()

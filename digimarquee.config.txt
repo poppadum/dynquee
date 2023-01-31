@@ -5,13 +5,12 @@
 
 [recalbox]
 #
-# Recalbox settings: shouldn't need to be changed
+# Recalbox MQTT broker settings: shouldn't need to be changed
 #
-# path to MQTT client
-MQTT_CLIENT = mosquitto_sub
-
-# MQTT client options
-MQTT_CLIENT_OPTS = -h 127.0.0.1 -p 1883 -q 0 -t Recalbox/EmulationStation/Event
+host = 127.0.0.1
+port = 1883
+topic = Recalbox/EmulationStation/Event
+keepalive = 60
 
 # path to EmulationStation's state file
 ES_STATE_FILE = /tmp/es_state.inf
@@ -51,14 +50,15 @@ default = generic
 #
 # Slideshow settings
 #
-# path to slideshow executable
-VIEWER = ./test/mock_cmd
+# path to image viewer executable
+VIEWER = /usr/bin/fbv2
 
-# options to pass to slideshow executable
-VIEWER_OPTS = /usr/bin/fbv2 --noinfo --stretch
+# options to pass to image viewer executable
+VIEWER_OPTS = --noinfo --stretch
 
 # time in seconds to show each image
-IMAGE_TIME = 10
+IMAGE_TIME = 10.0
 
-CLEAR_CMD = ./test/mock_cmd
-CLEAR_CMD_OPTS = dd if=/dev/zero of=/dev/fb0
+# commmand & options to clear framebuffer
+CLEAR_CMD = /bin/dd
+CLEAR_CMD_OPTS = if=/dev/zero of=/dev/fb0
