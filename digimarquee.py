@@ -3,9 +3,9 @@
 import subprocess, signal, logging, os, glob, random, time
 from configparser import ConfigParser, NoOptionError
 from threading import Thread, Event
-import paho.mqtt.client as mqtt
+import paho.mqtt.client as mqtt # type: ignore
 from queue import SimpleQueue
-from typing import ClassVar, Dict, List
+from typing import ClassVar, Dict, List, Optional
 
 def getLogger(logLevel: int, **kwargs) -> logging.Logger:
     '''Module logger
@@ -26,7 +26,7 @@ _CONFIG_FILE: str = "digimarquee.config.txt"
 
 def loadConfig() -> ConfigParser:
     '''Load config file into ConfigParser instance and return it.
-        Search order:
+        Directory search order:
         1. /boot
         2. module directory
         3. current directory
@@ -53,6 +53,7 @@ class MQTTSubscriber(object):
             event = getEvent()
             if not event:
                 break
+        stop()
         ```
     '''
 
@@ -74,7 +75,7 @@ class MQTTSubscriber(object):
 
 
     def start(self, *args):
-        '''Start the MQTT client'''
+        '''Connect to the MQTT broker'''
         host: str = config.get(self._CONFIG_SECTION, 'host')
         port: int = config.getint(self._CONFIG_SECTION, 'port')
         keepalive: int = config.getint(self._CONFIG_SECTION, 'keepalive', fallback=60)
@@ -92,8 +93,9 @@ class MQTTSubscriber(object):
 
     
     def _onConnect(self, client, user, flags, rc):
-        log.info(f"connected to MQTT broker rc={rc}")
-        self._client.subscribe(config.get(self._CONFIG_SECTION, 'topic'))
+        topic: str = config.get(self._CONFIG_SECTION, 'topic')
+        self._client.subscribe(topic)
+        log.info(f"connected to MQTT broker rc={rc} topic={topic}")
 
 
     def _onDisconnect(self, client, userdata, rc):
@@ -122,28 +124,29 @@ class MQTTSubscriber(object):
         with open(config.get(self._CONFIG_SECTION, 'ES_STATE_FILE')) as f:
             for line in f:
                 key, value = line.strip().split('=', 1)
-                log.debug("key=%s value=%s" % (key, value))
+                log.debug(f"key={key} value={value}")
                 params[key] = value
         return params
 
 
 
 class MediaManager(object):
-    '''Finds appropriate media files for an EmulationStation action
+    '''Finds appropriate media files for an EmulationStation action using ordered search precendence rules.
+        Rules are defined in [media] section of config file. Valid search rules are:
+        * `rom`: ROM-specific media e.g. marquee image for the selected game
+        * `publisher`: media relating to the publisher of game e.g. Atari or Taito logo
+        * `genre`: media relating to genre of game e.g. shooters, platform games
+        * `system`: media relating to game system e.g. ZX Spectrum or SNES logo
+        * `generic`: generic media unrelated to a game, system or publisher
+        * `scraped`: the selected game's scraped image
+
+        Call `getMedia()` to return a list of media files suitable for the selected system or game
     '''
 
     _CONFIG_SECTION: ClassVar[str] = 'media'
     "config file section for MediaManager"
 
 
-    # Glob patterns to find media files for each search rule
-    # Valid search rules:
-    #   rom: ROM-specific media file
-    #   publisher: publisher media file
-    #   genre: genre media file
-    #   system: system media file
-    #   generic: a media file unrelated to a game, system or publisher
-    #   scraped: game's scraped image
     _GLOB_PATTERNS: ClassVar[Dict[str, str]] = {
         'rom': "%(systemId)s/%(gameBasename)s.*",
         'publisher': "publisher/%(publisher)s.*",
@@ -151,16 +154,16 @@ class MediaManager(object):
         'system': "system/%(systemId)s.*",
         'generic': "generic/*"
     }
+    "Glob patterns to find media files for each search rule"
 
 
     def _getMediaMatching(self, globPattern: str) -> List[str]:
-        '''Search for media files matching globPattern under BASE_PATH
+        '''Search for media files matching globPattern within BASE_PATH
             :returns list[str]: list of paths of matching files, or None
         '''
-        log.debug("searching for media files matching %s", globPattern)
+        log.debug(f"searching for media files matching {globPattern}")
         files: List[str] = glob.glob("%s/%s" % (config.get(self._CONFIG_SECTION, 'BASE_PATH'), globPattern))
         log.debug(f"found {len(files)} files: {files}")
-        random.shuffle(files)
         return files
 
 
@@ -175,12 +178,12 @@ class MediaManager(object):
         gameBasename: str = os.path.splitext(os.path.basename(params.get('GamePath', '')))[0]
         log.debug(f"gameBasename={gameBasename}")
         
-        # find best matching media file for game, trying each rule in turn
+        # find best matching media file for system/game, trying each rule in turn
         for rule in precedence:
             # if using scraped image just return its path
             if rule == 'scraped':
                 imagePath: str = params.get('ImagePath', '')
-                log.debug(f"rule={rule} ImagePath={imagePath}")
+                log.debug(f"rule=scraped ImagePath={imagePath}")
                 if imagePath == '':
                     # skip rule if no scraped image exists
                     continue
@@ -203,7 +206,7 @@ class MediaManager(object):
             if len(files) > 0:
                 # if matching files were found, stop searching and return them
                 return files
-        # if no other suitable files, found return the default image
+        # if no other suitable files found, return the default image
         return ['%s/default.png' % config.get(self._CONFIG_SECTION, 'BASE_PATH')]
 
 
@@ -232,7 +235,7 @@ class EventHandler(object):
             event: str = self._ms.getEvent()
             if not event:
                 break
-            log.debug('event received: %s' % event)
+            log.debug(f'event received: {event}')
             params: Dict[str, str] = self._ms.getEventParams()
             self._handleEvent(params.get('Action'), params)
 
@@ -250,34 +253,37 @@ class EventHandler(object):
 
 
     def _handleEvent(self, action: str, evParams: Dict[str, str]):
-        '''Find appropriate media file for the event and display it
+        '''Find appropriate media files for the event and display them
             :param str event: EmulationStation action 
             :param dict[str,str] params: a dict of event parameters
         '''
-        log.debug("action=%s, params=%s", action, evParams)
+        log.debug(f"action={action}, params={evParams}")
         # do we need to change the marquee slideshow?
         stateChanged: bool = self._hasStateChanged(action, evParams)
         self._updateState(action, evParams)
         if not stateChanged:
-            # do nothing if ES state not changed
+            # do nothing if ES state has not changed
             return
         log.info(f"EmulationStation state changed: action={action} system={self._currentSystem} game={self._currentGame}")
+        # look up search precedence rules for this action & search for media files
         precedence: List[str] = self._getPrecedence(action)
         mediaPaths: List[str]  = self._mm.getMedia(precedence, evParams)
         # display media slideshow
         if len(mediaPaths) == 0:
-            log.warning(f"MediaManager.getMedia() returned no files")
+            # should never happen as MediaManager.getMedia() should always return default image as last resort
+            log.error("MediaManager.getMedia() returned no files")
             return
         else:
-            log.info(f'new slideshow paths={mediaPaths}')
+            log.info(f'new slideshow media={mediaPaths}')
             # stop existing slideshow if running
             self._sl.stop()
             time.sleep(0.2)
+            # start new slideshow
             self._sl.run(mediaPaths)
 
 
-
     def _updateState(self, action: str, evParams: Dict[str, str]):
+        '''Update record of EmulationStation state with provided values'''
         self._currentAction = action
         self._currentSystem = evParams.get('SystemId')
         self._currentGame = evParams.get('GamePath')
@@ -285,15 +291,18 @@ class EventHandler(object):
 
 
     def _hasStateChanged(self, action: str, evParams: Dict[str, str]) -> bool:
-            '''Determine if EmulationStation's state has changed enough for us to change the marquee'''
-            newSystem: str = evParams.get('SystemId')
-            newGame: str = evParams.get('GamePath')
+            '''Determine if EmulationStation's state has changed enough for us to change the marquee
+                :returns bool: True if state has changed
+            '''
+            newSystem: str = evParams.get('SystemId', '')
+            newGame: str = evParams.get('GamePath', '')
             log.debug(f"_currentAction={self._currentAction} action={action}")
             log.debug(f"currentSystem={self._currentSystem} newSystem={newSystem}")
             log.debug(f"_currentGame={self._currentGame} newGame={newGame}")
             # rungame always causes a state change
-            if action == 'rungame': return True
-            # same action and same system: no state change (keep same marquee)
+            if action == 'rungame':
+                return True
+            # same action and same system = no state change
             if action == self._currentAction and newSystem == self._currentSystem:
                 return False
             # otherwise state has changed enough: change marquee
@@ -302,6 +311,9 @@ class EventHandler(object):
 
 
 class Slideshow(object):
+    '''Display slideshow of images on the marquee; runs in a separate thread.
+        Use `run()` to start slideshow, `stop()` to stop
+    '''
 
     _CONFIG_SECTION: ClassVar[str] = 'slideshow'
     "config file section for Slideshow"
@@ -309,8 +321,14 @@ class Slideshow(object):
 
     def __init__(self, timeout=1.0):
         self._imgTime: float = config.getfloat(self._CONFIG_SECTION, 'IMAGE_TIME', fallback=10.0)
+        "how long to display each image (seconds)"
         self._timeout = timeout
+        "how long to wait for external processes to complete (seconds)"
         self._exitSignalled: Event = Event()
+        "indicates whether slideshow exit was requested"
+        self._thread: Optional[Thread] = None
+        "slideshow runner thread"
+        # trap SIGTERM signal to exit slideshow gracefully
         signal.signal(signal.SIGTERM, self._sigHandler)
 
     
@@ -318,14 +336,14 @@ class Slideshow(object):
         '''Run external command; capture output on failure
             :returns bool: True if command ran successfully, or False otherwise
         '''
-        log.debug(f"run {cmd}")
+        log.debug(f"cmd={cmd}")
         try:
             subprocess.run(
                 cmd,
-                capture_output=capture_output,
-                check=True,
-                text=True,
-                timeout=self._timeout
+                capture_output = capture_output,
+                check = True,
+                text = True,
+                timeout = self._timeout
             )
             return True
         except subprocess.CalledProcessError as cpe:
@@ -335,6 +353,7 @@ class Slideshow(object):
 
     def showImage(self, imgPath: str):
         '''Display a single image on the framebuffer; exit leaving the image visible
+            :param str imgPath: full path to image
         '''
         cmd: List[str] = [config.get(self._CONFIG_SECTION,'VIEWER')] + config.get(self._CONFIG_SECTION, 'VIEWER_OPTS').split() + [imgPath]
         self._runCmd(cmd)
@@ -347,7 +366,7 @@ class Slideshow(object):
 
 
     def _doRun(self, imgPaths: List[str]):
-        '''Start thread to run image slideshow; loops for ever until stop() called or we receive SIGTERM signal'''
+        '''Loop image slideshow for ever until `stop()` called or we receive SIGTERM signal'''
         self._exitSignalled.clear()
         while not self._exitSignalled.is_set():
             # random order of images each time through slideshow
@@ -364,23 +383,26 @@ class Slideshow(object):
     
 
     def run(self, imgPaths: List[str]):
-        '''Run randomised slideshow of images until stop() called or we receive SIGTERM signal'''
+        '''Start thread to run randomised slideshow of images until `stop()` called or we receive SIGTERM signal
+            :param list[str] imgPaths: list of paths to images
+        '''
         self._thread = Thread(
             name = 'slideshow_thread',
             target = self._doRun,
             args = (imgPaths,),
-            daemon=True
+            daemon = True # terminate slideshow on exit: don't leave an orphan process
         )
         self._thread.start()
 
 
     def stop(self):
         '''Stop the slideshow'''
-        log.debug("stop requested")
+        log.debug("Slideshow stop requested")
         self._exitSignalled.set()
 
 
     def _sigHandler(self, signum: int, _stackframe):
+        '''Called when SIGTERM received: set exit flag'''
         log.info(f'received signal {signal.Signals(signum).name}')
         self._exitSignalled.set()
 
