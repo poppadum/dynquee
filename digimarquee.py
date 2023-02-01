@@ -184,7 +184,7 @@ class MediaManager(object):
             # if no rules defined for this action, use the default rules
             fallback = config.get(self._CONFIG_SECTION, 'default')
         ).split()
-        log.debug(f"action={action} precedence={precedence}")
+        log.info(f"action={action} search precedence={precedence}")
         return precedence
 
 
