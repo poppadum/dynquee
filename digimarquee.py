@@ -3,7 +3,7 @@
 import subprocess, signal, logging, os, glob, random, time
 from configparser import ConfigParser
 from threading import Thread, Event
-import paho.mqtt.client as mqtt # type: ignore
+import paho.mqtt.client as mqtt
 from queue import SimpleQueue
 from typing import ClassVar, Dict, List, Optional
 
@@ -97,18 +97,18 @@ class MQTTSubscriber(object):
         self._client.disconnect()
 
     
-    def _onConnect(self, client, user, flags, rc):
+    def _onConnect(self, client, user, flags, rc: int):
         topic: str = config.get(self._CONFIG_SECTION, 'topic')
         self._client.subscribe(topic)
         log.info(f"connected to MQTT broker rc={rc} topic={topic}")
 
 
-    def _onDisconnect(self, client, userdata, rc):
+    def _onDisconnect(self, client, userdata, rc: int):
         log.info(f"disconnected from MQTT broker rc={rc}")
         self._client.loop_stop()
 
 
-    def _onMessage(self, client, userdata, message):
+    def _onMessage(self, client, userdata, message: mqtt.MQTTMessage):
         '''Add incoming message to message queue'''
         log.debug(f"message topic={message.topic} payload={message.payload}")
         self._messageQueue.put(message)
