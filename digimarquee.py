@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import subprocess, signal, logging, os, glob, random, time
-from configparser import ConfigParser, NoOptionError
+from configparser import ConfigParser
 from threading import Thread, Event
 import paho.mqtt.client as mqtt # type: ignore
 from queue import SimpleQueue
@@ -192,17 +192,20 @@ class MediaManager(object):
         '''Work out which media files to display using precedence rules
             :params str action: EmulationStation action
             :param dict[str,str] params: a dict of event parameters
-            :returns list[str]: paths to media files
+            :returns list[str]: paths to media files, or [] if precedence rule is `blank`
         '''
         log.debug(f"action={action} params={params}")
         # get game filename without directory and extension (only last extension removed)
         gameBasename: str = os.path.splitext(os.path.basename(params.get('GamePath', '')))[0]
         log.debug(f"gameBasename={gameBasename}")
-        # get search precedence rules for this action
+        # get search precedence rule for this action
         precedence: List[str] = self._getPrecedence(action)
-        
+
         # find best matching media file for system/game, trying each component of precedence rule in turn
         for ruleItem in precedence:
+            # if blank, return empty list to indicate a blanked display
+            if ruleItem == 'blank':
+                return []
             # if using scraped image just return its path
             if ruleItem == 'scraped':
                 imagePath: str = params.get('ImagePath', '')
@@ -297,6 +300,9 @@ class Slideshow(object):
             random.shuffle(imgPaths)
             for imgPath in imgPaths:
                 self.showImage(imgPath)
+                # if we only have 1 image, just display it and exit
+                if len(imgPaths) == 1:
+                    break
                 # wait for _ImgTime to expire or be interrupted by signal
                 self._exitSignalled.wait(timeout = self._imgTime)
                 self.clearImage()
@@ -323,6 +329,7 @@ class Slideshow(object):
         '''Stop the slideshow'''
         log.debug("Slideshow stop requested")
         self._exitSignalled.set()
+        self.clearImage()
 
 
     def _sigHandler(self, signum: int, _stackframe):
@@ -357,7 +364,10 @@ class EventHandler(object):
             
 
             # TODO: handle ES exit cleanly
-            if not event or event == 'shutdown':
+            # doesn't exit nicely when SIGTERM
+            # global signal handler for module? module level Event()?
+
+            if not event or event == 'quit':
                 break
             log.debug(f'event received: {event}')
             params: Dict[str, str] = self._ms.getEventParams()
@@ -378,13 +388,14 @@ class EventHandler(object):
             return
         log.info(f"EmulationStation state changed: action={action} system={self._currentSystem} game={self._currentGame}")
         # search for media files
-        mediaPaths: List[str]  = self._mm.getMedia(action, evParams)
-        # display media slideshow
-        if len(mediaPaths) == 0:
-            # should never happen as MediaManager.getMedia() should always return default image as last resort
-            log.error("MediaManager.getMedia() returned no files")
-            return
+        mediaPaths: List[str] = self._mm.getMedia(action, evParams)
+        # if no files returned, blank display
+        # Note: should only happen if 'blank' found in predence rule; MediaManager.getMedia() always returns default image as last resort
+        if not mediaPaths:
+            self._sl.stop()
+            log.info("'blank' specified in search precedence rule: clearing display")
         else:
+            # display media slideshow
             log.info(f'new slideshow media={mediaPaths}')
             # stop existing slideshow if running
             self._sl.stop()
