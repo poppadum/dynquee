@@ -167,16 +167,30 @@ class MediaManager(object):
         return files
 
 
-    def getMedia(self, precedence: List[str], params: Dict[str, str]) -> List[str]:
+    def _getPrecedence(self, action: str) -> List[str]:
+        '''Get precedence rules for this action from config file
+            :returns list[str]: ordered list of precedence rules'''
+        try:
+            precedence: List[str] = config.get(self._CONFIG_SECTION, action).split()
+        except NoOptionError:
+            # if no rules for this action, use the default rules
+            precedence = config.get(self._CONFIG_SECTION, 'default').split()
+        log.debug(f"action={action} precedence={precedence}")
+        return precedence
+
+
+    def getMedia(self, action: str, params: Dict[str, str]) -> List[str]:
         '''Work out which media files to display on the marquee using precedence rules
             :params list[str] precedence: ordered list of search rules to try in turn
             :param dict[str,str] params: a dict of event parameters
             :returns str: path to a media file
         '''
-        log.debug(f"precedence={precedence} params={params}")
+        log.debug(f"action={action} params={params}")
         # get game filename without directory and extension (only last extension removed)
         gameBasename: str = os.path.splitext(os.path.basename(params.get('GamePath', '')))[0]
         log.debug(f"gameBasename={gameBasename}")
+        # get search precedence rules for this action
+        precedence: List[str] = self._getPrecedence(action)
         
         # find best matching media file for system/game, trying each rule in turn
         for rule in precedence:
@@ -240,18 +254,6 @@ class EventHandler(object):
             self._handleEvent(params.get('Action'), params)
 
 
-    def _getPrecedence(self, action: str) -> List[str]:
-        '''Get precedence rules for this action from config file
-            :returns list[str]: ordered list of precedence rules'''
-        try:
-            precedence: List[str] = config.get(self._CONFIG_SECTION, action).split(',')
-        except NoOptionError:
-            # if no rules for this action, use the default rules
-            precedence = config.get(self._CONFIG_SECTION, 'default').split(',')
-        log.debug(f"action={action} precedence={precedence}")
-        return precedence
-
-
     def _handleEvent(self, action: str, evParams: Dict[str, str]):
         '''Find appropriate media files for the event and display them
             :param str event: EmulationStation action 
@@ -265,9 +267,8 @@ class EventHandler(object):
             # do nothing if ES state has not changed
             return
         log.info(f"EmulationStation state changed: action={action} system={self._currentSystem} game={self._currentGame}")
-        # look up search precedence rules for this action & search for media files
-        precedence: List[str] = self._getPrecedence(action)
-        mediaPaths: List[str]  = self._mm.getMedia(precedence, evParams)
+        # search for media files
+        mediaPaths: List[str]  = self._mm.getMedia(action, evParams)
         # display media slideshow
         if len(mediaPaths) == 0:
             # should never happen as MediaManager.getMedia() should always return default image as last resort

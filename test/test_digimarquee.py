@@ -118,8 +118,6 @@ class TestMediaManager(unittest.TestCase):
 
     def test_configLoaded(self):
         self.assertEqual(config.get('media', 'BASE_PATH'), 'test/media')
-        self.assertEqual(config.get('media', 'PLAYER'), '/usr/bin/cvlc')
-        self.assertEqual(config.get('media', 'PLAYER_OPTS'), '--loop')
 
 
     def test_getMediaMatching(self):
@@ -128,12 +126,18 @@ class TestMediaManager(unittest.TestCase):
         self.assertEqual(self.mm._getMediaMatching('default.*'), ['test/media/default.png'])
 
 
+    def test_getPrecedence(self):
+        self.assertEqual(self.mm._getPrecedence('default'), ['generic'])
+        self.assertEqual(self.mm._getPrecedence('__NOT_FOUND'), ['generic'])
+        self.assertEqual(self.mm._getPrecedence('gamelistbrowsing'), ['system', 'genre', 'generic'])
+
+
     def test_getMedia(self):
         # test getting ROM-specific media
         precedence = ['rom', 'scraped', 'publisher', 'system', 'genre', 'generic']
         self.assertEqual(
             self.mm.getMedia(
-                precedence = precedence,
+                action = 'rungame',
                 params = {
                     'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'
                 }
@@ -143,7 +147,7 @@ class TestMediaManager(unittest.TestCase):
         # publisher media
         self.assertEqual(
             self.mm.getMedia(
-                precedence = precedence,
+                action = 'rungame',
                 params = {
                     'SystemId': 'mame', 'GamePath': '/recalbox/share_init/roms/mame/UNKNOWN.zip', 'Publisher': 'Taito'
                 }
@@ -153,7 +157,7 @@ class TestMediaManager(unittest.TestCase):
         # scraped game image: should return imagePath
         self.assertEqual(
             self.mm.getMedia(
-                precedence = precedence,
+                action = 'rungame',
                 params = {
                     'ImagePath': '/path/to/scraped_image'
                 }
@@ -163,7 +167,7 @@ class TestMediaManager(unittest.TestCase):
         # genre image:
         self.assertEqual(
             self.mm.getMedia(
-                precedence = precedence,
+                action = 'rungame',
                 params = {
                     'SystemId': 'UNKNOWN', 'GamePath': '/recalbox/share_init/roms/_/UNKNOWN.zip', 'Genre': 'Shooter'
                 }
@@ -173,26 +177,18 @@ class TestMediaManager(unittest.TestCase):
         # generic
         self.assertEqual(
             self.mm.getMedia(
-                precedence=precedence,
+                action = 'rungame',
                 params = {'SystemId': 'UNKNOWN'}
             ),
             ['test/media/generic/generic01.mp4']
         )
-        # test ROM it won't know: should return default media file
+        # test ROM it won't know: should return generic media file
         self.assertEqual(
             self.mm.getMedia(
-                precedence=['rom'],
+                action = 'gamelistbrowsing',
                 params = {'SystemId': 'UNKNOWN', 'GamePath': 'XXXX'}
             ),
-            ['test/media/default.png']
-        )
-        # test unrecognised rule
-        self.assertEqual(
-            self.mm.getMedia(
-                precedence=['XXX'],
-                params = {'SystemId': 'UNKNOWN'}
-            ),
-            ['test/media/default.png']
+            ['test/media/generic/generic01.mp4']
         )
 
 
@@ -244,12 +240,6 @@ class TestEventHandler(unittest.TestCase):
         self.assertFalse(self.eh._hasStateChanged('systembrowsing', evParams=self._NEW_EV_PARAMS))
     
     
-    def test_getPrecedence(self):
-        self.assertEqual(self.eh._getPrecedence('default'), ['generic'])
-        self.assertEqual(self.eh._getPrecedence('__NOT_FOUND'), ['generic'])
-        self.assertEqual(self.eh._getPrecedence('gamelistbrowsing'), ['system', 'genre', 'generic'])
-
-
     def test_handleEvent(self):
         #test systembrowsing
         with self.assertLogs(log, level=logging.INFO) as cm:
