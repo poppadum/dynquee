@@ -410,10 +410,11 @@ class EventHandler(object):
             log.debug(f"_currentAction={self._currentAction} newAction={newAction}")
             log.debug(f"currentSystem={self._currentSystem} newSystem={newSystem}")
             log.debug(f"_currentGame={self._currentGame} newGame={newGame}")
-            # starting/ending a game always causes a state change
-            if newAction in ['rungame', 'endgame']:
+            # starting a game always causes a state change
+            # note: ignore endgame action as it's followed quickly by gamelistbrowsing event
+            if newAction == 'rungame':
                 return True
-            # same action and same system = no state change
+            # same action & same system = no state change
             if newAction == self._currentAction and newSystem == self._currentSystem:
                 return False
             # otherwise state has changed
