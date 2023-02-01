@@ -118,6 +118,7 @@ class TestMediaManager(unittest.TestCase):
 
     def test_configLoaded(self):
         self.assertEqual(config.get('media', 'BASE_PATH'), 'test/media')
+        self.assertEqual(config.get('media', 'default_image'), 'default.png')
 
 
     def test_getMediaMatching(self):

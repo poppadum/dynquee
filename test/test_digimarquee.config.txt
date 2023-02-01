@@ -15,7 +15,6 @@ keepalive = 60
 ES_STATE_FILE = test/es_state.inf
 
 
-
 [media]
 #
 # Media settings
@@ -23,16 +22,21 @@ ES_STATE_FILE = test/es_state.inf
 # path where marquee media files are located
 BASE_PATH = test/media
 
+# Path to default image relative to BASE_PATH
+# This is used as a media file of last resort, in case
+# no other media files could be found
+default_image = default.png
+
 # Media search precedence rules
 #
 # For each EmulationStation action, define a rule for the search order
 # Rule meanings:
-#   rom: ROM-specific media file
-#   publisher: publisher media file
-#   genre: genre media file (not implemented yet)
-#   system: system media file
-#   generic: a media file unrelated to a game, system or publisher
-#   scraped: game's scraped image
+# * rom: ROM-specific media e.g. marquee image for the selected game
+# * scraped: the selected game's scraped image
+# * publisher: media relating to the publisher of game e.g. Atari or Taito logo
+# * genre: media relating to genre of game e.g. shooters, platform games
+# * system: media relating to game system e.g. ZX Spectrum or SNES logo
+# * generic: generic media unrelated to a game, system or publisher
 #
 rungame = rom scraped publisher system genre generic
 gamelistbrowsing = system genre generic
@@ -54,5 +58,6 @@ VIEWER_OPTS = --no-audio --no-video-title-show --image-duration 5 --play-and-exi
 # time in seconds to show each image
 IMAGE_TIME = 5
 
+# commmand & options to clear framebuffer
 CLEAR_CMD = echo
 CLEAR_CMD_OPTS = clear framebuffer
