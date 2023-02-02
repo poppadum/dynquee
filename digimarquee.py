@@ -287,9 +287,11 @@ class Slideshow(object):
             if waitForExit:
                 # wait at most `timeout` seconds for subprocess to complete
                 try:
+                    log.debug(f"waiting up to {timeout}s for process to complete")
                     self._subProcess.wait(timeout)
+                    log.debug(f"process completed within {timeout}s timeout")
                 except subprocess.TimeoutExpired:
-                    pass
+                    log.debug(f"process did not complete within {timeout}s timeout")
             return True
         except OSError as e:
             log.error(f"failed to run {cmd}: {e}")
@@ -329,7 +331,7 @@ class Slideshow(object):
                 rc: int = self._subProcess.wait(timeout = self._timeout)
             except subprocess.TimeoutExpired:
                 pass
-            log.debug(f"terminated media player: rc={rc}")
+            log.debug(f"terminated video player: rc={rc}")
 
 
     def _doRun(self, mediaPaths: List[str]):
@@ -343,14 +345,15 @@ class Slideshow(object):
             for mediaFile in mediaPaths:
                 # is file still image or video?
                 isVideo: bool = MediaManager.isVideo(mediaFile)
-                # start image or video, wait for time to expire or be interrupted by signal and stop/clear it
                 if isVideo:
+                    # start video, wait for clip to finish or `_maxVideoTime` to expire, and stop it
                     self.showVideo(mediaFile, self._maxVideoTime)
                     self.stopVideo()
                 else:
+                    # show image, wait for `_imgDisplayTime` to expire or SIGTERM, and clear it
                     self.showImage(mediaFile)
                     # if we only have 1 image, just display it and exit
-                    # TODO: this only works if viewer leaves image up on framebuffer?
+                    # Note: this only works if viewer leaves image up on framebuffer like fbv
                     if len(mediaPaths) == 1:
                         break
                     self._exitSignalled.wait(timeout = self._imgDisplayTime)
@@ -381,30 +384,12 @@ class Slideshow(object):
         self._exitSignalled.set()
         self.stopVideo()
         self.clearImage()
-        # TODO: need to either clearImage() or stopVideo() depending on what is playing
 
 
     def _sigHandler(self, signum: int, _stackframe):
         '''Called when SIGTERM or SIGCHLD received'''
         log.info(f'received signal {signal.Signals(signum).name}')
         self._exitSignalled.set()
-        # if SIGTERM  set exit flag
-        # if signum == signal.SIGTERM:
-            # self._exitSignalled.set()
-        # if SIGCHLD subprocess has exited: capture output on error
-        # TODO: do we care if ffmpeg exits with error? capturing output makes debugging easier but code is much cleaner without
-        # if self._subProcess is not None:
-        #     out: Optional[str] = None
-        #     err: Optional[str] = None
-        #     rc: int = 0
-        #     try:
-        #         out, err = self._subProcess.communicate(timeout = 3)
-        #         rc = self._subProcess.returncode
-        #     except (subprocess.TimeoutExpired, OSError):
-        #         self._subProcess.kill()
-        #         out, err = self._subProcess.communicate()
-        #     if not rc == 0 and not rc == 123:
-        #         log.warning(f"rc={rc} stdout:{out}\nstderr:{err}")
 
 
 
@@ -507,7 +492,11 @@ class EventHandler(object):
 # Logging setup
 # TODO: Should eventually log to /recalbox/share/system/logs/ ?
 # for now, just log to stderr
-log: logging.Logger = getLogger(logging.DEBUG)
+log: logging.Logger = getLogger(logging.INFO)
+
+# Uncomment for debug output:
+#log.setLevel(logging.DEBUG)
+
 
 # Read config file
 config: ConfigParser = loadConfig()
