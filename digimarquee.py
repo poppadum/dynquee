@@ -162,6 +162,17 @@ class MediaManager(object):
     "Glob patterns to find media files for each search rule component"
 
 
+    @classmethod
+    def isVideo(cls, filePath: str) -> bool:
+        '''Test if specified file is a video file
+            :returns: True is file is a video file, False otherwise
+        '''
+        if filePath.endswith('.mp4'):
+            return True
+        return False
+        # TODO: implement properly
+
+
     def _getMediaMatching(self, globPattern: str) -> List[str]:
         '''Search for media files matching globPattern within BASE_PATH
             :returns list[str]: list of paths of matching files, or []
@@ -246,40 +257,41 @@ class Slideshow(object):
     "config file section for Slideshow"
 
 
-    def __init__(self, timeout=1.0):
-        self._imgTime: float = config.getfloat(self._CONFIG_SECTION, 'IMAGE_TIME', fallback=10.0)
-        "how long to display each image (seconds)"
+    def __init__(self, timeout: float = 3.0):
+        self._imgDisplayTime: float = config.getfloat(self._CONFIG_SECTION, 'image_display_time', fallback=10)
+        "how long to display each image in a slideshow (seconds)"
+        self._maxVideoTime: float = config.getfloat(self._CONFIG_SECTION, 'max_video_time', fallback=120)
+        "maximum time to let video file play before being stopped (seconds)"
         self._timeout = timeout
         "how long to wait for external processes to complete (seconds)"
         self._exitSignalled: Event = Event()
         "indicates whether slideshow exit was requested"
         self._thread: Optional[Thread] = None
         "slideshow runner thread"
+        self._subProcess: Optional[subprocess.Popen] = None
+        "slideshow subprocess"
+        
         # trap SIGTERM signal to exit slideshow gracefully
         signal.signal(signal.SIGTERM, self._sigHandler)
+        # trap SIGCHLD to know when child process exits
+        signal.signal(signal.SIGCHLD, self._sigHandler)
 
     
-    def _runCmd(self, cmd: List[str], capture_output=True) -> bool:
-        '''Run external command; capture output on failure unless capture_output = False
-            :returns bool: True if command ran successfully, or False otherwise
+    def _runCmd(self, cmd: List[str]) -> bool:
+        '''Run external command
+            :returns bool: True if command launched successfully, or False otherwise
         '''
         log.debug(f"cmd={cmd}")
         try:
-            subprocess.run(
-                cmd,
-                capture_output = capture_output,
-                check = True,
-                text = True,
-                timeout = self._timeout
-            )
+            self._subProcess = subprocess.Popen(cmd, stderr = subprocess.DEVNULL)
             return True
-        except subprocess.CalledProcessError as cpe:
-            log.error(f"failed to run {cmd}: {cpe}: exit code {cpe.returncode}\nstdout:{cpe.stdout}\nstderr:{cpe.stderr}")
+        except OSError as e:
+            log.error(f"failed to run {cmd}: {e}")
             return False
 
 
     def showImage(self, imgPath: str):
-        '''Display a single image on the framebuffer; exit leaving the image visible
+        '''Run the display image command defined in config file
             :param str imgPath: full path to image
         '''
         cmd: List[str] = [config.get(self._CONFIG_SECTION,'VIEWER')] + config.get(self._CONFIG_SECTION, 'VIEWER_OPTS').split() + [imgPath]
@@ -287,28 +299,59 @@ class Slideshow(object):
 
 
     def clearImage(self):
-        '''Clear the framebuffer'''
-        cmd: List[str] = [config.get(self._CONFIG_SECTION,'CLEAR_CMD')] + config.get(self._CONFIG_SECTION, 'CLEAR_CMD_OPTS').split()
+        '''Run the clear image command defined in config file (if any)'''
+        clearCmd: str = config.get(self._CONFIG_SECTION,'CLEAR_CMD')
+        if clearCmd:
+            cmd: List[str] = [clearCmd] + config.get(self._CONFIG_SECTION, 'CLEAR_CMD_OPTS').split()
+            self._runCmd(cmd)
+
+
+    def showVideo(self, videoPath: str):
+        '''Launch video player command defined in config file: should play video to end then exit.
+            To stop video, call `stopVideo()` to terminate process.
+            :param str videoPath: full path to video file
+        '''
+        cmd: List[str] = [config.get(self._CONFIG_SECTION,'video_player')] + config.get(self._CONFIG_SECTION, 'video_player_opts').split() + [videoPath]
         self._runCmd(cmd)
 
 
-    def _doRun(self, imgPaths: List[str]):
-        '''Loop image slideshow for ever until `stop()` called or we receive SIGTERM signal'''
+    def stopVideo(self):
+        '''Stop running video player (if running) by terminating process'''
+        # kill media player
+        if self._subProcess is not None:
+            self._subProcess.terminate()
+            rc: int = self._subProcess.wait(timeout = self._timeout)
+            log.debug(f"terminated media player: rc={rc}")
+
+
+    def _doRun(self, mediaPaths: List[str]):
+        '''Thread worker: loop image/video slideshow for ever until `stop()` called or we receive SIGTERM signal
+            :params mediaPaths: list of full paths to media files to show
+        '''
         self._exitSignalled.clear()
         while not self._exitSignalled.is_set():
-            # random order of images each time through slideshow
-            random.shuffle(imgPaths)
-            for imgPath in imgPaths:
-                self.showImage(imgPath)
-                # if we only have 1 image, just display it and exit
-                if len(imgPaths) == 1:
-                    break
-                # wait for _ImgTime to expire or be interrupted by signal
-                self._exitSignalled.wait(timeout = self._imgTime)
-                self.clearImage()
+            # random order of media each time through slideshow
+            random.shuffle(mediaPaths)
+            for mediaFile in mediaPaths:
+                # is file still image or video?
+                isVideo: bool = MediaManager.isVideo(mediaFile)
+                # start image or video, wait for time to expire or be interrupted by signal and stop/clear it
+                if isVideo:
+                    self.showVideo(mediaFile)
+                    self._exitSignalled.wait(timeout = self._maxVideoTime)
+                    self.stopVideo()
+                else:
+                    self.showImage(mediaFile)
+                    # if we only have 1 image, just display it and exit
+                    # TODO: this only works if viewer leaves image up on framebuffer?
+                    if len(mediaPaths) == 1:
+                        break
+                    self._exitSignalled.wait(timeout = self._imgDisplayTime)
+                    self.clearImage()
+                # exit slideshow if SIGTERM/SIGCHLD received, or `stop()` was called
                 if self._exitSignalled.is_set():
                     break
-        # clear reference to slideshow thread
+        # clear reference to slideshow worker thread once finished
         self._thread = None
     
 
@@ -333,9 +376,27 @@ class Slideshow(object):
 
 
     def _sigHandler(self, signum: int, _stackframe):
-        '''Called when SIGTERM received: set exit flag'''
+        '''Called when SIGTERM or SIGCHLD received'''
         log.info(f'received signal {signal.Signals(signum).name}')
         self._exitSignalled.set()
+        # if SIGTERM  set exit flag
+        # if signum == signal.SIGTERM:
+            # self._exitSignalled.set()
+        # if SIGCHLD subprocess has exited: capture output on error
+        # TODO: do we care if ffmpeg exits with error? capturing output makes debugging easier but code is much cleaner without
+        # if self._subProcess is not None:
+        #     out: Optional[str] = None
+        #     err: Optional[str] = None
+        #     rc: int = 0
+        #     try:
+        #         out, err = self._subProcess.communicate(timeout = 3)
+        #         rc = self._subProcess.returncode
+        #     except (subprocess.TimeoutExpired, OSError):
+        #         self._subProcess.kill()
+        #         out, err = self._subProcess.communicate()
+        #     if not rc == 0 and not rc == 123:
+        #         log.warning(f"rc={rc} stdout:{out}\nstderr:{err}")
+
 
 
 
@@ -437,7 +498,7 @@ class EventHandler(object):
 # Logging setup
 # TODO: Should eventually log to /recalbox/share/system/logs/ ?
 # for now, just log to stderr
-log: logging.Logger = getLogger(logging.INFO)
+log: logging.Logger = getLogger(logging.DEBUG)
 
 # Read config file
 config: ConfigParser = loadConfig()

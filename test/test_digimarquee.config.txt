@@ -54,15 +54,23 @@ default = generic
 #
 # Slideshow settings
 #
-# path to slideshow executable
-VIEWER = /usr/bin/cvlc
 
-# options to pass to slideshow executable
+### still images ###
+
+# path to image viewer executable & options
+VIEWER = /usr/bin/cvlc
 VIEWER_OPTS = --no-audio --no-video-title-show --image-duration 5 --play-and-exit
 
 # time in seconds to show each image
-IMAGE_TIME = 5
+IMAGE_DISPLAY_TIME = 5
 
-# commmand & options to clear framebuffer
+# commmandline  & options to clear image (leave blank if not required)
 CLEAR_CMD = echo
 CLEAR_CMD_OPTS = clear framebuffer
+
+### video files ###
+
+# path to video player executable & options
+video_player = /usr/bin/ffplay
+video_player_opts = -hide_banner -loglevel error
+max_video_time = 15

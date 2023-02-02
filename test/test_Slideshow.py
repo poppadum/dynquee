@@ -44,11 +44,12 @@ def test_slideshowExit():
 
 
 def test_slideshow():
-    sl = Slideshow(timeout=10.0)
-    imagePaths = glob.glob('./media/mame/*.png')
+    sl = Slideshow()
+    imagePaths = glob.glob('./media/mame/*')
     imagePaths += ['./media/default.png']   
     sl.run(imgPaths = imagePaths)
-    time.sleep(1 * 60)
+    time.sleep(60)
+    sl.stop()
 
 
 if __name__ == '__main__':
