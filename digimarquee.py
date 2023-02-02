@@ -157,7 +157,8 @@ class MediaManager(object):
         'publisher': "publisher/{publisher}.*",
         'genre': "genre/{genre}.*",
         'system': "system/{systemId}.*",
-        'generic': "generic/*"
+        'generic': "generic/*",
+        'startup': "startup/*" # files to show on startup
     }
     "Glob patterns to find media files for each search rule component"
 
@@ -247,6 +248,13 @@ class MediaManager(object):
         return [f"{config.get(self._CONFIG_SECTION, 'base_path')}/{config.get(self._CONFIG_SECTION, 'default_image')}"]
 
 
+    def getStartupMedia(self) -> List[str]:
+        '''Get list of media files to be played at program startup'''
+        log.debug(f"getting startup media files")
+        globPattern: str = self._GLOB_PATTERNS['startup']
+        return self._getMediaMatching(globPattern)
+
+
 
 class Slideshow(object):
     '''Display slideshow of images on the marquee; runs in a separate thread.
@@ -266,10 +274,10 @@ class Slideshow(object):
         "how long to wait for external processes to complete (seconds)"
         self._exitSignalled: Event = Event()
         "indicates whether slideshow exit was requested"
-        self._thread: Optional[Thread] = None
-        "slideshow runner thread"
+        self._workerThread: Optional[Thread] = None
+        "slideshow worker thread"
         self._subProcess: Optional[subprocess.Popen] = None
-        "slideshow subprocess"
+        "media player/viewer subprocess"
         
         # trap SIGTERM signal to exit slideshow gracefully
         signal.signal(signal.SIGTERM, self._sigHandler)
@@ -335,7 +343,7 @@ class Slideshow(object):
 
 
     def _doRun(self, mediaPaths: List[str]):
-        '''Thread worker: loop image/video slideshow for ever until `stop()` called or we receive SIGTERM signal
+        '''Thread worker: loop image/video slideshow for ever until `stop()` called or SIGTERM signal received
             :params mediaPaths: list of full paths to media files to show
         '''
         self._exitSignalled.clear()
@@ -362,20 +370,20 @@ class Slideshow(object):
                 if self._exitSignalled.is_set():
                     break
         # clear reference to slideshow worker thread once finished
-        self._thread = None
+        self._workerThread = None
     
 
     def run(self, imgPaths: List[str]):
         '''Start thread to run randomised slideshow of images until `stop()` called or we receive SIGTERM signal
             :param list[str] imgPaths: list of paths to images
         '''
-        self._thread = Thread(
+        self._workerThread = Thread(
             name = 'slideshow_thread',
             target = self._doRun,
             args = (imgPaths,),
             daemon = True # terminate slideshow on exit: don't leave an orphan process
         )
-        self._thread.start()
+        self._workerThread.start()
 
 
     def stop(self):
@@ -459,6 +467,12 @@ class EventHandler(object):
             self._sl.run(mediaPaths)
 
 
+    def startup(self):
+        '''Show slideshow of startup files'''
+        mediaPaths: List[str] = self._mm.getStartupMedia()
+        self._sl.run(mediaPaths)
+
+
     def _updateState(self, action: str, evParams: Dict[str, str]):
         '''Update record of EmulationStation state with provided values'''
         self._currentAction = action
@@ -506,5 +520,6 @@ config: ConfigParser = loadConfig()
 
 if __name__ == '__main__':
     eh: EventHandler = EventHandler()
+    eh.startup()
     eh.readEvents()
     log.debug('exiting')

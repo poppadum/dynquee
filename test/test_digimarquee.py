@@ -105,7 +105,6 @@ class TestMQTTSubscriber(unittest.TestCase):
         time.sleep(2)
 
 
-    
 
 class TestMediaManager(unittest.TestCase):
     '''unit tests for MediaManager'''
@@ -193,6 +192,10 @@ class TestMediaManager(unittest.TestCase):
             ),
             ['test/media/generic/generic01.mp4']
         )
+
+    def test_getStartupMedia(self):
+        startupMedia = self.mm.getStartupMedia()
+        self.assertEqual(startupMedia, ['test/media/startup/startup01.png', 'test/media/startup/welcome.mp4'])
 
 
 class MockEventHandler(EventHandler):
