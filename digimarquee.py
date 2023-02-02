@@ -126,7 +126,7 @@ class MQTTSubscriber(object):
             :returns dict: a dict mapping param names to their values
         '''
         params: Dict[str,str] = {}
-        with open(config.get(self._CONFIG_SECTION, 'ES_STATE_FILE')) as f:
+        with open(config.get(self._CONFIG_SECTION, 'es_state_file')) as f:
             for line in f:
                 key, value = line.strip().split('=', 1)
                 log.debug(f"key={key} value={value}")
@@ -179,7 +179,7 @@ class MediaManager(object):
         '''
         log.debug(f"searching for media files matching {globPattern}")
         files: List[str] = glob.glob(
-            f"{config.get(self._CONFIG_SECTION, 'BASE_PATH')}/{globPattern}"
+            f"{config.get(self._CONFIG_SECTION, 'base_path')}/{globPattern}"
         )
         log.debug(f"found {len(files)} files: {files}")
         return files
@@ -195,7 +195,7 @@ class MediaManager(object):
             # if no rules defined for this action, use the default rules
             fallback = config.get(self._CONFIG_SECTION, 'default')
         ).split()
-        log.info(f"action={action} search precedence={precedence}")
+        log.info(f"action={action}; search precedence={precedence}")
         return precedence
 
 
@@ -244,7 +244,7 @@ class MediaManager(object):
                 # if matching files were found, stop searching & return them
                 return files
         # if no other suitable files found, return a list containing just the default image
-        return [f"{config.get(self._CONFIG_SECTION, 'BASE_PATH')}/{config.get(self._CONFIG_SECTION, 'default_image')}"]
+        return [f"{config.get(self._CONFIG_SECTION, 'base_path')}/{config.get(self._CONFIG_SECTION, 'default_image')}"]
 
 
 
@@ -283,7 +283,7 @@ class Slideshow(object):
         '''
         log.debug(f"cmd={cmd}")
         try:
-            self._subProcess = subprocess.Popen(cmd, stderr = subprocess.DEVNULL)
+            self._subProcess = subprocess.Popen(cmd)
             return True
         except OSError as e:
             log.error(f"failed to run {cmd}: {e}")
@@ -294,15 +294,15 @@ class Slideshow(object):
         '''Run the display image command defined in config file
             :param str imgPath: full path to image
         '''
-        cmd: List[str] = [config.get(self._CONFIG_SECTION,'VIEWER')] + config.get(self._CONFIG_SECTION, 'VIEWER_OPTS').split() + [imgPath]
+        cmd: List[str] = [config.get(self._CONFIG_SECTION,'viewer')] + config.get(self._CONFIG_SECTION, 'viewer_opts').split() + [imgPath]
         self._runCmd(cmd)
 
 
     def clearImage(self):
         '''Run the clear image command defined in config file (if any)'''
-        clearCmd: str = config.get(self._CONFIG_SECTION,'CLEAR_CMD')
+        clearCmd: str = config.get(self._CONFIG_SECTION,'clear_cmd')
         if clearCmd:
-            cmd: List[str] = [clearCmd] + config.get(self._CONFIG_SECTION, 'CLEAR_CMD_OPTS').split()
+            cmd: List[str] = [clearCmd] + config.get(self._CONFIG_SECTION, 'clear_cmd_opts').split()
             self._runCmd(cmd)
 
 

@@ -12,7 +12,7 @@ topic = Recalbox/EmulationStation/Event
 keepalive = 60
 
 # path to EmulationStation's state file
-ES_STATE_FILE = /tmp/es_state.inf
+es_state_file = /tmp/es_state.inf
 
 
 [media]
@@ -20,7 +20,7 @@ ES_STATE_FILE = /tmp/es_state.inf
 # Media settings
 #
 # path where marquee media files are located
-BASE_PATH = /recalbox/share/digimarquee/media
+base_path = /recalbox/share/digimarquee/media
 
 # Path to default image relative to BASE_PATH
 # This is used as a media file of last resort, in case
@@ -54,15 +54,23 @@ default = generic
 #
 # Slideshow settings
 #
-# path to image viewer executable
-VIEWER = /usr/bin/fbv2
 
-# options to pass to image viewer executable
-VIEWER_OPTS = --noinfo --stretch
+### still images ###
+
+# path to image viewer executable & options
+viewer = /usr/bin/ffplay
+viewer_opts =
 
 # time in seconds to show each image
-IMAGE_TIME = 10.0
+image_display_time = 10.0
 
-# commmand & options to clear framebuffer
-CLEAR_CMD = /bin/bash
-CLEAR_CMD_OPTS = /recalbox/share/digimarquee/clear_framebuffer.sh
+# commmand  & options to clear image (leave blank if not required)
+clear_cmd = /bin/dd
+clear_cmd_opts = if=/dev/zero of=/dev/fb0
+
+### video files ###
+
+# path to video player executable & options
+video_player = /usr/bin/ffplay
+video_player_opts = -hide_banner -loglevel error
+max_video_time = 60

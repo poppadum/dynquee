@@ -36,7 +36,7 @@ class MockMQTTSubscriber(MQTTSubscriber):
         log.info(f"generate action {action}")
         return action
 
-@unittest.skip('while refactoring Slideshow')
+
 class TestMQTTSubscriber(unittest.TestCase):
     '''unit tests for MQTTSubscriber'''
 
@@ -106,7 +106,7 @@ class TestMQTTSubscriber(unittest.TestCase):
 
 
     
-@unittest.skip('while refactoring Slideshow')
+
 class TestMediaManager(unittest.TestCase):
     '''unit tests for MediaManager'''
     
@@ -227,7 +227,7 @@ class TestEventHandler(unittest.TestCase):
     def tearDown(self):
         del(self.eh)
     
-    @unittest.skip('while refactoring Slideshow')
+    
     def test_updateState(self):
         self.assertIsNone(self.eh._currentAction)
         self.assertIsNone(self.eh._currentSystem)
@@ -238,14 +238,15 @@ class TestEventHandler(unittest.TestCase):
         self.assertEqual(self.eh._currentGame, '')
 
 
-    @unittest.skip('while refactoring Slideshow')
+    
     def test_hasStateChanged(self):
         self.assertFalse(self.eh._hasStateChanged(None, evParams=self._INIT_EV_PARAMS))
         self.assertTrue(self.eh._hasStateChanged(None, evParams=self._NEW_EV_PARAMS))
         self.eh._updateState(action='systembrowsing', evParams=self._NEW_EV_PARAMS)
         self.assertFalse(self.eh._hasStateChanged('systembrowsing', evParams=self._NEW_EV_PARAMS))
-    
-    #@unittest.skip('while refactoring')
+
+
+    @unittest.skip('method not suitable for unit testing')
     def test_handleEvent(self):
         #test systembrowsing
         with self.assertLogs(log, level=logging.INFO) as cm:
@@ -255,8 +256,9 @@ class TestEventHandler(unittest.TestCase):
                     'SystemId':'mame', 'GamePath':''
                 }
             )
-        self.assertEqual(cm.output, ['INFO:digimarquee:EmulationStation state changed: action=systembrowsing system=mame game=', "INFO:digimarquee:new slideshow media=['test/media/generic/generic01.mp4']"])
-        return 
+        print(f"\n{cm.output}\n")
+        self.assertEqual(cm.output, ["INFO:digimarquee:EmulationStation state changed: action=systembrowsing system=mame game=", "INFO:digimarquee:new slideshow media=['test/media/generic/generic01.mp4']"])
+
 
         #still systembrowsing - should not change slideshow
         self.eh._handleEvent(

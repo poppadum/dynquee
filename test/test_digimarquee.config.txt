@@ -4,7 +4,7 @@
 
 [recalbox]
 #
-# Recalbox settings: shouldn't need to be changed
+# Recalbox MQTT broker settings: shouldn't need to be changed
 #
 host = 127.0.0.1
 port = 1883
@@ -12,7 +12,7 @@ topic = Recalbox/EmulationStation/Event
 keepalive = 60
 
 # path to EmulationStation's state file
-ES_STATE_FILE = test/es_state.inf
+es_state_file = test/es_state.inf
 
 
 [media]
@@ -20,7 +20,7 @@ ES_STATE_FILE = test/es_state.inf
 # Media settings
 #
 # path where marquee media files are located
-BASE_PATH = test/media
+base_path = test/media
 
 # Path to default image relative to BASE_PATH
 # This is used as a media file of last resort, in case
@@ -58,15 +58,15 @@ default = generic
 ### still images ###
 
 # path to image viewer executable & options
-VIEWER = /usr/bin/cvlc
-VIEWER_OPTS = --no-audio --no-video-title-show --image-duration 5 --play-and-exit
+viewer = /usr/bin/cvlc
+viewer_opts = --no-audio --no-video-title-show --image-duration 5 --play-and-exit
 
 # time in seconds to show each image
-IMAGE_DISPLAY_TIME = 5
+image_display_time = 5
 
-# commmandline  & options to clear image (leave blank if not required)
-CLEAR_CMD = echo
-CLEAR_CMD_OPTS = clear framebuffer
+# commmand  & options to clear image (leave blank if not required)
+clear_cmd = echo
+clear_cmd_opts = clear framebuffer
 
 ### video files ###
 
