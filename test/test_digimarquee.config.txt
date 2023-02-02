@@ -71,6 +71,6 @@ clear_cmd_opts = clear framebuffer
 ### video files ###
 
 # path to video player executable & options
-video_player = /usr/bin/ffplay
-video_player_opts = -hide_banner -loglevel error
+video_player = /usr/bin/cvlc
+video_player_opts = --no-audio --no-video-title-show --play-and-exit
 max_video_time = 15

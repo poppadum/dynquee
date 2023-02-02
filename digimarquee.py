@@ -273,17 +273,23 @@ class Slideshow(object):
         
         # trap SIGTERM signal to exit slideshow gracefully
         signal.signal(signal.SIGTERM, self._sigHandler)
-        # trap SIGCHLD to know when child process exits
-        signal.signal(signal.SIGCHLD, self._sigHandler)
 
     
-    def _runCmd(self, cmd: List[str]) -> bool:
+    def _runCmd(self, cmd: List[str], waitForExit: bool = False, timeout: float = 0) -> bool:
         '''Run external command
+            :params waitForExit: if True waits for command to complete, otherwise returns immediately
+            :params timeout: how long to wait for command to complete (seconds)
             :returns bool: True if command launched successfully, or False otherwise
         '''
         log.debug(f"cmd={cmd}")
         try:
             self._subProcess = subprocess.Popen(cmd)
+            if waitForExit:
+                # wait at most `timeout` seconds for subprocess to complete
+                try:
+                    self._subProcess.wait(timeout)
+                except subprocess.TimeoutExpired:
+                    pass
             return True
         except OSError as e:
             log.error(f"failed to run {cmd}: {e}")
@@ -306,21 +312,23 @@ class Slideshow(object):
             self._runCmd(cmd)
 
 
-    def showVideo(self, videoPath: str):
+    def showVideo(self, videoPath: str, maxVideoTime: float):
         '''Launch video player command defined in config file: should play video to end then exit.
             To stop video, call `stopVideo()` to terminate process.
             :param str videoPath: full path to video file
         '''
         cmd: List[str] = [config.get(self._CONFIG_SECTION,'video_player')] + config.get(self._CONFIG_SECTION, 'video_player_opts').split() + [videoPath]
-        self._runCmd(cmd)
+        self._runCmd(cmd, waitForExit=True, timeout=maxVideoTime)
 
 
     def stopVideo(self):
         '''Stop running video player (if running) by terminating process'''
-        # kill media player
         if self._subProcess is not None:
             self._subProcess.terminate()
-            rc: int = self._subProcess.wait(timeout = self._timeout)
+            try:
+                rc: int = self._subProcess.wait(timeout = self._timeout)
+            except subprocess.TimeoutExpired:
+                pass
             log.debug(f"terminated media player: rc={rc}")
 
 
@@ -337,8 +345,7 @@ class Slideshow(object):
                 isVideo: bool = MediaManager.isVideo(mediaFile)
                 # start image or video, wait for time to expire or be interrupted by signal and stop/clear it
                 if isVideo:
-                    self.showVideo(mediaFile)
-                    self._exitSignalled.wait(timeout = self._maxVideoTime)
+                    self.showVideo(mediaFile, self._maxVideoTime)
                     self.stopVideo()
                 else:
                     self.showImage(mediaFile)
@@ -348,7 +355,7 @@ class Slideshow(object):
                         break
                     self._exitSignalled.wait(timeout = self._imgDisplayTime)
                     self.clearImage()
-                # exit slideshow if SIGTERM/SIGCHLD received, or `stop()` was called
+                # exit slideshow if SIGTERM received or `stop()` was called
                 if self._exitSignalled.is_set():
                     break
         # clear reference to slideshow worker thread once finished
@@ -372,7 +379,9 @@ class Slideshow(object):
         '''Stop the slideshow'''
         log.debug("Slideshow stop requested")
         self._exitSignalled.set()
+        self.stopVideo()
         self.clearImage()
+        # TODO: need to either clearImage() or stopVideo() depending on what is playing
 
 
     def _sigHandler(self, signum: int, _stackframe):
