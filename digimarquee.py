@@ -291,7 +291,7 @@ class Slideshow(object):
                     self._subProcess.wait(timeout)
                     log.debug(f"process completed within {timeout}s timeout")
                 except subprocess.TimeoutExpired:
-                    log.debug(f"process did not complete within {timeout}s timeout")
+                    log.info(f"process did not complete within {timeout}s timeout")
             return True
         except OSError as e:
             log.error(f"failed to run {cmd}: {e}")
