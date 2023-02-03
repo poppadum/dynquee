@@ -22,3 +22,9 @@ Collection: Dan Patrick's v2 Platform Logos Professionally Redrawn + Official Ve
 Sources:
 - https://archive.org/details/console-logos-professionally-redrawn-plus-official-versions
 - https://forums.launchbox-app.com/files/file/3402-v2-platform-logos-professionally-redrawn-official-versions-new-bigbox-defaults/
+
+
+## `startup/`
+Authors: Recalbox Project Team, Chris Laird
+
+Example startup image which reuses elements of the Recalbox startup image
