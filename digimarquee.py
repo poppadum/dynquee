@@ -5,7 +5,7 @@ from configparser import ConfigParser
 from threading import Thread, Event
 import paho.mqtt.client as mqtt
 from queue import SimpleQueue
-from typing import ClassVar, Dict, List, Optional
+from typing import ClassVar, Dict, List, Tuple, Optional
 
 def getLogger(logLevel: int, **kwargs) -> logging.Logger:
     '''Module logger
@@ -405,7 +405,7 @@ class Slideshow(object):
 class EventHandler(object):
     '''Receives events from MQTTSubscriber, uses MediaManager to find images and Slideshow to show them'''
 
-    _CONFIG_SECTION: ClassVar[str] = 'search'
+    _CONFIG_SECTION: ClassVar[str] = 'media'
     "config file section for EventHandler"
 
     
@@ -443,8 +443,11 @@ class EventHandler(object):
             :param dict[str,str] params: a dict of event parameters
         '''
         log.debug(f"action={action}, params={evParams}")
-        # has ES state changed: do we need to change displayed media?
-        stateChanged: bool = self._hasStateChanged(action, evParams)
+        # do we need to change displayed media?
+        changeOn: str
+        noChangeOn: str
+        (changeOn, noChangeOn) = self._getStateChangeRules()
+        stateChanged: bool = self._hasStateChanged(action, evParams, changeOn, noChangeOn)
         self._updateState(action, evParams)
         if not stateChanged:
             # do nothing if ES state has not changed
@@ -483,24 +486,62 @@ class EventHandler(object):
         log.debug(f"_currentAction={self._currentAction} _currentSystem={self._currentSystem} _currentGame={self._currentGame}")
 
 
-    def _hasStateChanged(self, newAction: str, evParams: Dict[str, str]) -> bool:
-            '''Determine if EmulationStation's state has changed enough for us to change displayed media
+    def _getStateChangeRules(self) -> Tuple[str, str]:
+        '''Look up state change rules in config file
+        : returns tuple[str, str]: tuple of values in the format (change_on, no_change_on)
+        '''
+        # get state change rules from config file
+        noChangeOn: str = config.get(self._CONFIG_SECTION, 'no_change_on')
+        changeOn: str = config.get(self._CONFIG_SECTION, 'change_on')
+        return (changeOn, noChangeOn)
+        
+
+    def _hasStateChanged(self, newAction: str, evParams: Dict[str, str], changeOn: str, noChangeOn:str) -> bool:
+            '''Determine if EmulationStation's state has changed enough for us to change displayed media.
+                Follows rules defined in config file.
+                :params newAction: EmulationStation action
+                :params evParams: dict of EmulationStation event params
+                :params changeOn: rule specifying when to change state
+                :params noVhangeOn: rule specifying which actions do not change state
                 :returns bool: True if state has changed
             '''
             newSystem: str = evParams.get('SystemId', '')
             newGame: str = evParams.get('GamePath', '')
+            log.debug(f"changeOn={changeOn} noChangeOn={noChangeOn}")
             log.debug(f"_currentAction={self._currentAction} newAction={newAction}")
             log.debug(f"currentSystem={self._currentSystem} newSystem={newSystem}")
             log.debug(f"_currentGame={self._currentGame} newGame={newGame}")
-            # starting a game always causes a state change
-            # note: ignore endgame action as it's followed quickly by gamelistbrowsing event
-            if newAction == 'rungame':
+
+            # Use rules defined in config file to determine if state has changed
+            # no change if action is ignored or `never` change specified
+            if (newAction in noChangeOn) or (changeOn == 'never'):
+                return False           
+            # is `always` change specified?
+            elif changeOn == 'always':
                 return True
-            # same action & same system = no state change
-            if newAction == self._currentAction and newSystem == self._currentSystem:
-                return False
-            # otherwise state has changed
-            return True
+            # has action changed from previous action?
+            elif changeOn == 'action':
+                return not newAction == self._currentAction
+            # has system changed?
+            elif changeOn == 'system':
+                return not newSystem == self._currentSystem
+            # has game changed?
+            elif changeOn == 'game':
+                return not newGame == self._currentGame
+            # has system OR game changed?
+            elif changeOn == 'system/game':
+                log.debug('if changeOn=system/game')
+                return not (newSystem == self._currentSystem and newGame == self._currentGame)
+            else:
+                # something unexpected happened: log it
+                log.error((
+                    f"unrecognised state change rules: changeOn={changeOn} noChangeOn={noChangeOn}"
+                    f"newAction={newAction} oldAction={self._currentAction}, "
+                    f"newSystem={newSystem} oldSystem={self._currentSystem}, "
+                    f"newGame={newGame} oldGame={self._currentGame}"
+                ))
+                # change marquee
+                return True
 
 
 

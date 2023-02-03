@@ -7,7 +7,7 @@ from digimarquee import MQTTSubscriber, MediaManager, EventHandler, Slideshow, l
 
 # only log warnings and errors when running tests
 # log.setLevel(logging.INFO)
-log.setLevel(logging.DEBUG)
+# log.setLevel(logging.DEBUG)
 
 
 # set up config for test environment
@@ -230,7 +230,6 @@ class TestEventHandler(unittest.TestCase):
     def tearDown(self):
         del(self.eh)
     
-    
     def test_updateState(self):
         self.assertIsNone(self.eh._currentAction)
         self.assertIsNone(self.eh._currentSystem)
@@ -241,12 +240,103 @@ class TestEventHandler(unittest.TestCase):
         self.assertEqual(self.eh._currentGame, '')
 
 
-    
     def test_hasStateChanged(self):
-        self.assertFalse(self.eh._hasStateChanged(None, evParams=self._INIT_EV_PARAMS))
-        self.assertTrue(self.eh._hasStateChanged(None, evParams=self._NEW_EV_PARAMS))
-        self.eh._updateState(action='systembrowsing', evParams=self._NEW_EV_PARAMS)
-        self.assertFalse(self.eh._hasStateChanged('systembrowsing', evParams=self._NEW_EV_PARAMS))
+        (changeOn, noChangeOn) = self.eh._getStateChangeRules()
+        self.assertFalse(self.eh._hasStateChanged('myaction', self._INIT_EV_PARAMS, changeOn, noChangeOn))
+        self.assertTrue(self.eh._hasStateChanged('myaction', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self.assertFalse(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+
+    
+    def test_stateChangeAlways(self):
+        (changeOn, noChangeOn) = ("always", 'endgame wakeup')
+        self.assertTrue(self.eh._hasStateChanged('myaction', self._INIT_EV_PARAMS, changeOn, noChangeOn))
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        # check no change of details still causes state change
+        self.assertTrue(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self.assertTrue(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        # check with different actions
+        self.assertTrue(self.eh._hasStateChanged('gamelistbrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self.assertTrue(self.eh._hasStateChanged('rungame', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+
+
+    def test_stateChangeNever(self):
+        (changeOn, noChangeOn) = ("never", 'endgame wakeup')
+        # check no change of details causes no state change
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self.assertFalse(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        # check with different action
+        self.assertFalse(self.eh._hasStateChanged('gamelistbrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        # check with different system or game
+        self.assertFalse(self.eh._hasStateChanged('systembrowsing', {'SystemId':'snes','GamePath':''}, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged('systembrowsing', {'SystemId':'mame','GamePath':'asteroid.zip'}, changeOn, noChangeOn))
+
+
+    def test_stateChangeOnAction(self):
+        (changeOn, noChangeOn) = ("action", 'endgame wakeup')
+        # check with same action & different system & game
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self.assertFalse(self.eh._hasStateChanged('systembrowsing', self._INIT_EV_PARAMS, changeOn, noChangeOn))
+        # check with different action & game system & game
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self.assertTrue(self.eh._hasStateChanged('gamelistbrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        # check sleep action & no params
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self.assertTrue(self.eh._hasStateChanged('sleep', self._INIT_EV_PARAMS, changeOn, noChangeOn))
+
+    
+    def test_stateChangeOnSystem(self):
+        (changeOn, noChangeOn) = ("system", 'endgame wakeup')
+        # check with same action, system & game
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self.assertFalse(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        # check with new action, same system & game
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self.assertFalse(self.eh._hasStateChanged('gamelistbrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        # check with same action & game, new system
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self.assertTrue(self.eh._hasStateChanged('systembrowsing', {'SystemId':'snes','GamePath':''}, changeOn, noChangeOn))
+
+    
+    def test_stateChangeOnGame(self):
+        (changeOn, noChangeOn) = ("game", 'endgame wakeup')
+        # check with same action, system & game
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self.assertFalse(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        # check with new action, same system & game
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self.assertFalse(self.eh._hasStateChanged('gamelistbrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        # check with same action & system, new game
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self.assertTrue(self.eh._hasStateChanged('systembrowsing', {'SystemId':'mame','GamePath':'asteroid.zip'}, changeOn, noChangeOn))
+    
+
+    def test_stateChangeOnSystemOrGame(self):
+        (changeOn, noChangeOn) = ("system/game", 'endgame wakeup')
+        # check with same action, system & game
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self.assertFalse(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        # check with new action, same system & game
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self.assertFalse(self.eh._hasStateChanged('gamelistbrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        # check with same action & game, new system
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self.assertTrue(self.eh._hasStateChanged('systembrowsing', {'SystemId':'snes','GamePath':''}, changeOn, noChangeOn))
+        # check with same action & system, new game
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self.assertTrue(self.eh._hasStateChanged('systembrowsing', {'SystemId':'mame','GamePath':'asteroid.zip'}, changeOn, noChangeOn))
+        # check with same action, new system & game
+        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self.assertTrue(self.eh._hasStateChanged('systembrowsing', {'SystemId':'megadrive','GamePath':'sonic.zip'}, changeOn, noChangeOn))
+        
+
+    def test_getStateChangeRules(self):
+        (changeOn, noChangeOn) = self.eh._getStateChangeRules()
+        self.assertEqual(changeOn, 'system/game')
+        self.assertEqual(noChangeOn, 'endgame wakeup')
+
 
 
     @unittest.skip('method not suitable for unit testing')
