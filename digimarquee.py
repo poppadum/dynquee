@@ -195,52 +195,68 @@ class MediaManager(object):
         return precedence
 
 
-    def getMedia(self, action: str, params: Dict[str, str]) -> List[str]:
-        '''Work out which media files to display for given action using precedence rules
-            :params str action: EmulationStation action
-            :param dict[str,str] params: a dict of event parameters
-            :returns list[str]: paths to media files, or [] if precedence rule == `blank`
+    def _getMediaForRuleChunk(self, ruleChunk: str, evParams: Dict[str, str]) -> List[str]:
+        '''Locate media matching a single component of a search rule. See config file
+            for list of valid rule components.
+            :param ruleChunk: the search rule component
+            :param params: a dict of event parameters
+            :returns: list of paths to media files, or [] if precedence rule == `blank`
         '''
-        log.debug(f"action={action} params={params}")
+        # if rule chunk is `scraped` just return scraped image path (if set)
+        if ruleChunk == 'scraped':
+            imagePath: str = evParams.get('ImagePath', '')
+            log.debug(f"rule part=scraped ImagePath={imagePath}")
+            if imagePath == '':
+                return []
+            else:
+                return [imagePath]
+        # skip unrecognised rule chunks
+        if ruleChunk not in self._GLOB_PATTERNS:
+            log.warning(f"skipped unrecognised rule chunk '{ruleChunk}'")
+            return []
         # get game filename without directory and extension (only last extension removed)
-        gameBasename: str = os.path.splitext(os.path.basename(params.get('GamePath', '')))[0]
+        gameBasename: str = os.path.splitext(os.path.basename(evParams.get('GamePath', '')))[0]
         log.debug(f"gameBasename={gameBasename}")
+        # insert event params into rule chunk's glob pattern
+        globPattern: str = self._GLOB_PATTERNS[ruleChunk].format(
+            gameBasename = gameBasename,
+            systemId = evParams.get('SystemId', '').lower(),
+            publisher = evParams.get('Publisher', '').lower(),
+            genre = evParams.get('Genre', '').lower(),
+        )
+        log.debug(f"ruleChunk={ruleChunk} globPattern={globPattern}")
+        # find media files matching this glob pattern, if any
+        return self._getMediaMatching(globPattern)
+
+
+    def getMedia(self, action: str, evParams: Dict[str, str]) -> List[str]:
+        '''Work out which media files to display for given action using search 
+            precedence rules defined in config file.
+            :param action: EmulationStation action
+            :param evParams: a dict of event parameters
+            :returns: list of paths to media files, or [] if marquee should be blank
+        '''
+        log.debug(f"action={action} params={evParams}")
         # get search precedence rule for this action
         precedence: List[str] = self._getPrecedence(action)
-
-        # find best matching media file for system/game, trying each component of precedence rule in turn
-        for ruleItem in precedence:
-            # if blank, return empty list to indicate a blanked display
-            if ruleItem == 'blank':
+        # find best matching media file for system/game, trying each chunk of precedence rule in turn
+        for ruleChunk in precedence:
+            # if `blank`, return empty list to indicate a blanked display
+            if ruleChunk == 'blank':
                 return []
-            # if using scraped image just return its path
-            if ruleItem == 'scraped':
-                imagePath: str = params.get('ImagePath', '')
-                log.debug(f"rule=scraped ImagePath={imagePath}")
-                if imagePath == '':
-                    # skip rule if no scraped image exists
-                    continue
-                else:
-                    return [imagePath]
-            # skip unrecognised rules
-            if ruleItem not in self._GLOB_PATTERNS:
-                log.warning(f"skipped unrecognised rule name '{ruleItem}'")
-                continue
-            # insert event params into rule's glob pattern
-            globPattern: str = self._GLOB_PATTERNS[ruleItem].format(
-                gameBasename = gameBasename,
-                systemId = params.get('SystemId', '').lower(),
-                publisher = params.get('Publisher', '').lower(),
-                genre = params.get('Genre', '').lower(),
-            )
-            log.debug(f"rule={ruleItem} globPattern={globPattern}")
-            # find media files matching this glob pattern
-            files: List[str] = self._getMediaMatching(globPattern)
+            # split complex rules e.g. `rom+scraped+publisher` into subchunks
+            # combine all found media into a single list
+            files: List[str] = []
+            for subChunk in ruleChunk.split('+'):
+                subChunkFiles = self._getMediaForRuleChunk(subChunk, evParams)
+                log.debug(f"subChunk={subChunk} subChunkFiles={subChunkFiles}")
+                files += subChunkFiles
+            # if matching files were found for this chunk, return them
             if files:
-                # if matching files were found, stop searching & return them
                 return files
-        # if no other suitable files found, return a list containing just the default image
-        return [f"{config.get(self._CONFIG_SECTION, 'base_path')}/{config.get(self._CONFIG_SECTION, 'default_image')}"]
+        # if no matching files were found for any rule chunk, return the default image as a last resort
+        else:
+            return [f"{config.get(self._CONFIG_SECTION, 'base_path')}/{config.get(self._CONFIG_SECTION, 'default_image')}"]
 
 
     def getStartupMedia(self) -> List[str]:
@@ -280,8 +296,8 @@ class Slideshow(object):
     
     def _runCmd(self, cmd: List[str], waitForExit: bool = False, timeout: float = 0) -> bool:
         '''Run external command
-            :params waitForExit: if True waits for command to complete, otherwise returns immediately
-            :params timeout: how long to wait for command to complete (seconds)
+            :param waitForExit: if True waits for command to complete, otherwise returns immediately
+            :param timeout: how long to wait for command to complete (seconds)
             :returns bool: True if command launched successfully, or False otherwise
         '''
         log.debug(f"cmd={cmd}")
@@ -339,7 +355,7 @@ class Slideshow(object):
 
     def _doRun(self, mediaPaths: List[str]):
         '''Thread worker: loop image/video slideshow for ever until `stop()` called or SIGTERM signal received
-            :params mediaPaths: list of full paths to media files to show
+            :param mediaPaths: list of full paths to media files to show
         '''
         self._exitSignalled.clear()
         while not self._exitSignalled.is_set():
@@ -495,10 +511,10 @@ class EventHandler(object):
     def _hasStateChanged(self, newAction: str, evParams: Dict[str, str], changeOn: str, noChangeOn:str) -> bool:
             '''Determine if EmulationStation's state has changed enough for us to change displayed media.
                 Follows rules defined in config file.
-                :params newAction: EmulationStation action
-                :params evParams: dict of EmulationStation event params
-                :params changeOn: rule specifying when to change state
-                :params noVhangeOn: rule specifying which actions do not change state
+                :param newAction: EmulationStation action
+                :param evParams: dict of EmulationStation event params
+                :param changeOn: rule specifying when to change state
+                :param noVhangeOn: rule specifying which actions do not change state
                 :returns bool: True if state has changed
             '''
             newSystem: str = evParams.get('SystemId', '')

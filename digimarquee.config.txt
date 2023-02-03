@@ -28,7 +28,7 @@ base_path = /recalbox/share/digimarquee/media
 # no other media files could be found
 default_image = default.png
 
-## Media search precedence rules#
+## Media search precedence rules ##
 #
 # For each EmulationStation action, specify the order to search for media.
 #
@@ -40,7 +40,7 @@ default_image = default.png
 # * sleep - EmulationStation has entered sleep mode
 # * wakeup - EmulationStation was woken up after sleep
 #
-# Rule meanings:
+# Rule components (chunks):
 # * rom: ROM-specific media e.g. marquee image for the selected game
 # * scraped: the selected game's scraped image
 # * publisher: media relating to the publisher of game e.g. Atari or Taito banner
@@ -48,6 +48,10 @@ default_image = default.png
 # * system: media relating to game system e.g. Sinclair Spectrum or SNES banner
 # * generic: generic media unrelated to a game, system or publisher
 # * blank: blank the display e.g. when EmulationStation goes to sleep
+#
+# Rule components can be combined at the same precedence with + character
+# e.g.  `rungame = rom+publisher+system genre scraped generic`
+# will first try to locate media for rom, publisher and system and show them all.
 #
 # Note: ignore the `endgame` and `wakeup` actions as EmulationStation
 # sends another action immediately after
