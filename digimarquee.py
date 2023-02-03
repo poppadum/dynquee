@@ -381,7 +381,7 @@ class Slideshow(object):
             name = 'slideshow_thread',
             target = self._doRun,
             args = (imgPaths,),
-            daemon = True # terminate slideshow on exit: don't leave an orphan process
+            daemon = True # terminate slideshow thread on exit
         )
         self._workerThread.start()
 
@@ -470,7 +470,9 @@ class EventHandler(object):
     def startup(self):
         '''Show slideshow of startup files'''
         mediaPaths: List[str] = self._mm.getStartupMedia()
-        self._sl.run(mediaPaths)
+        log.info(f"startup slideshow media={mediaPaths}")
+        if mediaPaths:
+            self._sl.run(mediaPaths)
 
 
     def _updateState(self, action: str, evParams: Dict[str, str]):

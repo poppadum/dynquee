@@ -2,15 +2,16 @@
 *.pyc
 .mypy_cache/
 
-# generated pid file
-digimarquee.pid
-
 # exclude generated files in media/system
 media/system/
 media/publisher/
 
 # exclude artwork fetched from gitlab
 artwork/recalbox-next/
+
+# exclude media files personal to me
+media/generic/astrocade.*.png
+media/startup/astrocade.*.png
 
 
 # temp
