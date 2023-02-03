@@ -5,8 +5,7 @@
 import unittest, os, logging, threading, time, random
 from digimarquee import MQTTSubscriber, MediaManager, EventHandler, Slideshow, log, config
 
-# only log warnings and errors when running tests
-# log.setLevel(logging.INFO)
+# uncomment for debug output
 # log.setLevel(logging.DEBUG)
 
 

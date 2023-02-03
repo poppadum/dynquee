@@ -1,23 +1,21 @@
 #!/usr/bin/python3
 
-import subprocess, signal, logging, os, glob, random, time
+import subprocess, signal, logging, logging.config, os, glob, random, time
 from configparser import ConfigParser
 from threading import Thread, Event
 import paho.mqtt.client as mqtt
 from queue import SimpleQueue
 from typing import ClassVar, Dict, List, Tuple, Optional
 
-def getLogger(logLevel: int, **kwargs) -> logging.Logger:
-    '''Module logger
-        :param int logLevel: events at this level or more serious will be logged
-        :returns: an instance of logging.Logger
+
+# Module logging config file
+_LOG_CONFIG_FILE: str = "digimarquee.log.conf"
+
+def getLogger() -> logging.Logger:
+    '''Get module logger
+        :returns: a logging.Logger instance for this module
     '''
-    logging.basicConfig(
-        format = '%(asctime)s %(levelname)s %(funcName)s():%(lineno)d %(message)s',
-        datefmt = '%H:%M:%S',
-        level = logLevel,
-        **kwargs
-    )
+    logging.config.fileConfig(_LOG_CONFIG_FILE)
     return logging.getLogger(__name__)
 
 
@@ -31,13 +29,13 @@ def loadConfig() -> ConfigParser:
         2. module directory
         3. current directory
     '''
-    config: ConfigParser = ConfigParser(empty_lines_in_values = False)
+    config: ConfigParser = ConfigParser(empty_lines_in_values = False, interpolation = None)
     _configFilesRead: List[str] = config.read([
         f"/boot/{_CONFIG_FILE}",
         f"{os.path.dirname(__file__)}/{_CONFIG_FILE}",
         _CONFIG_FILE
     ])
-    log.info(f"loaded config file(s): {_configFilesRead}")
+    logging.info(f"loaded config file(s): {_configFilesRead}")
     return config
 
 
@@ -137,19 +135,16 @@ class MQTTSubscriber(object):
 
 class MediaManager(object):
     '''Finds appropriate media files for an EmulationStation action using ordered search precendence rules.
-        Rules are defined for each action in [media] section of config file. Valid search rules can contain:
-        * `rom`: ROM-specific media e.g. marquee image for the selected game
-        * `scraped`: the selected game's scraped image
-        * `publisher`: media relating to the publisher of game e.g. Atari or Taito logo
-        * `genre`: media relating to genre of game e.g. shooters, platform games
-        * `system`: media relating to game system e.g. ZX Spectrum or SNES logo
-        * `generic`: generic media unrelated to a game, system or publisher
+        Rules are defined for each action in [media] section of config file; see config file for documentation.
 
-        Call `getMedia()` to return a list of media files suitable for the selected system or game.
+        Call `getMedia()` to return a list of media files suitable for the action and selected system or game.
     '''
 
     _CONFIG_SECTION: ClassVar[str] = 'media'
     "config file section for MediaManager"
+
+    _VIDEO_FILE_EXTS: ClassVar[List[str]] = ['.mp4', '.mkv']
+    "list of file extensions to be treated as video files"
 
 
     _GLOB_PATTERNS: ClassVar[Dict[str, str]] = {
@@ -168,10 +163,10 @@ class MediaManager(object):
         '''Test if specified file is a video file
             :returns: True is file is a video file, False otherwise
         '''
-        if filePath.endswith('.mp4'):
-            return True
+        for ext in cls._VIDEO_FILE_EXTS:
+            if filePath.endswith(ext):
+                return True
         return False
-        # TODO: implement properly
 
 
     def _getMediaMatching(self, globPattern: str) -> List[str]:
@@ -201,10 +196,10 @@ class MediaManager(object):
 
 
     def getMedia(self, action: str, params: Dict[str, str]) -> List[str]:
-        '''Work out which media files to display using precedence rules
+        '''Work out which media files to display for given action using precedence rules
             :params str action: EmulationStation action
             :param dict[str,str] params: a dict of event parameters
-            :returns list[str]: paths to media files, or [] if precedence rule is `blank`
+            :returns list[str]: paths to media files, or [] if precedence rule == `blank`
         '''
         log.debug(f"action={action} params={params}")
         # get game filename without directory and extension (only last extension removed)
@@ -401,7 +396,6 @@ class Slideshow(object):
 
 
 
-
 class EventHandler(object):
     '''Receives events from MQTTSubscriber, uses MediaManager to find images and Slideshow to show them'''
 
@@ -545,24 +539,21 @@ class EventHandler(object):
 
 
 
+# Read config file
+config: ConfigParser = loadConfig()
 
-# Logging setup
-# TODO: Should eventually log to /recalbox/share/system/logs/ ?
-# for now, just log to stderr
-log: logging.Logger = getLogger(logging.INFO)
+# Configure logging from log config file
+log: logging.Logger = getLogger()
 
 # Uncomment for debug output:
 #log.setLevel(logging.DEBUG)
 
 
-# Read config file
-config: ConfigParser = loadConfig()
-
-
 ### main ###
 
 if __name__ == '__main__':
+    log.info("starting")
     eh: EventHandler = EventHandler()
     eh.startup()
     eh.readEvents()
-    log.debug('exiting')
+    log.info('exiting')
