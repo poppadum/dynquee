@@ -364,6 +364,8 @@ class Slideshow(object):
                 # exit slideshow if SIGTERM received or `stop()` was called
                 if self._exitSignalled.is_set():
                     break
+                # pause between slideshow images/clips
+                self._exitSignalled.wait(timeout = config.getfloat(self._CONFIG_SECTION, 'time_between_slides'))
         # clear reference to slideshow worker thread once finished
         self._workerThread = None
     

@@ -84,6 +84,9 @@ change_on = system/game
 ###
 [slideshow]
 
+# time in seconds to pause between slideshow images/video clips
+time_between_slides = 0.25
+
 ## still images ##
 
 # path to image viewer executable & options

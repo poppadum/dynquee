@@ -76,13 +76,16 @@ no_change_on = endgame wakeup
 # * system/game - a change of EITHER selected system OR game changes marquee
 # * never - marquee never changes but stays on startup media
 #
-change_on = system/game
+change_on = action
 
 
 ###
 ### Slideshow settings ###
 ###
 [slideshow]
+
+# time in seconds to pause between slideshow images/video clips
+time_between_slides = 0.5
 
 ## still images ##
 
