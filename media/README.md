@@ -4,6 +4,8 @@
 
 - `default.png`: crop/resize of built-in Recalbox logo
 
+- `startup/startup.01.png`: default startup image. Reuses elements of Recalbox startup screen
+
 - `system/*.png`: system logos and banners. Includes
     - system logos from [`recalbox-next`](https://gitlab.com/recalbox/recalbox-themes/-/tree/master/themes/recalbox-next) theme
     - platform logos from [Dan Patrick's v2 Platform Logos](https://archive.org/details/console-logos-professionally-redrawn-plus-official-versions)
