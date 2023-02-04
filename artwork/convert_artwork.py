@@ -6,6 +6,7 @@
 
 import os, logging, subprocess, re
 import cairosvg  # type: ignore  # suppress mypy 'missing typehints for cairosvg' error
+from pathlib import Path
 from typing import List
 
 # Uncomment for DEBUG
@@ -142,10 +143,12 @@ def convertDanPatrick(inPath: str, outPath: str, dryrun: bool = False) -> None:
 
                     outFullPath: str = getUniqueFilename(f"{outPath}/{cat}", basename, 'png')
                     print(f"converting '{inPath}/{cat}/{image.name}' -> {outFullPath}")
-                    if not dryrun: _convertToPNG(
-                        infile = f"{inPath}/{cat}/{image.name}",
-                        outfile = outFullPath
-                    )
+                    if not dryrun:
+                        _convertToPNG(
+                            infile = f"{inPath}/{cat}/{image.name}",
+                            outfile = outFullPath
+                        )
+                        _addBorder(outFullPath)
         it.close()
 
 
@@ -177,7 +180,7 @@ def getUniqueFilename(dir: str, basename: str, ext: str) -> str:
 ### main ###
 if __name__ == '__main__':
     # BASEDIR = top-level project directory
-    BASEDIR: str = os.path.dirname(__file__)
+    BASEDIR: str = Path(__file__).resolve().parents[1]
     logging.debug(f"BASEDIR={BASEDIR}")
 
     convertTheme(
@@ -189,5 +192,5 @@ if __name__ == '__main__':
     convertDanPatrick(
         inPath = f"{BASEDIR}/artwork/Dan_Patrick_v2_platform_logos",
         outPath = f"{BASEDIR}/media",
-        dryrun = True
+        dryrun = False
     )
