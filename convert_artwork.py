@@ -9,49 +9,52 @@ import cairosvg  # type: ignore  # suppress mypy 'missing typehints for cairosvg
 from typing import List
 
 # Uncomment for DEBUG
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 
 # preferred output sizing
 OUT_WIDTH: int = 1280
 OUT_HEIGHT: int = 360
 
+BORDER_WIDTH: int = 10
+BORDER_HEIGHT: int = 10
+
 # preferred region: eu, us or jp
 REGION:str  = 'eu'
 
 
-# Recalbox-next logos requiring a light background
-_SYSTEMS_NEED_LIGHT_BG: List[str] = [
-    '3ds', 'amigacd32', 'amigacdtv', 'amstradcpc', 'apple2gs', 'atari800',
-    'atomiswave', 'cavestory', 'channelf', 'dreamcast', 'fds', 'gameboy',
-    'gamegear', 'gc', 'gw', 'intellivision', 'kodi', 'macintosh', 'mame',
-    'moonlight', 'msx2', 'naomi', 'naomigd', 'nds', 'neogeo', 'neogeocd',
-    'nes', 'odyssey2', 'palm', 'pc88', 'pc98', 'pcenginecd', 'pcfx',
-    'pokemini', 'ports', 'ps2', 'ps3', 'psp', 'psx', 'satellaview', 'to8',
-    'wonderswan', 'x1', 'zxspectrum'
-]
-
-
-def _convertToPNG(infile: str, outfile: str) -> None:
+def _convertToPNG(infile: str, outfile: str):
     '''Convert infile to PNG format and write to outfile'''
     cairosvg.svg2png(
         url = infile,
         write_to = outfile,
-        output_width = OUT_WIDTH,
-        output_height = OUT_HEIGHT,
+        output_width = OUT_WIDTH - (BORDER_WIDTH * 2),
+        output_height = OUT_HEIGHT - (BORDER_HEIGHT * 2),
     )
 
-def _convertTOPNGLightBackground(infile: str, outfile: str):
+def _changeImageBackground(file: str, bgColour: str):
+    '''Add a solid colour background to an image'''
     cmd: List[str] = [
-        '/usr/bin/rsvg-convert',
-        '--width', str(OUT_WIDTH), '--height', str(OUT_HEIGHT),
-        '--background-color=#444',
-        '-o', outfile,
-        infile
+        '/usr/bin/convert',
+        file,
+        '-background', bgColour,
+        '-alpha', 'remove', '-alpha', 'off',
+        file
     ]
     logging.debug(f"cmd={cmd}")
     subprocess.run(cmd)
 
+def _addBorder(file: str, border_width: int = BORDER_WIDTH, border_height: int = BORDER_HEIGHT):
+    '''Add a transparent border around an image'''
+    cmd: List[str] = [
+        '/usr/bin/convert',
+        file,
+        '-bordercolor', 'none',
+        '-border', f'{border_width}x{border_height}',
+        file
+    ]
+    logging.debug(f"cmd={cmd}")
+    subprocess.run(cmd)
 
 
 def convertTheme(inPath: str, outPath: str, dryrun: bool = False) -> None:
@@ -59,6 +62,29 @@ def convertTheme(inPath: str, outPath: str, dryrun: bool = False) -> None:
 
     # system directories to skip: virtual systems
     SKIP_SYSTEMS: List[str] = ['auto-allgames', 'auto-lastplayed', 'auto-multiplayer', 'default', 'favorites', 'imageviewer']
+
+    # Recalbox-next logos requiring a light background
+    _SYSTEMS_NEED_LIGHT_BG: List[str] = [
+        '3ds', 'amigacd32', 'amigacdtv', 'amstradcpc', 'apple2gs', 'atari800',
+        'atomiswave', 'cavestory', 'channelf', 'dreamcast', 'fds', 'gameboy',
+        'gamegear', 'gc', 'gw', 'intellivision', 'kodi', 'macintosh', 'mame',
+        'moonlight', 'msx2', 'naomi', 'naomigd', 'nds', 'neogeo', 'neogeocd',
+        'nes', 'odyssey2', 'palm', 'pc88', 'pc98', 'pcenginecd', 'pcfx',
+        'pokemini', 'ports', 'ps2', 'ps3', 'psp', 'psx', 'satellaview', 'to8',
+        'wonderswan', 'x1', 'zxspectrum'
+    ]
+
+    def convertThemeImage(systemId: os.DirEntry, infile: str, suffix: str):
+        outFile = f"{outPath}/{systemId.name}.{suffix}.png"
+        print(f"converting to {outFile}", end='')
+        if not dryrun:
+            _convertToPNG(infile, outFile)
+            if systemId.name in _SYSTEMS_NEED_LIGHT_BG:
+                print(" (light b/g)", end='')
+                _changeImageBackground(outFile, '#ccc')
+        _addBorder(outFile)
+        print('')
+
 
     # Look through all first level directories in inPath
     with os.scandir(inPath) as it:
@@ -71,15 +97,8 @@ def convertTheme(inPath: str, outPath: str, dryrun: bool = False) -> None:
                     infile: str = f"{inPath}/{systemId.name}/{dir}/logo.svg"
                     print(f'looking for {infile}: ', end = '')
                     if os.path.isfile(infile):
-                        print(f"converting to {outPath}/{systemId.name}.logo.png", end='')
-                        if not dryrun:
-                            if systemId.name in _SYSTEMS_NEED_LIGHT_BG:
-                                print(" (light b/g)", end='')
-                                _convertTOPNGLightBackground(infile, f"{outPath}/{systemId.name}.logo.png")
-                            else:
-                                _convertToPNG(infile, f"{outPath}/{systemId.name}.logo.png")
+                        convertThemeImage(systemId, infile, 'logo')
                         # found a logo: no need to look further for this system
-                        print('')
                         break
                     else:
                         print(f"not found")
