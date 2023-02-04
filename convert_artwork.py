@@ -79,7 +79,7 @@ def convertTheme(inPath: str, outPath: str, dryrun: bool = False) -> None:
         print(f"converting to {outFile}", end='')
         if not dryrun:
             _convertToPNG(infile, outFile)
-            if systemId.name in _SYSTEMS_NEED_LIGHT_BG:
+            if (suffix == 'logo') and (systemId.name in _SYSTEMS_NEED_LIGHT_BG):
                 print(" (light b/g)", end='')
                 _changeImageBackground(outFile, '#ccc')
         _addBorder(outFile)
@@ -93,15 +93,25 @@ def convertTheme(inPath: str, outPath: str, dryrun: bool = False) -> None:
             # skip non-directories and virtual systems
             if systemId.is_dir() and (systemId.name not in SKIP_SYSTEMS):
                 # look for a file named data/logo.svg, or /data/$REGION/logo.svg
+                foundSystem = False
+                # search for system logo
                 for dir in ["data", f"data/{REGION}"]:
                     infile: str = f"{inPath}/{systemId.name}/{dir}/logo.svg"
                     print(f'looking for {infile}: ', end = '')
                     if os.path.isfile(infile):
                         convertThemeImage(systemId, infile, 'logo')
-                        # found a logo: no need to look further for this system
-                        break
+                        foundSystem = True
                     else:
                         print(f"not found")
+                    # found a logo: no need to look further for this system
+                    if foundSystem: break
+                # search for console image
+                infile: str = f"{inPath}/{systemId.name}/console.svg"
+                print(f'looking for {infile}: ', end = '')
+                if os.path.isfile(infile):
+                    convertThemeImage(systemId, infile, 'console')
+                else:
+                    print(f"not found")                
         it.close()
 
 
@@ -176,8 +186,8 @@ if __name__ == '__main__':
         dryrun = False
     )
 
-    # convertDanPatrick(
-    #     inPath = f"{BASEDIR}/artwork/Dan_Patrick_v2_platform_logos",
-    #     outPath = f"{BASEDIR}/media",
-    #     dryrun = True
-    # )
+    convertDanPatrick(
+        inPath = f"{BASEDIR}/artwork/Dan_Patrick_v2_platform_logos",
+        outPath = f"{BASEDIR}/media",
+        dryrun = True
+    )
