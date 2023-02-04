@@ -12,7 +12,7 @@ topic = Recalbox/EmulationStation/Event
 keepalive = 60
 
 # path to EmulationStation's state file
-es_state_file = test/es_state.inf
+es_state_file = tests/es_state.inf
 
 
 ###
@@ -21,7 +21,7 @@ es_state_file = test/es_state.inf
 [media]
 
 # path where marquee media files are located
-base_path = test/media
+base_path = tests/media
 
 # Path to default image relative to BASE_PATH
 # This is used as a media file of last resort, in case

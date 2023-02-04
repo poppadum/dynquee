@@ -35,7 +35,7 @@ class MockMQTTSubscriber(MQTTSubscriber):
         log.info(f"generate action {action}")
         return action
 
-@unittest.skip('temp')
+
 class TestMQTTSubscriber(unittest.TestCase):
     '''unit tests for MQTTSubscriber'''
 
@@ -52,7 +52,7 @@ class TestMQTTSubscriber(unittest.TestCase):
         self.assertEqual(config.get('recalbox', 'host'), '127.0.0.1')
         self.assertEqual(config.getint('recalbox', 'port'), 1883)
         self.assertEqual(config.getint('recalbox', 'keepalive'), 60)
-        self.assertEqual(config.get('recalbox', 'ES_STATE_FILE'), 'test/es_state.inf')
+        self.assertEqual(config.get('recalbox', 'ES_STATE_FILE'), 'tests/es_state.inf')
 
     
     def test_getEventParams(self):
@@ -115,18 +115,18 @@ class TestMediaManager(unittest.TestCase):
     def tearDown(self):
         del(self.mm)
 
-    @unittest.skip('temp')
+    
     def test_configLoaded(self):
-        self.assertEqual(config.get('media', 'BASE_PATH'), 'test/media')
+        self.assertEqual(config.get('media', 'BASE_PATH'), 'tests/media')
         self.assertEqual(config.get('media', 'default_image'), 'default.png')
 
-    @unittest.skip('temp')
+    
     def test_getMediaMatching(self):
         '''test that glob patterns work as expected'''
         self.assertEqual(self.mm._getMediaMatching('XXXXXXX'), [])
-        self.assertEqual(self.mm._getMediaMatching('default.*'), ['test/media/default.png'])
+        self.assertEqual(self.mm._getMediaMatching('default.*'), ['tests/media/default.png'])
 
-    @unittest.skip('temp')
+    
     def test_getPrecedence(self):
         self.assertEqual(self.mm._getPrecedence('default'), ['generic'])
         self.assertEqual(self.mm._getPrecedence('__NOT_FOUND'), ['generic'])
@@ -145,7 +145,7 @@ class TestMediaManager(unittest.TestCase):
                     'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'
                 }
             ),
-            ['test/media/mame/chasehq.png']
+            ['tests/media/mame/chasehq.png']
         )
         # publisher media
         self.assertEqual(
@@ -155,7 +155,7 @@ class TestMediaManager(unittest.TestCase):
                     'SystemId': 'mame', 'GamePath': '/recalbox/share_init/roms/mame/UNKNOWN.zip', 'Publisher': 'Taito'
                 }
             ),
-            ['test/media/publisher/taito.png']
+            ['tests/media/publisher/taito.png']
         )
         # scraped game image: should return imagePath
         self.assertEqual(
@@ -175,7 +175,7 @@ class TestMediaManager(unittest.TestCase):
                     'SystemId': 'UNKNOWN', 'GamePath': '/recalbox/share_init/roms/_/UNKNOWN.zip', 'Genre': 'Shooter'
                 }
             ),
-            ['test/media/genre/shooter.png']
+            ['tests/media/genre/shooter.png']
         )
         # generic
         self.assertEqual(
@@ -183,7 +183,7 @@ class TestMediaManager(unittest.TestCase):
                 action = 'rungame',
                 evParams = {'SystemId': 'UNKNOWN'}
             ),
-            ['test/media/generic/generic01.mp4']
+            ['tests/media/generic/generic01.mp4']
         )
         # test ROM it won't know: should return generic media file
         self.assertEqual(
@@ -191,7 +191,7 @@ class TestMediaManager(unittest.TestCase):
                 action = 'gamelistbrowsing',
                 evParams = {'SystemId': 'UNKNOWN', 'GamePath': 'XXXX'}
             ),
-            ['test/media/generic/generic01.mp4']
+            ['tests/media/generic/generic01.mp4']
         )
 
         # test complex rule chunk
@@ -203,13 +203,14 @@ class TestMediaManager(unittest.TestCase):
                     'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'
                 }
             ),
-            ['test/media/mame/chasehq.png', 'test/media/publisher/taito.png']
+            ['tests/media/mame/chasehq.png', 'tests/media/publisher/taito.png']
         )
 
-    @unittest.skip('temp')
+    
     def test_getStartupMedia(self):
         startupMedia = self.mm.getStartupMedia()
-        self.assertEqual(startupMedia, ['test/media/startup/startup01.png', 'test/media/startup/welcome.mp4'])
+        self.assertEqual(startupMedia, ['tests/media/startup/startup01.png', 'tests/media/startup/welcome.mp4'])
+
 
 
 class MockEventHandler(EventHandler):
@@ -223,7 +224,6 @@ class MockEventHandler(EventHandler):
         self._currentGame = None
 
 
-@unittest.skip('temp')
 class TestEventHandler(unittest.TestCase):
     '''unit tests for TestHandler'''
 
@@ -353,7 +353,7 @@ class TestEventHandler(unittest.TestCase):
 
 
 
-    @unittest.skip('method not suitable for unit testing')
+    @unittest.skip('method not suitable for unit testing; TODO: refactor into 2 or more methods')
     def test_handleEvent(self):
         #test systembrowsing
         with self.assertLogs(log, level=logging.INFO) as cm:
@@ -364,7 +364,7 @@ class TestEventHandler(unittest.TestCase):
                 }
             )
         print(f"\n{cm.output}\n")
-        self.assertEqual(cm.output, ["INFO:digimarquee:EmulationStation state changed: action=systembrowsing system=mame game=", "INFO:digimarquee:new slideshow media=['test/media/generic/generic01.mp4']"])
+        self.assertEqual(cm.output, ["INFO:digimarquee:EmulationStation state changed: action=systembrowsing system=mame game=", "INFO:digimarquee:new slideshow media=['tests/media/generic/generic01.mp4']"])
 
 
         #still systembrowsing - should not change slideshow
@@ -383,7 +383,7 @@ class TestEventHandler(unittest.TestCase):
                     'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'
                 }
             )
-        self.assertEqual(cm.output, ['INFO:digimarquee:EmulationStation state changed: action=gamelistbrowsing system=mame game=/recalbox/share_init/roms/mame/chasehq.zip', "INFO:digimarquee:new slideshow media=['test/media/generic/generic01.mp4']"])
+        self.assertEqual(cm.output, ['INFO:digimarquee:EmulationStation state changed: action=gamelistbrowsing system=mame game=/recalbox/share_init/roms/mame/chasehq.zip', "INFO:digimarquee:new slideshow media=['tests/media/generic/generic01.mp4']"])
 
         #still gamelistbrowsing - should not change slideshow
         self.eh._handleEvent(
@@ -401,7 +401,7 @@ class TestEventHandler(unittest.TestCase):
                     'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'
                 }
             )
-        self.assertEqual(cm.output, ['INFO:digimarquee:EmulationStation state changed: action=rungame system=mame game=/recalbox/share_init/roms/mame/chasehq.zip', "INFO:digimarquee:new slideshow media=['test/media/mame/chasehq.png']"])
+        self.assertEqual(cm.output, ['INFO:digimarquee:EmulationStation state changed: action=rungame system=mame game=/recalbox/share_init/roms/mame/chasehq.zip', "INFO:digimarquee:new slideshow media=['tests/media/mame/chasehq.png']"])
 
         # test rungame with only publisher image available
         with self.assertLogs(log, level=logging.INFO) as cm:
@@ -411,4 +411,4 @@ class TestEventHandler(unittest.TestCase):
                     'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/bublbobl.zip', 'Publisher':'Taito'
                 }
             )
-        self.assertEqual(cm.output, ['INFO:digimarquee:EmulationStation state changed: action=rungame system=mame game=/recalbox/share_init/roms/mame/bublbobl.zip', "INFO:digimarquee:new slideshow media=['test/media/publisher/taito.png']"])
+        self.assertEqual(cm.output, ['INFO:digimarquee:EmulationStation state changed: action=rungame system=mame game=/recalbox/share_init/roms/mame/bublbobl.zip', "INFO:digimarquee:new slideshow media=['tests/media/publisher/taito.png']"])
