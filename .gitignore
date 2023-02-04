@@ -13,7 +13,9 @@ artwork/recalbox-next/
 media/generic/astrocade.*.png
 media/startup/astrocade.*.png
 
-
+# personal sync script
+sync_to_pi.sh
+    
 # temp
 media/tft_logos
 examples/
