@@ -155,7 +155,7 @@ class MediaManager(object):
         'generic': "generic/*",
         'startup': "startup/*" # files to show on startup
     }
-    "Glob patterns to find media files for each search rule component"
+    "Glob patterns to find media files for each search term"
 
 
     @classmethod
@@ -195,37 +195,37 @@ class MediaManager(object):
         return precedence
 
 
-    def _getMediaForRuleChunk(self, ruleChunk: str, evParams: Dict[str, str]) -> List[str]:
+    def _getMediaForSearchTerm(self, searchTerm: str, evParams: Dict[str, str]) -> List[str]:
         '''Locate media matching a single component of a search rule. See config file
-            for list of valid rule components.
-            :param ruleChunk: the search rule component
+            for list of valid search terms.
+            :param searchTerm: the search term
             :param params: a dict of event parameters
             :returns: list of paths to media files, or [] if precedence rule == `blank`
         '''
-        # if rule chunk is `scraped` just return scraped image path (if set)
-        if ruleChunk == 'scraped':
+        # if search term is `scraped` just return scraped image path (if set)
+        if searchTerm == 'scraped':
             imagePath: str = evParams.get('ImagePath', '')
             log.debug(f"rule part=scraped ImagePath={imagePath}")
             if imagePath == '':
                 return []
             else:
                 return [imagePath]
-        # skip unrecognised rule chunks
-        if ruleChunk not in self._GLOB_PATTERNS:
-            log.warning(f"skipped unrecognised rule chunk '{ruleChunk}'")
+        # skip unrecognised search terms
+        if searchTerm not in self._GLOB_PATTERNS:
+            log.warning(f"skipped unrecognised search term '{searchTerm}'")
             return []
         # get game filename without directory and extension (only last extension removed)
         gameBasename: str = os.path.splitext(os.path.basename(evParams.get('GamePath', '')))[0]
         log.debug(f"gameBasename={gameBasename}")
-        # insert event params into rule chunk's glob pattern
-        globPattern: str = self._GLOB_PATTERNS[ruleChunk].format(
+        # insert event params into search term's glob pattern
+        globPattern: str = self._GLOB_PATTERNS[searchTerm].format(
             gameBasename = gameBasename,
             systemId = evParams.get('SystemId', '').lower(),
             publisher = evParams.get('Publisher', '').lower(),
             genre = evParams.get('Genre', '').lower(),
         )
-        log.debug(f"ruleChunk={ruleChunk} globPattern={globPattern}")
-        # find media files matching this glob pattern, if any
+        log.debug(f"searchTerm={searchTerm} globPattern={globPattern}")
+        # return media files matching this glob pattern, if any
         return self._getMediaMatching(globPattern)
 
 
@@ -238,23 +238,23 @@ class MediaManager(object):
         '''
         log.debug(f"action={action} params={evParams}")
         # get search precedence rule for this action
-        precedence: List[str] = self._getPrecedence(action)
-        # find best matching media file for system/game, trying each chunk of precedence rule in turn
-        for ruleChunk in precedence:
+        precedenceRule: List[str] = self._getPrecedence(action)
+        # find best matching media file for system/game, trying each search term of precedence rule in turn
+        for searchTerm in precedenceRule:
             # if `blank`, return empty list to indicate a blanked display
-            if ruleChunk == 'blank':
+            if searchTerm == 'blank':
                 return []
-            # split complex rules e.g. `rom+scraped+publisher` into subchunks
+            # split complex terms e.g. `rom+scraped+publisher` into subterms
             # combine all found media into a single list
             files: List[str] = []
-            for subChunk in ruleChunk.split('+'):
-                subChunkFiles = self._getMediaForRuleChunk(subChunk, evParams)
-                log.debug(f"subChunk={subChunk} subChunkFiles={subChunkFiles}")
-                files += subChunkFiles
-            # if matching files were found for this chunk, return them
+            for subTerm in searchTerm.split('+'):
+                subTermFiles = self._getMediaForSearchTerm(subTerm, evParams)
+                log.debug(f"subTerm={subTerm} subTermFiles={subTermFiles}")
+                files += subTermFiles
+            # if matching files were found for this term, return them
             if files:
                 return files
-        # if no matching files were found for any rule chunk, return the default image as a last resort
+        # if no matching files were found for any search term, return the default image as a last resort
         else:
             return [f"{config.get(self._CONFIG_SECTION, 'base_path')}/{config.get(self._CONFIG_SECTION, 'default_image')}"]
 
@@ -268,7 +268,7 @@ class MediaManager(object):
 
 
 class Slideshow(object):
-    '''Display slideshow of images on the marquee; runs in a separate thread.
+    '''Display slideshow of images/videos on the marquee; runs in a separate thread.
         Use `run()` to start slideshow, `stop()` to stop
     '''
 
@@ -284,7 +284,7 @@ class Slideshow(object):
         self._timeout = timeout
         "how long to wait for external processes to complete (seconds)"
         self._exitSignalled: Event = Event()
-        "indicates whether slideshow exit was requested"
+        "indicates whether slideshow loop should exit"
         self._workerThread: Optional[Thread] = None
         "slideshow worker thread"
         self._subProcess: Optional[subprocess.Popen] = None
@@ -401,14 +401,14 @@ class Slideshow(object):
 
     def stop(self):
         '''Stop the slideshow'''
-        log.debug("Slideshow stop requested")
+        log.debug("slideshow stop requested")
         self._exitSignalled.set()
         self.stopVideo()
         self.clearImage()
 
 
     def _sigHandler(self, signum: int, _stackframe):
-        '''Called when SIGTERM or SIGCHLD received'''
+        '''Called when SIGTERM received'''
         log.info(f'received signal {signal.Signals(signum).name}')
         self._exitSignalled.set()
 
@@ -422,10 +422,10 @@ class EventHandler(object):
 
     
     def __init__(self):
-        self._ms: MQTTSubscriber = MQTTSubscriber()
-        self._mm: MediaManager = MediaManager()
-        self._sl: Slideshow = Slideshow()
-        self._ms.start()
+        self._mqttSubscriber: MQTTSubscriber = MQTTSubscriber()
+        self._mediaManager: MediaManager = MediaManager()
+        self._slideshow: Slideshow = Slideshow()
+        self._mqttSubscriber.start()
         # initialise record of EmulationStation state
         self._currentAction = None
         self._currentSystem = None
@@ -435,7 +435,7 @@ class EventHandler(object):
     def readEvents(self):
         '''Read and handle all events from the MQTTSubscriber'''
         while True:
-            event: str = self._ms.getEvent()
+            event: str = self._mqttSubscriber.getEvent()
             
 
             # TODO: handle ES exit cleanly
@@ -445,7 +445,7 @@ class EventHandler(object):
             if not event or event == 'quit':
                 break
             log.debug(f'event received: {event}')
-            params: Dict[str, str] = self._ms.getEventParams()
+            params: Dict[str, str] = self._mqttSubscriber.getEventParams()
             self._handleEvent(params.get('Action'), params)
 
 
@@ -466,28 +466,29 @@ class EventHandler(object):
             return
         log.info(f"EmulationStation state changed: action={action} system={self._currentSystem} game={self._currentGame}")
         # search for media files
-        mediaPaths: List[str] = self._mm.getMedia(action, evParams)
+        mediaPaths: List[str] = self._mediaManager.getMedia(action, evParams)
         # if no files returned, blank display
-        # Note: should only happen if 'blank' found in predence rule; MediaManager.getMedia() always returns default image as last resort
+        # Note: should only happen if 'blank' found in predence rule;
+        # MediaManager.getMedia() always returns default image as last resort
         if not mediaPaths:
-            self._sl.stop()
+            self._slideshow.stop()
             log.info("'blank' specified in search precedence rule: clearing display")
         else:
             # display media slideshow
             log.info(f'new slideshow media={mediaPaths}')
             # stop existing slideshow if running
-            self._sl.stop()
+            self._slideshow.stop()
             time.sleep(0.2)
             # start new slideshow
-            self._sl.run(mediaPaths)
+            self._slideshow.run(mediaPaths)
 
 
     def startup(self):
         '''Show slideshow of startup files'''
-        mediaPaths: List[str] = self._mm.getStartupMedia()
+        mediaPaths: List[str] = self._mediaManager.getStartupMedia()
         log.info(f"startup slideshow media={mediaPaths}")
         if mediaPaths:
-            self._sl.run(mediaPaths)
+            self._slideshow.run(mediaPaths)
 
 
     def _updateState(self, action: str, evParams: Dict[str, str]):
@@ -571,7 +572,7 @@ log: logging.Logger = getLogger()
 
 if __name__ == '__main__':
     log.info("starting")
-    eh: EventHandler = EventHandler()
-    eh.startup()
-    eh.readEvents()
+    eventHandler: EventHandler = EventHandler()
+    eventHandler.startup()
+    eventHandler.readEvents()
     log.info('exiting')
