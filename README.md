@@ -1,17 +1,15 @@
-<!-- PROJECT LOGO -->
-<div align="center">
-
 ![digimarquee startup image][project-image]
 # digimarquee
-A digital marquee for [Recalbox]
+A dynamic digital marquee for [Recalbox]
 
-</div>
 
+> **TODO**:
+> - make banner without Recalbox logo and ghost
+> - add video of it working?
 
 ## Contents
-- [Contents](#contents)
 - [About digimarquee](#about-digimarquee)
-- [Getting started](#getting-started)
+- [Getting Started](#getting-started)
 - [Usage](#usage)
 - [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
@@ -24,45 +22,48 @@ A digital marquee for [Recalbox]
 ## About digimarquee
 
 ### What Is It?
-A program to run a digital marquee for [Recalbox] on a second display connected via HDMI
+A program to run a digital marquee for [Recalbox] on a second display connected via HDMI, similar to the [PiMarquee2][pimarquee2] project for [Retropie][retropie].
 
 ### Why?
-I was building a bartop arcade machine and I wanted to have a dynamic marquee which could change depending on what game system was selected and what game was being played.
+I was building a bartop arcade machine and I wanted to have a dynamic marquee which could change depending on which game system was selected and which game was being played.
 
 I knew I wanted my arcade to run [Recalbox] and I already had a Pi4 to run it on. As the Pi4 has dual HDMI outputs I wanted to drive the marquee from the second HDMI output. 
 
-The marquee display I had in mind was an [ultrawide 19" 1920x360 LED panel][DV190FBM] which is the perfect size for my build. Unfortunately it was a bit expensive so I settled for a [cheaper 14.9" TN panel][LTA149B780F] available on Amazon and ebay.
+The marquee display I had in mind was an [ultrawide 19" 1920x360 LED panel][DV190FBM] which is the perfect size for my build. Unfortunately it's quite expensive so I may have to settle for a [cheaper 14.9" TN panel][LTA149B780F] available from Amazon or ebay.
 
-This project is my (more or less successful) attempt to get my digital marquee up and running.
+For testing I used a spare 19" TV running at 720p resolution.
+
+This project is my attempt to get a dynamic marquee working with [Recalbox].
 
 ### Goals
-- work with Recalbox's installed software
+I wanted a solution which would be:
+- minimal: work with Recalbox's environment, ideally needing no extra software to be installed
 - flexible: allow most settings to be changed via a config file
-- reliable
+- reactive: change the marquee in response to user actions
 
 
 ### Requirements
-- [Recalbox]
+- [Recalbox] v8.1.1 Electron or later
 - a Raspberry [Pi 4B][pi4] or [Pi400][pi400] with dual HDMI outputs
-- a second display for your marquee connected to the Pi's second HDMI port
+- a second display connected to the Pi's second HDMI port
 
 It should be possible to get *digimarquee* running on a separate device (e.g. a [Pi Zero][pi-zero]) that just drives the marquee.
-You will need to tweak Recalbox's MQTT setup to allow incoming connections from the local network.
+You would need to tweak Recalbox's MQTT setup to allow incoming connections from the local network.
 
-**TODO**:
-- try it out, provide instructions
-- which file to edit
+> **TODO**:
+> - try it out, provide instructions
+> - which file to edit
 
 
 ### How Does It Work?
 It works very like [Recalbox]'s built-in mini TFT support:
 it writes direct to the framebuffer using `fbv2` for still images and `ffmpeg` for videos.
 
-With the Pi4's KMS graphics driver (which Recalbox v8.1.1 uses), both HDMI displays share a single framebuffer, so marquee images are also visible on the primary display when Emulation Station launches an emulator.
+With the Pi4's default KMS graphics driver both HDMI displays share a single framebuffer, so marquee images are also visible on the primary display for a second or two when Emulation Station launches an emulator.
 
-It's a bit of a kludge but it doesn't seem to break anything so I'm happy enough with it.
+While this is a bit annoying, it doesn't seem to break anything so I'm happy enough with it.
 
-*digimarquee* is mostly written in [Python](https://www.python.org/)3 with a couple of helper shell scripts.
+*digimarquee* is mostly written in Python3.
 
 ---
 
@@ -70,13 +71,16 @@ It's a bit of a kludge but it doesn't seem to break anything so I'm happy enough
 Steps to get *digimarquee* running on Recalbox:
 
 - download the latest project release (**TODO**: link here)
-- copy to your Recalbox
+- extract the archive and copy it to your Recalbox
   - ftp or rsync
+  - or direct to SD card
   - files live in `/recalbox/share/digimarquee`
-- copy init script `S32digimarquee` to `/etc/init.d`
+- copy init script `S32digimarquee` to `/etc/init.d` and make it executable
 - reboot
 
-**TODO**: provide a setup script?
+>  **TODO**:
+>  - provide a setup script
+>  - probably best to ssh into pi, `wget` archive and run setup script
 
 Releases include some media files to get started (see [acknowledgements](#acknowledgements)) but is not a complete set. See the [media README][media-readme] for suggestions of where to find media files.
 
@@ -84,17 +88,19 @@ Releases include some media files to get started (see [acknowledgements](#acknow
 ## Usage
 Most settings can be configured in the config file [`digimarquee.config.txt`](digimarquee.config.txt).
 
-For each [EmulationStation][emulationstation] action, the config file defines a search precedence rule: an ordered list of where to search for media (called `chunks` - must be a better name for this).
+For each [EmulationStation][emulationstation] action, the config file defines a search precedence rule: an ordered list of search terms indicting where to search for media files.
 
-If no files match a search chunk *digimarquee* moves on to next chunk.
+If no files match a search term *digimarquee* moves on to the next term.
 That way you can specify which media files to show in order of priority.
 
 For example, when an arcade game is launched, we can get *digimarquee* to:
-1. search for the game's marquee
-1. if not found, search for the game's publisher's banner
+1. search for the game's marquee image
+1. if not found, search for the game publisher's banner
 1. if not found, search for a generic arcade banner
 
-For full details please see the `[media]` section of the config file [`digimarquee.config.txt`](digimarquee.config.txt)
+For full details please see the comments in the `[media]` section of the config file [`digimarquee.config.txt`](digimarquee.config.txt).
+
+All media files that match a successful search term are displayed in a random order as a slideshow that loops continuously. How long each image or video is shown can be adjusted in the `[slideshow]` section of the config file.
 
 
 ### Filename Matching
@@ -104,7 +110,8 @@ Searching for media files works as follows:
     - e.g. `Sonic The Hedgehog` becomes `sonic.the.hedgehog`
 
 
-**TODO**: should spaces be converted? Everwhere else in Recalbox e.g. p2k config the name without extension is used.
+> **TODO**: 
+> should spaces be converted? Everwhere else in Recalbox e.g. p2k config the name without extension is used. Could just make glob match case-insensitive?
 
 
 1. Names are then matched against the beginning of media filenames.
@@ -118,11 +125,11 @@ If for some reason you want to store them somewhere else, change the `base_path`
 
 Place your media files in the appropriate subdirectory (look at the included files for examples):
 
-- game-specific media go in the appropriate system directory
+- *game-specific* media go in the appropriate system directory
     - e.g. for the arcade version of [Defender], put your file in `mame/` & name it `defender.<something>` e.g. `defender.01.png`
 
 - `system/` is for game system media (e.g. console logos);
-the file name must start with EmulationStation's internal system name (use the same name as in `/recalbox/share/roms/`)
+the file name must start with EmulationStation's internal system name (use the same names as in `/recalbox/share/roms/`)
     - e.g. for a [Sinclair Spectrum][spectrum] logo, name the file `zxspectrum.<something>` e.g. `zxspectrum.logo.png`
 
 - `publisher/` is for publisher banners & logos
@@ -143,13 +150,13 @@ Media is resized to fit the screen but the closer you can match the aspect ratio
 Contributions of suitable marquee images and video clips are welcome.
 Please include links to the originals so I can acknowledge the creator.
 
-Bug fixes, improvements, documentation, & translations welcome.
+Bug reports/fixes, improvements, documentation, & translations are also welcome.
 
 
 ## Acknowledgements
-For convenience I have included some starter images collected from various sources.
-These are not my own work: credit remains with the original authors.
-See the [artwork README file][artwork-readme] for full details of where I got them.
+For convenience, releases include some starter images collected from various sources.
+These are not my  work: credit remains with the original authors.
+See the [artwork README file][artwork-readme] for sources.
 
 
 ## To Do
@@ -176,6 +183,8 @@ BSD Licence - do what you like?
 [pi4]: https://www.raspberrypi.com/products/raspberry-pi-4-model-b/
 [pi400]: https://www.raspberrypi.com/products/raspberry-pi-400-unit/
 [pi-zero]: https://www.raspberrypi.com/products/raspberry-pi-zero/
+[pimarquee2]: https://github.com/losernator/PieMarquee2
 [project-image]: media/startup/startup.01.png
 [recalbox]: https://www.recalbox.com
+[retropie]: https://retropie.org.uk/
 [spectrum]: https://en.wikipedia.org/wiki/ZX_Spectrum
