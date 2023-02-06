@@ -22,7 +22,7 @@ def test_slideshowExit():
     sl = Slideshow()
     imagePaths = glob.glob('./media/mame/*.png')
     imagePaths += ['./media/default.png']   
-    sl.run(imgPaths = imagePaths)
+    sl.run(imagePaths)
    
     # capture output
     out = io.StringIO()
@@ -47,7 +47,7 @@ def test_slideshow():
     sl = Slideshow()
     imagePaths = glob.glob('./media/mame/*')
     imagePaths += ['./media/default.png']   
-    sl.run(imgPaths = imagePaths)
+    sl.run(imagePaths)
     time.sleep(60)
     sl.stop()
 
