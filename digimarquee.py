@@ -4,7 +4,7 @@ import subprocess, signal, logging, logging.config, os, glob, random, time
 from configparser import ConfigParser
 from threading import Thread, Event
 import paho.mqtt.client as mqtt
-from queue import SimpleQueue
+from queue import SimpleQueue, Empty
 from typing import ClassVar, Dict, List, Tuple, Optional
 
 
@@ -38,6 +38,17 @@ def loadConfig() -> ConfigParser:
     logging.info(f"loaded config file(s): {_configFilesRead}")
     return config
 
+
+# Module-level exit Event
+_exitEvent: Event = Event()
+"indicates if all loops should exit and program should terminate"
+
+def _sigHandler(signum: int, _stackFrame):
+    '''Called when SIGTERM received: set exit flag'''
+    _exitEvent.set()
+
+# trap SIGTERM signal to exit program gracefully
+signal.signal(signal.SIGTERM, _sigHandler)
 
 
 class MQTTSubscriber(object):
@@ -112,11 +123,17 @@ class MQTTSubscriber(object):
         self._messageQueue.put(message)
 
 
-    def getEvent(self) -> str:
+    def getEvent(self, checkInterval: Optional[float] = 5.0) -> Optional[str]:
         '''Read an event from the message queue (blocks until data is received)
-            :returns str: an event from the MQTT broker
+            :param timeout: how often to check if exit was requested (None = never check)
+            :returns: an event from the MQTT broker, or None if exit signal received while waiting
         '''
-        return self._messageQueue.get().payload.decode("utf-8")
+        while not _exitEvent.is_set():
+            try:
+                return self._messageQueue.get(timeout = checkInterval).payload.decode("utf-8")
+            except Empty:
+                pass
+        return None
 
 
     def getEventParams(self) -> Dict[str, str]:
@@ -290,10 +307,17 @@ class Slideshow(object):
         self._subProcess: Optional[subprocess.Popen] = None
         "media player/viewer subprocess"
         
+        # # trap SIGTERM signal to exit slideshow gracefully
+        # signal.signal(signal.SIGTERM, self._sigHandler)
+
+        # set initial framebuffer resolution
+        self._setFramebufferResolution()
+
+
         # trap SIGTERM signal to exit slideshow gracefully
         signal.signal(signal.SIGTERM, self._sigHandler)
 
-    
+
     def _runCmd(self, cmd: List[str], waitForExit: bool = False, timeout: float = 0) -> bool:
         '''Run external command
             :param waitForExit: if True waits for command to complete, otherwise returns immediately
@@ -373,17 +397,19 @@ class Slideshow(object):
                     self.showImage(mediaFile)
                     # if we only have 1 image, just display it and exit
                     # Note: this only works if viewer leaves image up on framebuffer like fbv
-                    if len(mediaPaths) == 1:
-                        break
+                    # if len(mediaPaths) == 1:
+                    #     break
                     self._exitSignalled.wait(timeout = self._imgDisplayTime)
                     self.clearImage()
                 # exit slideshow if SIGTERM received or `stop()` was called
+                log.debug(f"_exitSignalled={self._exitSignalled.is_set()}")
                 if self._exitSignalled.is_set():
                     break
                 # pause between slideshow images/clips
                 self._exitSignalled.wait(timeout = config.getfloat(self._CONFIG_SECTION, 'time_between_slides'))
         # clear reference to slideshow worker thread once finished
         self._workerThread = None
+        log.debug(f"worker thread exiting")
     
 
     def run(self, imgPaths: List[str]):
@@ -441,6 +467,9 @@ class EventHandler(object):
             # TODO: handle ES exit cleanly
             # doesn't exit nicely when SIGTERM
             # global signal handler for module? module level Event()?
+
+            if self._slideshow._exitSignalled.is_set():
+                break
 
             if not event or event == 'quit':
                 break
