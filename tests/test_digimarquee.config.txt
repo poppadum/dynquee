@@ -2,6 +2,13 @@
 ##### digimarquee UNIT TEST config file #####
 #####
 
+
+### Defaults : shouldn't need to be changed ###
+[DEFAULT]
+# path to top-level digimarquee directory
+digimarquee_path = /net/bungle/chris/projects/Retrocade_22/digimarquee
+
+
 ###
 ### Recalbox settings: shouldn't need to be changed ###
 ###
@@ -21,7 +28,7 @@ es_state_file = tests/es_state.inf
 [media]
 
 # path where marquee media files are located
-base_path = tests/media
+media_path = tests/media
 
 # Path to default image relative to BASE_PATH
 # This is used as a media file of last resort, in case

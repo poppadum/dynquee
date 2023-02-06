@@ -2,6 +2,13 @@
 ##### digimarquee config file #####
 #####
 
+
+### Defaults : shouldn't need to be changed ###
+[DEFAULT]
+# path to top-level digimarquee directory
+digimarquee_path = /recalbox/share/digimarquee
+
+
 ###
 ### Recalbox settings: shouldn't need to be changed ###
 ###
@@ -21,7 +28,7 @@ es_state_file = /tmp/es_state.inf
 [media]
 
 # path where marquee media files are located
-base_path = /recalbox/share/digimarquee/media
+media_path = %(digimarquee_path)s/media
 
 # Path to default image relative to BASE_PATH
 # This is used as a media file of last resort, in case
@@ -45,7 +52,7 @@ default_image = default.png
 # * scraped: the selected game's scraped image
 # * publisher: media relating to the publisher of game e.g. Atari or Taito banner
 # * genre: media relating to genre of game e.g. shooters, platform games
-# * system: media relating to game system e.g. Sinclair Spectrum or SNES banner
+# * system: media relating to game system e.g. Sinclair Spectrum or SNES bannerbase_path
 # * generic: generic media unrelated to a game, system or publisher
 # * blank: blank the display e.g. when EmulationStation goes to sleep
 #
@@ -100,13 +107,17 @@ max_video_time = 60.0
 
 ## Programs used to display media: shouldn't need to be changed ##
 
+# uncomment to force a specific framebuffer resolution
+# e.g. to force 1280x720 16bit colour depth:
+#framebuffer_resolution_cmd = /usr/sbin/fbset -g 1280 720 1280 720 16
+
 # path to image viewer executable & options
 viewer = /usr/bin/fbv2
 viewer_opts = --noinfo --stretch
 
 # commmand & options to clear image (leave blank if not required)
 clear_cmd = /bin/bash
-clear_cmd_opts = clear_framebuffer.sh
+clear_cmd_opts = %(digimarquee_path)s/clear_framebuffer.sh
 
 # path to video player executable & options
 video_player = /usr/bin/ffmpeg

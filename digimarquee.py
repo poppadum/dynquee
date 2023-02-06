@@ -29,7 +29,7 @@ def loadConfig() -> ConfigParser:
         2. module directory
         3. current directory
     '''
-    config: ConfigParser = ConfigParser(empty_lines_in_values = False, interpolation = None)
+    config: ConfigParser = ConfigParser(empty_lines_in_values = False)
     _configFilesRead: List[str] = config.read([
         f"/boot/{_CONFIG_FILE}",
         f"{os.path.dirname(__file__)}/{_CONFIG_FILE}",
@@ -207,12 +207,12 @@ class MediaManager(object):
 
 
     def _getMediaMatching(self, globPattern: str) -> List[str]:
-        '''Search for media files matching globPattern within BASE_PATH
+        '''Search for media files matching globPattern within media directory
             :returns list[str]: list of paths of matching files, or []
         '''
         log.debug(f"searching for media files matching {globPattern}")
         files: List[str] = glob.glob(
-            f"{config.get(self._CONFIG_SECTION, 'base_path')}/{globPattern}"
+            f"{config.get(self._CONFIG_SECTION, 'media_path')}/{globPattern}"
         )
         log.debug(f"found {len(files)} files: {files}")
         return files
@@ -293,7 +293,7 @@ class MediaManager(object):
                 return files
         # if no matching files were found for any search term, return the default image as a last resort
         else:
-            return [f"{config.get(self._CONFIG_SECTION, 'base_path')}/{config.get(self._CONFIG_SECTION, 'default_image')}"]
+            return [f"{config.get(self._CONFIG_SECTION, 'media_path')}/{config.get(self._CONFIG_SECTION, 'default_image')}"]
 
 
     def getStartupMedia(self) -> List[str]:
