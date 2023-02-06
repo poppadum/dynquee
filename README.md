@@ -25,11 +25,11 @@ add video of it working?
 A program to run a digital marquee for [Recalbox] on a second display connected via HDMI, similar to the [PiMarquee2][pimarquee2] project for [Retropie][retropie].
 
 ### Why?
-I was building a bartop arcade machine and I wanted to have a dynamic marquee which could change depending on which game system was selected and which game was being played.
+I'm building a bartop arcade machine and I want to have a dynamic marquee which can change depending on which game system is selected and which game is being played.
 
-I knew I wanted my arcade to run [Recalbox] and I already had a Pi4 to run it on. As the Pi4 has dual HDMI outputs I wanted to drive the marquee from the second HDMI output. 
+I want to use [Recalbox] to run the machine and I already have a [Raspberry Pi 4][pi4] to run it on. As the Pi4 has dual HDMI outputs I want to drive the marquee from the second HDMI output. 
 
-The marquee display I had in mind was an [ultrawide 19" 1920x360 LED panel][DV190FBM] which is the ideal size for my build. Unfortunately it's quite expensive so I may have to settle for a [cheaper 14.9" TN panel][LTA149B780F] available from Amazon or ebay.
+The marquee display I've had in mind is an [ultrawide 19" 1920x360 LED panel][DV190FBM] which is the ideal size for my build. Unfortunately it's quite expensive so I may have to settle for a [cheaper 14.9" TN panel][LTA149B780F] available from Amazon or ebay.
 
 For testing I used a spare 19" TV running at 720p resolution.
 
@@ -38,29 +38,30 @@ This project is my attempt to get a dynamic marquee working with [Recalbox].
 ### Goals
 I wanted a solution which would be:
 
-- minimal: work with Recalbox's environment, ideally needing no extra software to be installed
+- relatively minimal: work with Recalbox's environment, ideally needing no extra software to be installed
 - flexible: allow most settings to be changed via a config file
 - reactive: change the marquee in response to user actions
 
 
 ### Requirements
 - [Recalbox] v8.1.1 Electron or later
-- a Raspberry [Pi 4B][pi4] or [Pi400][pi400] with dual HDMI outputs
+- a Raspberry [Pi 4B][pi4] or [Pi 400][pi400] with dual HDMI outputs
 - a second display connected to the Pi's second HDMI port
 
 It should be possible to get *digimarquee* running on a separate device (e.g. a [Pi Zero][pi-zero]) that just drives the marquee.
 You would need to tweak Recalbox's MQTT config to allow incoming connections from the local network.
 
-> **TODO**:
-> - try it out, provide instructions
-> - which file to edit
-
+<!--
+**TODO**:
+- try it out, provide instructions
+- which file to edit
+-->
 
 ### How Does It Work?
 It works very like [Recalbox]'s built-in mini TFT support: 
-it listens to Recalbox's MQTT server for events, and it writes media files direct to the framebuffer using `fbv2` for still images and `ffmpeg` for videos.
+it listens to [Recalbox's MQTT server][recalbox-mqtt] for events, and it writes media files direct to the framebuffer using `fbv2` for still images and `ffmpeg` for videos.
 
-With the Pi4's default KMS graphics driver both HDMI displays share a single framebuffer, so marquee images are also visible on the primary display for a second or two when [Emulation Station][emulationstation] launches an emulator. While this is a bit annoying, it doesn't seem to break anything so I'm happy enough with it.
+With the Pi4's default KMS graphics driver both HDMI displays share a single framebuffer, so marquee images are also visible on the primary display for a second or two when an emulator launches or exits. While this is a bit annoying, it doesn't seem to break anything so I'll put up with it.
 
 *digimarquee* is mostly written in Python3.
 
@@ -87,35 +88,35 @@ Releases include some media files to get started (see [acknowledgements](#acknow
 ## Usage
 Most settings can be configured in the config file [`digimarquee.config.txt`](digimarquee.config.txt).
 
-For each [Emulation Station][emulationstation] action, the config file defines a search precedence rule: an ordered list of search terms indicting where to search for media files.
+For each [Emulation Station][emulationstation] action, the config file defines a search precedence rule: an ordered list of search terms indicating where to search for media files.
 
 If no files match a search term *digimarquee* moves on to the next term.
 That way you can specify which media files to show in order of priority.
 
-For example, when an arcade game is launched, we can get *digimarquee* to:
+For example, when an arcade game is launched, *digimarquee* can:
 1. search for the game's marquee image
 1. if not found, search for the game publisher's banner
 1. if not found, search for a generic arcade banner
 
-For full details please see the comments in the `[media]` section of the config file [`digimarquee.config.txt`](digimarquee.config.txt).
+For full details see the comments in the `[media]` section of the config file [`digimarquee.config.txt`](digimarquee.config.txt).
 
 All media files that match a successful search term are displayed in a random order as a slideshow that loops continuously. How long each image or video is shown can be adjusted in the `[slideshow]` section of the config file.
 
 
 ### Filename Matching
-Searching for media files works as follows:
+Media file matching works as follows:
 
 1. Names of games, publishers and genres are converted to lower case and a dot is added to the end
     - e.g. `Sonic The Hedgehog` becomes `sonic the hedgehog.`
 
 1. Names are then matched against the beginning of media filenames.
     - e.g. a ROM named `Chuckie Egg.zip` would match media files named `chuckie egg.*`
-    - a game published by `Atari` would match files named `atari.*`
+    - or a game published by `Atari` would match files named `atari.*`
 
 
 ### Adding Your Own Images And Videos
 By default marquee media files live in `/recalbox/share/digimarquee/media`.
-If for some reason you want to store them somewhere else, change the `base_path` setting in the `[media]` section of the config file.
+If for some reason you want to store them somewhere else, change the `media_path` setting in the `[media]` section of the config file.
 
 Place your media files in the appropriate subdirectory (look at the included files for examples):
 
@@ -128,7 +129,7 @@ the file name must start with Emulation Station's internal system name (use the 
 
 - `publisher/` is for publisher banners & logos
 
-- `startup/` is for files shown when digimarquee first starts up e.g. a welcome banner
+- `startup/` is for files to show when digimarquee first starts up e.g. a welcome banner
 
 - `generic/` is for media that doesn't belong anywhere else, to be used if no other files match
 
@@ -141,9 +142,6 @@ Media is resized to fit the screen but the closer you can match the aspect ratio
 ---
 
 ## Contributing
-Contributions of suitable marquee images and video clips are welcome.
-Please include links to the originals so I can acknowledge the creator.
-
 Bug reports/fixes, improvements, documentation, & translations are also welcome.
 
 
@@ -179,5 +177,6 @@ This project is released under the [MIT Licence][licence].
 [pimarquee2]: https://github.com/losernator/PieMarquee2
 [project-image]: digimarquee.png
 [recalbox]: https://www.recalbox.com
+[recalbox-mqtt]: https://wiki.recalbox.com/en/advanced-usage/scripts-on-emulationstation-events#mqtt
 [retropie]: https://retropie.org.uk/
 [spectrum]: https://en.wikipedia.org/wiki/ZX_Spectrum
