@@ -15,7 +15,7 @@ def getLogger() -> logging.Logger:
     '''Get module logger as defined by logging config file
         :returns: a logging.Logger instance for this module
     '''
-    logging.config.fileConfig(_LOG_CONFIG_FILE)
+    logging.config.fileConfig(f"{os.path.dirname(__file__)}/{_LOG_CONFIG_FILE}")
     return logging.getLogger(__name__)
 
 
