@@ -8,6 +8,7 @@ media/publisher/
 
 # exclude artwork fetched from gitlab
 artwork/recalbox-next/
+artwork/recalbox_logos/
 
 # exclude media files personal to me
 media/generic/astrocade.*.png
