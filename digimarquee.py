@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-'''a dynamic marquee for Recalbox'''
+'''a python module to provide a dynamic marquee for Recalbox'''
 
 
 import subprocess, signal, logging, logging.config, os, glob, random, time

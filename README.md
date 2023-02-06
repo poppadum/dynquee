@@ -1,11 +1,11 @@
+#
 ![digimarquee startup image][project-image]
-# digimarquee
 A dynamic digital marquee for [Recalbox]
+#
 
-
-> **TODO**:
-> - make banner without Recalbox logo and ghost
-> - add video of it working?
+<!-- **TODO**:
+add video of it working?
+-->
 
 ## Contents
 - [About digimarquee](#about-digimarquee)
@@ -29,7 +29,7 @@ I was building a bartop arcade machine and I wanted to have a dynamic marquee wh
 
 I knew I wanted my arcade to run [Recalbox] and I already had a Pi4 to run it on. As the Pi4 has dual HDMI outputs I wanted to drive the marquee from the second HDMI output. 
 
-The marquee display I had in mind was an [ultrawide 19" 1920x360 LED panel][DV190FBM] which is the perfect size for my build. Unfortunately it's quite expensive so I may have to settle for a [cheaper 14.9" TN panel][LTA149B780F] available from Amazon or ebay.
+The marquee display I had in mind was an [ultrawide 19" 1920x360 LED panel][DV190FBM] which is the ideal size for my build. Unfortunately it's quite expensive so I may have to settle for a [cheaper 14.9" TN panel][LTA149B780F] available from Amazon or ebay.
 
 For testing I used a spare 19" TV running at 720p resolution.
 
@@ -37,6 +37,7 @@ This project is my attempt to get a dynamic marquee working with [Recalbox].
 
 ### Goals
 I wanted a solution which would be:
+
 - minimal: work with Recalbox's environment, ideally needing no extra software to be installed
 - flexible: allow most settings to be changed via a config file
 - reactive: change the marquee in response to user actions
@@ -48,7 +49,7 @@ I wanted a solution which would be:
 - a second display connected to the Pi's second HDMI port
 
 It should be possible to get *digimarquee* running on a separate device (e.g. a [Pi Zero][pi-zero]) that just drives the marquee.
-You would need to tweak Recalbox's MQTT setup to allow incoming connections from the local network.
+You would need to tweak Recalbox's MQTT config to allow incoming connections from the local network.
 
 > **TODO**:
 > - try it out, provide instructions
@@ -56,18 +57,16 @@ You would need to tweak Recalbox's MQTT setup to allow incoming connections from
 
 
 ### How Does It Work?
-It works very like [Recalbox]'s built-in mini TFT support:
-it writes direct to the framebuffer using `fbv2` for still images and `ffmpeg` for videos.
+It works very like [Recalbox]'s built-in mini TFT support: 
+it listens to Recalbox's MQTT server for events, and it writes media files direct to the framebuffer using `fbv2` for still images and `ffmpeg` for videos.
 
-With the Pi4's default KMS graphics driver both HDMI displays share a single framebuffer, so marquee images are also visible on the primary display for a second or two when Emulation Station launches an emulator.
-
-While this is a bit annoying, it doesn't seem to break anything so I'm happy enough with it.
+With the Pi4's default KMS graphics driver both HDMI displays share a single framebuffer, so marquee images are also visible on the primary display for a second or two when [Emulation Station][emulationstation] launches an emulator. While this is a bit annoying, it doesn't seem to break anything so I'm happy enough with it.
 
 *digimarquee* is mostly written in Python3.
 
 ---
 
-## Getting started
+## Getting Started
 Steps to get *digimarquee* running on Recalbox:
 
 - download the latest project release (**TODO**: link here)
@@ -88,7 +87,7 @@ Releases include some media files to get started (see [acknowledgements](#acknow
 ## Usage
 Most settings can be configured in the config file [`digimarquee.config.txt`](digimarquee.config.txt).
 
-For each [EmulationStation][emulationstation] action, the config file defines a search precedence rule: an ordered list of search terms indicting where to search for media files.
+For each [Emulation Station][emulationstation] action, the config file defines a search precedence rule: an ordered list of search terms indicting where to search for media files.
 
 If no files match a search term *digimarquee* moves on to the next term.
 That way you can specify which media files to show in order of priority.
@@ -106,16 +105,11 @@ All media files that match a successful search term are displayed in a random or
 ### Filename Matching
 Searching for media files works as follows:
 
-1. Names of games, publishers and genres are converted to lower case, and spaces are converted to dots.
-    - e.g. `Sonic The Hedgehog` becomes `sonic.the.hedgehog`
-
-
-> **TODO**: 
-> should spaces be converted? Everwhere else in Recalbox e.g. p2k config the name without extension is used. Could just make glob match case-insensitive?
-
+1. Names of games, publishers and genres are converted to lower case and a dot is added to the end
+    - e.g. `Sonic The Hedgehog` becomes `sonic the hedgehog.`
 
 1. Names are then matched against the beginning of media filenames.
-    - e.g. a ROM named `Chuckie Egg.zip` would match media files named `chuckie.egg.*`
+    - e.g. a ROM named `Chuckie Egg.zip` would match media files named `chuckie egg.*`
     - a game published by `Atari` would match files named `atari.*`
 
 
@@ -126,11 +120,11 @@ If for some reason you want to store them somewhere else, change the `base_path`
 Place your media files in the appropriate subdirectory (look at the included files for examples):
 
 - *game-specific* media go in the appropriate system directory
-    - e.g. for the arcade version of [Defender], put your file in `mame/` & name it `defender.<something>` e.g. `defender.01.png`
+    - e.g. for the arcade version of [Defender] with a ROM named `defender.zip`, put your file in `mame/` & name it `defender.<something>` e.g. `mame/defender.01.png`
 
 - `system/` is for game system media (e.g. console logos);
-the file name must start with EmulationStation's internal system name (use the same names as in `/recalbox/share/roms/`)
-    - e.g. for a [Sinclair Spectrum][spectrum] logo, name the file `zxspectrum.<something>` e.g. `zxspectrum.logo.png`
+the file name must start with Emulation Station's internal system name (use the same names as in `/recalbox/share/roms/`)
+    - e.g. for a [Sinclair ZX Spectrum][spectrum] logo, name the file `zxspectrum.<something>` e.g. `system/zxspectrum.logo.png`
 
 - `publisher/` is for publisher banners & logos
 
@@ -160,14 +154,12 @@ See the [artwork README file][artwork-readme] for sources.
 
 
 ## To Do
-- [ ] Genre matching is very dumb: make it more intelligent. Is there a master list of genres that EmulationStation uses somewhere?
+- [ ] Genre matching is very dumb: make it more useful. Is there a master list of genres that [Emulation Station][emulationstation] uses somewhere?
 
 ---
 
 ## Licence
-TBD
-
-BSD Licence - do what you like?
+This project is released under the [MIT Licence][licence].
 
 
 <!-- LINKS & IMAGES -->
@@ -178,13 +170,14 @@ BSD Licence - do what you like?
 [emulationstation]: https://wiki.recalbox.com/en/basic-usage/getting-started/emulationstation
 [fbv]: https://github.com/godspeed1989/fbv
 [ffmpeg]: https://ffmpeg.org/
+[licence]: LICENSE.txt
 [LTA149B780F]: https://www.panelook.com/LTA149B780F_Toshiba_14.9_LCM_parameter_10941.html
 [media-readme]: media/README.md
 [pi4]: https://www.raspberrypi.com/products/raspberry-pi-4-model-b/
 [pi400]: https://www.raspberrypi.com/products/raspberry-pi-400-unit/
 [pi-zero]: https://www.raspberrypi.com/products/raspberry-pi-zero/
 [pimarquee2]: https://github.com/losernator/PieMarquee2
-[project-image]: media/startup/startup.01.png
+[project-image]: digimarquee.png
 [recalbox]: https://www.recalbox.com
 [retropie]: https://retropie.org.uk/
 [spectrum]: https://en.wikipedia.org/wiki/ZX_Spectrum
