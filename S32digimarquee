@@ -1,0 +1,77 @@
+#!/bin/sh
+
+#
+# Init script to start/Stop digimarquee
+#
+
+NAME=digimarquee
+PIDFILE=/var/run/digimarquee.pid
+#RUN_AS=$(id -u root)
+CMD="python /recalbox/share/digimarquee/digimarquee.py"
+
+
+# return code 0 if process running
+isRunning() {
+    if [ -f "${PIDFILE}" ] && pid=$(cat "$PIDFILE") && ps -e | grep -q "^\s*${pid}"; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+start() {
+    echo "Starting $NAME"
+    start-stop-daemon -v -S -b -p $PIDFILE -m $CMD
+}
+
+
+stop() {
+    echo "Stopping $NAME"
+    start-stop-daemon -v -K -p $PIDFILE #&& rm $PIDFILE
+}
+
+
+status() {
+    echo "Getting $NAME status"
+    if isRunning; then
+        echo "$NAME is running (pid $pid)"
+        exit 0
+    else
+        echo "$NAME is stopped"
+        exit 1        
+    fi
+}
+
+
+### main ###
+case "$1" in
+    start)
+        start
+        ;;
+
+    stop)
+        stop
+        ;;
+
+    restart)
+        stop
+        echo -n "waiting for $NAME to stop"
+        while isRunning; do
+            sleep 1
+            echo -n "."
+        done
+        echo
+        start
+        ;;
+
+    status)
+        status
+        ;;
+    
+    *)
+        echo "Usage: /etc/init.d/${NAME} start|stop|restart|status"
+        exit 2
+        ;;
+esac
+
+exit $?
