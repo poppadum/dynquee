@@ -1,5 +1,8 @@
 #!/usr/bin/python3
 
+'''a dynamic marquee for Recalbox'''
+
+
 import subprocess, signal, logging, logging.config, os, glob, random, time
 from configparser import ConfigParser
 from threading import Thread, Event
@@ -13,7 +16,7 @@ _LOG_CONFIG_FILE: str = "digimarquee.log.conf"
 
 def getLogger() -> logging.Logger:
     '''Get module logger as defined by logging config file
-        :returns: a logging.Logger instance for this module
+        :return: a logging.Logger instance for this module
     '''
     logging.config.fileConfig(f"{os.path.dirname(__file__)}/{_LOG_CONFIG_FILE}")
     return logging.getLogger(__name__)
@@ -138,9 +141,10 @@ class MQTTSubscriber(object):
 
 
     def getEvent(self, checkInterval: Optional[float] = 5.0) -> Optional[str]:
-        '''Read an event from the message queue (blocks until data is received)
+        '''Read an event from the message queue. Blocks until data is
+            received or interrupted by an exit signal.
             :param checkInterval: how often to check if exit was requested (None = never check)
-            :returns: an event from the MQTT broker, or None if exit signal received while waiting
+            :return: an event from the MQTT broker, or None if exit signal received while waiting
         '''
         while not self._exitEvent.is_set():
             try:
@@ -152,7 +156,7 @@ class MQTTSubscriber(object):
 
     def getEventParams(self) -> Dict[str, str]:
         '''Read event params from ES state file, stripping any CR characters
-            :returns: a dict mapping param names to their values
+            :return: a dict mapping param names to their values
         '''
         params: Dict[str,str] = {}
         with open(config.get(self._CONFIG_SECTION, 'es_state_file')) as f:
@@ -165,8 +169,8 @@ class MQTTSubscriber(object):
 
 
 class MediaManager(object):
-    '''Finds appropriate media files for an EmulationStation action using ordered search precendence rules.
-        Rules are defined for each action in [media] section of config file; see config file for documentation.
+    '''Locates appropriate media files for an EmulationStation action using ordered search precendence rules.
+        Rules are defined for each action in `[media]` section of config file: see config file for documentation.
 
         Call `getMedia()` to return a list of media files suitable for the action and selected system or game.
     '''
@@ -192,7 +196,7 @@ class MediaManager(object):
     @classmethod
     def isVideo(cls, filePath: str) -> bool:
         '''Test if specified file is a video file
-            :returns: True is file is a video file, False otherwise
+            :return: True if file is a video file, False otherwise
         '''
         for ext in cls._VIDEO_FILE_EXTS:
             if filePath.endswith(ext):
@@ -202,7 +206,7 @@ class MediaManager(object):
 
     def _getMediaMatching(self, globPattern: str) -> List[str]:
         '''Search for media files matching globPattern within media directory
-            :returns: list of paths of matching files, or []
+            :return: list of paths of matching files, or []
         '''
         log.debug(f"searching for media files matching {globPattern}")
         files: List[str] = glob.glob(
@@ -214,7 +218,7 @@ class MediaManager(object):
 
     def _getPrecedence(self, action: str) -> List[str]:
         '''Get precedence rules for this action from config file
-            :returns: precedence rule: an ordered list of search terms
+            :return: precedence rule: an ordered list of search terms
         '''
         precedence: List[str] = config.get(
             self._CONFIG_SECTION,
@@ -231,7 +235,7 @@ class MediaManager(object):
             for list of valid search terms.
             :param searchTerm: the search term
             :param evParams: a dict of event parameters
-            :returns: list of paths to media files, or [] if precedence rule == `blank`
+            :return: list of paths to media files, or [] if precedence rule == `blank`
         '''
         # if search term is `scraped` just return scraped image path (if set)
         if searchTerm == 'scraped':
@@ -265,7 +269,7 @@ class MediaManager(object):
             precedence rules defined in config file.
             :param action: EmulationStation action
             :param evParams: a dict of event parameters
-            :returns: list of paths to media files, or [] if marquee should be blank
+            :return: list of paths to media files, or [] if marquee should be blank
         '''
         log.debug(f"action={action} params={evParams}")
         # get search precedence rule for this action
@@ -300,7 +304,7 @@ class MediaManager(object):
 
 class Slideshow(object):
     '''Display slideshow of images/videos on the marquee; runs in a separate thread.
-        Use `run()` to start slideshow, `stop()` to stop
+        Use `run()` to start slideshow and `stop()` to stop it.
     '''
 
     _CONFIG_SECTION: ClassVar[str] = 'slideshow'
@@ -347,7 +351,7 @@ class Slideshow(object):
         '''Run external command
             :param waitForExit: if True waits for command to complete, otherwise returns immediately
             :param timeout: how long to wait for command to complete (seconds)
-            :returns: True if command launched successfully, or False otherwise
+            :return: True if command launched successfully, or False otherwise
         '''
         log.debug(f"cmd={cmd}")
         try:
@@ -383,8 +387,9 @@ class Slideshow(object):
 
 
     def showVideo(self, videoPath: str, maxVideoTime: float):
-        '''Launch video player command defined in config file: should play video to end then exit.
-            To stop video, call `stopVideo()` to terminate process.
+        '''Launch video player command defined in config file, allow it to play
+            for up to `maxVideoTime` seconds (or to the end if sooner) then exit.
+            To stop video, call `stopVideo()` to terminate video player process.
             :param videoPath: full path to video file
             :param maxVideoTime: how many seconds to let the video play before stopping it
         '''
@@ -542,7 +547,7 @@ class EventHandler(object):
 
     def _getStateChangeRules(self) -> Tuple[str, str]:
         '''Look up state change rules in config file
-            :returns: tuple of values in the format (change_on, no_change_on)
+            :return: tuple of values in the format (change_on, no_change_on)
         '''
         # get state change rules from config file
         noChangeOn: str = config.get(self._CONFIG_SECTION, 'no_change_on')
@@ -557,7 +562,7 @@ class EventHandler(object):
                 :param evParams: dict of EmulationStation event params
                 :param changeOn: rule specifying when to change state
                 :param noChangeOn: rule specifying which actions do not change state
-                :returns: True if state has changed
+                :return: True if state has changed
             '''
             newSystem: str = evParams.get('SystemId', '')
             newGame: str = evParams.get('GamePath', '')
