@@ -16,7 +16,10 @@ media/startup/astrocade.*.png
 
 # personal sync script
 sync_to_pi.sh*
-    
+
+# exclude release archives
+build/release*.zip
+
 # misc
 media/tft_logos
 examples/

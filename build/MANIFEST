@@ -1,0 +1,14 @@
+digimarquee.py
+digimarquee.config.txt
+digimarquee.log.conf
+digimarquee.png
+clear_framebuffer.sh
+LICENSE.txt
+README.md
+S32digimarquee
+media/generic/
+media/publisher/*
+media/startup/*
+media/system/*
+media/default.png
+media/README.md
