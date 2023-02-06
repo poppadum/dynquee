@@ -428,8 +428,8 @@ class Slideshow(object):
                     self.showImage(mediaFile)
                     # if we only have 1 image, just display it and exit
                     # Note: this only works if viewer leaves image up on framebuffer like fbv
-                    # if len(mediaPaths) == 1:
-                    #     break
+                    if len(mediaPaths) == 1 and not MediaManager.isVideo(mediaPaths[0]):
+                        break
                     self._exitSignalled.wait(timeout = self._imgDisplayTime)
                     self.clearImage()
                 # exit slideshow if SIGTERM received or `stop()` was called
@@ -487,8 +487,8 @@ class EventHandler(object):
         '''Read and handle all events from the MQTTSubscriber'''
         while True:
             event: str = self._mqttSubscriber.getEvent()
-            # exit loop if interrupted by TERM signal or ES quits
-            if not event or event == 'quit':
+            # exit loop if interrupted by TERM signal
+            if not event:
                 break
             log.debug(f'event received: {event}')
             params: Dict[str, str] = self._mqttSubscriber.getEventParams()
