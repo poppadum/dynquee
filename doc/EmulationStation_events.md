@@ -187,7 +187,7 @@ State=playing
 
 ### 4. action = `endgame`
 
-User has finished playing a game
+User has finished playing a game; usually followed immediately by a `gamelistbrowsing` event
 
 Params: as `rungame` except
 - `State=selected`
@@ -227,7 +227,12 @@ State=selected
 EmulationStation entered sleep state
 
 
-### 6. action = `runkodi`
+### 6. action = `wakeup`
+
+EmulationStation woken from sleep state
+
+
+### 7. action = `runkodi`
 
 User is using kodi
 
