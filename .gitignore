@@ -15,8 +15,11 @@ media/generic/astrocade.*.png
 media/startup/astrocade.*.png
 
 # personal sync script
-sync_to_pi.sh
+sync_to_pi.sh*
     
-# temp
+# misc
 media/tft_logos
 examples/
+scripts/
+info/
+todo.md
