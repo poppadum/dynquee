@@ -6,8 +6,7 @@
 
 NAME=digimarquee
 PIDFILE=/var/run/digimarquee.pid
-#RUN_AS=$(id -u root)
-CMD="python /recalbox/share/digimarquee/digimarquee.py"
+CMD="/usr/bin/python3 /recalbox/share/digimarquee/digimarquee.py"
 
 
 # return code 0 if process running
@@ -69,7 +68,7 @@ case "$1" in
         ;;
     
     *)
-        echo "Usage: /etc/init.d/${NAME} start|stop|restart|status"
+        echo "Usage: $0 start|stop|restart|status"
         exit 2
         ;;
 esac
