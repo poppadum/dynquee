@@ -23,18 +23,11 @@ def getLogger() -> logging.Logger:
 _CONFIG_FILE: str = "digimarquee.config.txt"
 
 def loadConfig() -> ConfigParser:
-    '''Load config file into ConfigParser instance and return it.
-        Directory search order:
-        1. /boot
-        2. module directory
-        3. current directory
-    '''
+    '''Load config file in module directory into ConfigParser instance and return it'''
     config: ConfigParser = ConfigParser(empty_lines_in_values = False)
-    _configFilesRead: List[str] = config.read([
-        f"/boot/{_CONFIG_FILE}",
+    _configFilesRead: List[str] = config.read(
         f"{os.path.dirname(__file__)}/{_CONFIG_FILE}",
-        _CONFIG_FILE
-    ])
+    )
     logging.info(f"loaded config file(s): {_configFilesRead}")
     return config
 
@@ -57,6 +50,7 @@ class SignalHandler(object):
 
     def _sigReceived(self, signum: int, _stackFrame):
         '''Called when SIGTERM received: set exit flags on registered Events objects'''
+        log.info(f'received signal {signal.Signals(signum).name}')
         for event in self._events:
             event.set()
 
@@ -158,7 +152,7 @@ class MQTTSubscriber(object):
 
     def getEventParams(self) -> Dict[str, str]:
         '''Read event params from ES state file, stripping any CR characters
-            :returns dict: a dict mapping param names to their values
+            :returns: a dict mapping param names to their values
         '''
         params: Dict[str,str] = {}
         with open(config.get(self._CONFIG_SECTION, 'es_state_file')) as f:
@@ -208,7 +202,7 @@ class MediaManager(object):
 
     def _getMediaMatching(self, globPattern: str) -> List[str]:
         '''Search for media files matching globPattern within media directory
-            :returns list[str]: list of paths of matching files, or []
+            :returns: list of paths of matching files, or []
         '''
         log.debug(f"searching for media files matching {globPattern}")
         files: List[str] = glob.glob(
@@ -220,7 +214,7 @@ class MediaManager(object):
 
     def _getPrecedence(self, action: str) -> List[str]:
         '''Get precedence rules for this action from config file
-            :returns list[str]: ordered list of precedence rules
+            :returns: precedence rule: an ordered list of search terms
         '''
         precedence: List[str] = config.get(
             self._CONFIG_SECTION,
@@ -236,7 +230,7 @@ class MediaManager(object):
         '''Locate media matching a single component of a search rule. See config file
             for list of valid search terms.
             :param searchTerm: the search term
-            :param params: a dict of event parameters
+            :param evParams: a dict of event parameters
             :returns: list of paths to media files, or [] if precedence rule == `blank`
         '''
         # if search term is `scraped` just return scraped image path (if set)
@@ -334,6 +328,11 @@ class Slideshow(object):
         self._setFramebufferResolution()
 
 
+    def __del__(self):
+        # de-register from signal handler
+        _signalHander.removeEvent(self._exitSignalled)
+
+
     def _setFramebufferResolution(self):
         '''Force a specific framebuffer resolution if defined in config file'''
         fbResCmd: str = config.get(
@@ -348,7 +347,7 @@ class Slideshow(object):
         '''Run external command
             :param waitForExit: if True waits for command to complete, otherwise returns immediately
             :param timeout: how long to wait for command to complete (seconds)
-            :returns bool: True if command launched successfully, or False otherwise
+            :returns: True if command launched successfully, or False otherwise
         '''
         log.debug(f"cmd={cmd}")
         try:
@@ -369,7 +368,7 @@ class Slideshow(object):
 
     def showImage(self, imgPath: str):
         '''Run the display image command defined in config file
-            :param str imgPath: full path to image
+            :param imgPath: full path to image file
         '''
         cmd: List[str] = [config.get(self._CONFIG_SECTION,'viewer')] + config.get(self._CONFIG_SECTION, 'viewer_opts').split() + [imgPath]
         self._runCmd(cmd)
@@ -386,7 +385,8 @@ class Slideshow(object):
     def showVideo(self, videoPath: str, maxVideoTime: float):
         '''Launch video player command defined in config file: should play video to end then exit.
             To stop video, call `stopVideo()` to terminate process.
-            :param str videoPath: full path to video file
+            :param videoPath: full path to video file
+            :param maxVideoTime: how many seconds to let the video play before stopping it
         '''
         cmd: List[str] = [config.get(self._CONFIG_SECTION,'video_player')] + config.get(self._CONFIG_SECTION, 'video_player_opts').split() + [videoPath]
         self._runCmd(cmd, waitForExit=True, timeout=maxVideoTime)
@@ -438,14 +438,14 @@ class Slideshow(object):
         log.debug(f"worker thread exiting")
     
 
-    def run(self, imgPaths: List[str]):
-        '''Start thread to run randomised slideshow of images until `stop()` called or we receive SIGTERM signal
-            :param list[str] imgPaths: list of paths to images
+    def run(self, mediaPaths: List[str]):
+        '''Start thread to run randomised slideshow of images/videos until `stop()` called or we receive SIGTERM signal
+            :param mediaPaths: list of paths to media files
         '''
         self._workerThread = Thread(
             name = 'slideshow_thread',
             target = self._doRun,
-            args = (imgPaths,),
+            args = (mediaPaths,),
             daemon = True # terminate slideshow thread on exit
         )
         self._workerThread.start()
@@ -457,12 +457,6 @@ class Slideshow(object):
         self._exitSignalled.set()
         self.stopVideo()
         self.clearImage()
-
-
-    def _sigHandler(self, signum: int, _stackframe):
-        '''Called when SIGTERM received'''
-        log.info(f'received signal {signal.Signals(signum).name}')
-        self._exitSignalled.set()
 
 
 
@@ -498,8 +492,8 @@ class EventHandler(object):
 
     def _handleEvent(self, action: str, evParams: Dict[str, str]):
         '''Find appropriate media files for the event and display them
-            :param str event: EmulationStation action 
-            :param dict[str,str] params: a dict of event parameters
+            :param event: EmulationStation action 
+            :param evParams: a dict of event parameters
         '''
         log.debug(f"action={action}, params={evParams}")
         # do we need to change displayed media?
@@ -548,7 +542,7 @@ class EventHandler(object):
 
     def _getStateChangeRules(self) -> Tuple[str, str]:
         '''Look up state change rules in config file
-        : returns tuple[str, str]: tuple of values in the format (change_on, no_change_on)
+            :returns: tuple of values in the format (change_on, no_change_on)
         '''
         # get state change rules from config file
         noChangeOn: str = config.get(self._CONFIG_SECTION, 'no_change_on')
@@ -562,8 +556,8 @@ class EventHandler(object):
                 :param newAction: EmulationStation action
                 :param evParams: dict of EmulationStation event params
                 :param changeOn: rule specifying when to change state
-                :param noVhangeOn: rule specifying which actions do not change state
-                :returns bool: True if state has changed
+                :param noChangeOn: rule specifying which actions do not change state
+                :returns: True if state has changed
             '''
             newSystem: str = evParams.get('SystemId', '')
             newGame: str = evParams.get('GamePath', '')
@@ -605,14 +599,14 @@ class EventHandler(object):
 
 
 
-# Read config file
-config: ConfigParser = loadConfig()
-
 # Configure logging from log config file
 log: logging.Logger = getLogger()
 
 # Uncomment for debug output:
 #log.setLevel(logging.DEBUG)
+
+# Read config file
+config: ConfigParser = loadConfig()
 
 
 ### main ###
