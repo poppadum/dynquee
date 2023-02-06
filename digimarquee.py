@@ -12,7 +12,7 @@ from typing import ClassVar, Dict, List, Tuple, Optional
 _LOG_CONFIG_FILE: str = "digimarquee.log.conf"
 
 def getLogger() -> logging.Logger:
-    '''Get module logger
+    '''Get module logger as defined by logging config file
         :returns: a logging.Logger instance for this module
     '''
     logging.config.fileConfig(_LOG_CONFIG_FILE)
@@ -39,16 +39,31 @@ def loadConfig() -> ConfigParser:
     return config
 
 
-# Module-level exit Event
-_exitEvent: Event = Event()
-"indicates if all loops should exit and program should terminate"
+class SignalHandler(object):
+    '''Signals all registered Event objects if SIGTERM received to allow graceful exit'''
 
-def _sigHandler(signum: int, _stackFrame):
-    '''Called when SIGTERM received: set exit flag'''
-    _exitEvent.set()
+    def __init__(self):
+        # trap SIGTERM signal to exit program gracefully
+        signal.signal(signal.SIGTERM, self._sigReceived)
+        self._events: List[Event] = []
 
-# trap SIGTERM signal to exit program gracefully
-signal.signal(signal.SIGTERM, _sigHandler)
+    def addEvent(self, event: Event):
+        '''Register event with signal handler'''
+        self._events.append(event)
+
+    def removeEvent(self, event: Event):
+        '''Remove event registration'''
+        self._events.remove(event)
+
+    def _sigReceived(self, signum: int, _stackFrame):
+        '''Called when SIGTERM received: set exit flags on registered Events objects'''
+        for event in self._events:
+            event.set()
+
+# Module signal handler instance
+_signalHander: SignalHandler = SignalHandler()
+"module signalHandler object"
+
 
 
 class MQTTSubscriber(object):
@@ -76,6 +91,9 @@ class MQTTSubscriber(object):
         self._client.enable_logger(logger = log)
         # queue to store incoming messages (thread safe)
         self._messageQueue: SimpleQueue = SimpleQueue()
+        # event to signal exit of blocking getEvent() method
+        self._exitEvent = Event()
+        _signalHander.addEvent(self._exitEvent)
         # define callbacks
         self._client.on_connect = self._onConnect
         self._client.on_disconnect = self._onDisconnect
@@ -85,6 +103,8 @@ class MQTTSubscriber(object):
     def __del__(self):
         # disconnect from broker before exit
         self._client.disconnect()
+        # de-register from signal handler
+        _signalHander.removeEvent(self._exitEvent)
 
 
     def start(self, *args):
@@ -125,10 +145,10 @@ class MQTTSubscriber(object):
 
     def getEvent(self, checkInterval: Optional[float] = 5.0) -> Optional[str]:
         '''Read an event from the message queue (blocks until data is received)
-            :param timeout: how often to check if exit was requested (None = never check)
+            :param checkInterval: how often to check if exit was requested (None = never check)
             :returns: an event from the MQTT broker, or None if exit signal received while waiting
         '''
-        while not _exitEvent.is_set():
+        while not self._exitEvent.is_set():
             try:
                 return self._messageQueue.get(timeout = checkInterval).payload.decode("utf-8")
             except Empty:
@@ -307,15 +327,21 @@ class Slideshow(object):
         self._subProcess: Optional[subprocess.Popen] = None
         "media player/viewer subprocess"
         
-        # # trap SIGTERM signal to exit slideshow gracefully
-        # signal.signal(signal.SIGTERM, self._sigHandler)
+        # register with signal handler to exit slideshow gracefully if SIGTERM received
+        _signalHander.addEvent(self._exitSignalled)
 
-        # set initial framebuffer resolution
+        # set initial framebuffer resolution if set in config files
         self._setFramebufferResolution()
 
 
-        # trap SIGTERM signal to exit slideshow gracefully
-        signal.signal(signal.SIGTERM, self._sigHandler)
+    def _setFramebufferResolution(self):
+        '''Force a specific framebuffer resolution if defined in config file'''
+        fbResCmd: str = config.get(
+            self._CONFIG_SECTION, 'framebuffer_resolution_cmd',
+            fallback=''
+        ).split()
+        if fbResCmd:
+            self._runCmd(fbResCmd, waitForExit=True, timeout=self._timeout)
 
 
     def _runCmd(self, cmd: List[str], waitForExit: bool = False, timeout: float = 0) -> bool:
@@ -462,15 +488,7 @@ class EventHandler(object):
         '''Read and handle all events from the MQTTSubscriber'''
         while True:
             event: str = self._mqttSubscriber.getEvent()
-            
-
-            # TODO: handle ES exit cleanly
-            # doesn't exit nicely when SIGTERM
-            # global signal handler for module? module level Event()?
-
-            if self._slideshow._exitSignalled.is_set():
-                break
-
+            # exit loop if interrupted by TERM signal or ES quits
             if not event or event == 'quit':
                 break
             log.debug(f'event received: {event}')
