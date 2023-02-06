@@ -618,8 +618,12 @@ log: logging.Logger = getLogger()
 ### main ###
 
 if __name__ == '__main__':
-    log.info("starting")
-    eventHandler: EventHandler = EventHandler()
-    eventHandler.startup()
-    eventHandler.readEvents()
-    log.info('exiting')
+    try:
+        log.info("digimarquee starting")
+        eventHandler: EventHandler = EventHandler()
+        eventHandler.startup()
+        eventHandler.readEvents()
+        log.info('digimarquee exiting')
+    except Exception as e:
+        # log any uncaught exception before exit
+        log.critical(f"uncaught exception: {e}", exc_info=True)
