@@ -28,15 +28,3 @@ Sources:
 Authors: Recalbox Project Team, Chris Laird
 
 Example startup image which reuses elements of the Recalbox startup image
-
-
-## World Of Spectrum
-Author: various
-
-Collections:
-- game loading screens
-- publisher logos
-
-
-Sources:
-- [World Of Spectrum](https://worldofspectrum.org/)
