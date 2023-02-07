@@ -19,7 +19,7 @@ sync_to_pi.sh*
 
 # exclude release archives
 build/release*.zip
-doc/release_HOWTO.md
+build/release_HOWTO.md
 
 # misc
 media/tft_logos
