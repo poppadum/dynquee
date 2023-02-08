@@ -4,6 +4,7 @@
 
 import unittest, os, logging, time, random
 from dynquee import MQTTSubscriber, MediaManager, EventHandler, Slideshow, log, config
+from typing import Optional
 
 # uncomment for debug output
 # log.setLevel(logging.DEBUG)
@@ -28,7 +29,7 @@ class MockMQTTSubscriber(MQTTSubscriber):
         pass
     def stop(self):
         self._disconnect = True
-    def getEvent(self) -> str:
+    def getEvent(self, checkInterval: float = 5.0) -> Optional[str]:
         if self._disconnect: return None
         time.sleep(1)
         action:str = random.choice(self._VALID_ACTIONS)
@@ -156,6 +157,16 @@ class TestMediaManager(unittest.TestCase):
                 }
             ),
             ['tests/media/publisher/taito.png']
+        )
+        # publisher media containing space
+        self.assertEqual(
+            self.mm.getMedia(
+                action = 'rungame',
+                evParams = {
+                    'SystemId': 'mame', 'GamePath': '/recalbox/share_init/roms/mame/UNKNOWN.zip', 'Publisher': 'Data East'
+                }
+            ),
+            ['tests/media/publisher/data east.png']
         )
         # scraped game image: should return imagePath
         self.assertEqual(

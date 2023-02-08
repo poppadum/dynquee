@@ -128,18 +128,18 @@ def convertDanPatrick(inPath: str, outPath: str, dryrun: bool = False) -> None:
                 if image.is_file() and image.name.endswith(".svg"):
                     # strip .svg extension & force lower case
                     basename: str = os.path.splitext(image.name)[0].lower()
-                    # replace spaces, brackets & dashes with dots
-                    basename = re.sub('[ \(\)\-]', '.', basename)
+                    # replace brackets & dashes with dots
+                    basename = re.sub(r'[()-]', '.', basename)
                     # strip non-standard characters ; : , 
-                    basename = re.sub('[\;\:,]', '', basename)
+                    basename = re.sub(r'[;:,]', '', basename)
                     # condense multiple dots to single dot
                     basename = re.sub('\.+', '.', basename)
+                    # fixup names like "X classics" to "X.classics" so they match the bare publisher name
+                    basename = re.sub('(\w+) +(classics|\.old style\.)', r'\1.\2', basename)
                     # prefix filenames starting with 'arcade' with 'mame' so they match Recalbox's systemId
                     if basename.startswith('arcade'):
                         basename = 'mame.' + basename
                     logging.debug(f"basename={basename}")
-
-                    # TODO: multiword publishers e.g. 'Sammy Atomiswave', 'Video System Co' have dots instead of spaces
 
                     outFullPath: str = getUniqueFilename(f"{outPath}/{cat}", basename, 'png')
                     print(f"converting '{inPath}/{cat}/{image.name}' -> {outFullPath}")
@@ -183,11 +183,11 @@ if __name__ == '__main__':
     BASEDIR: str = Path(__file__).resolve().parents[1]
     logging.debug(f"BASEDIR={BASEDIR}")
 
-    convertTheme(
-        inPath = f"{BASEDIR}/artwork/recalbox-next",
-        outPath = f"{BASEDIR}/media/system",
-        dryrun = False
-    )
+    # convertTheme(
+    #     inPath = f"{BASEDIR}/artwork/recalbox-next",
+    #     outPath = f"{BASEDIR}/media/system",
+    #     dryrun = False
+    # )
 
     convertDanPatrick(
         inPath = f"{BASEDIR}/artwork/Dan_Patrick_v2_platform_logos",

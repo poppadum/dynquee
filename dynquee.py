@@ -140,7 +140,7 @@ class MQTTSubscriber(object):
         self._messageQueue.put(message)
 
 
-    def getEvent(self, checkInterval: Optional[float] = 5.0) -> Optional[str]:
+    def getEvent(self, checkInterval: float = 5.0) -> Optional[str]:
         '''Read an event from the message queue. Blocks until data is
             received or interrupted by an exit signal.
             :param checkInterval: how often to check if exit was requested (None = never check)

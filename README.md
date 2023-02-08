@@ -19,8 +19,7 @@ A dynamic digital marquee for [Recalbox]
 ## About dynquee
 
 ### What Is It?
-*dynquee* (pronounced '[dinky][dinky-definition]') is
-a program to run a dynamic marquee for [Recalbox] on a second display connected via HDMI, similar to the [PiMarquee2][pimarquee2] project for [Retropie][retropie]. The name stands for **dyn**amic mar**quee**.
+*dynquee* (pronounced '[dinky][dinky-definition]') is a program to run a dynamic marquee for [Recalbox] on a second display connected via HDMI, similar to the [PiMarquee2][pimarquee2] project for [Retropie][retropie]. The name stands for **dyn**amic mar**quee**.
 
 ### Why?
 I'm building a bartop arcade machine and I want to have a dynamic marquee which can change depending on which game system is selected and which game is being played.
@@ -100,12 +99,15 @@ All media files that match a successful search term are displayed in a random or
 ### Filename Matching
 Media file matching works as follows:
 
-1. Names of games, publishers and genres are converted to lower case and a dot is added to the end
-    - e.g. `Sonic The Hedgehog` becomes `sonic the hedgehog.`
+1. ROM filenames have their file extension (everything after the last `.`) removed
+    - e.g. `Sonic The Hedgehog.zip` becomes `Sonic The Hedgehog.`
+
+1. Names of publishers and genres are converted to lower case and a dot is added to the end
+    - e.g. `Data East` becomes `data east.`
 
 1. Names are then matched against the beginning of media filenames.
     - e.g. a ROM named `Chuckie Egg.zip` would match media files named `chuckie egg.*`
-    - or a game published by `Atari` would match files named `atari.*`
+    - or a game published by `Bally Midway` would match files named `bally midway.*`
 
 
 ### Adding Your Own Images And Videos
