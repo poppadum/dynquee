@@ -79,7 +79,7 @@ Releases include a few media files to get started (see [acknowledgements](#ackno
 
 
 ## Usage
-Most settings can be configured in the config file [`dynquee.config.txt`](dynquee.config.txt).
+Most settings can be configured in the config file [`dynquee.ini`](dynquee.ini).
 
 For each [Emulation Station][emulationstation] action, the config file defines a search precedence rule: an ordered list of search terms indicating where to search for media files.
 
@@ -91,7 +91,7 @@ For example, when an arcade game is launched, *dynquee* can:
 1. if not found, search for the game publisher's banner
 1. if not found, search for a generic arcade banner
 
-For full details see the comments in the `[media]` section of the config file [`dynquee.config.txt`](dynquee.config.txt).
+For full details see the comments in the `[media]` section of the config file [`dynquee.ini`](dynquee.ini).
 
 All media files that match a successful search term are displayed in a random order as a slideshow that loops continuously. How long each image or video is shown can be adjusted in the `[slideshow]` section of the config file.
 

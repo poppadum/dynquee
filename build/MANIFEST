@@ -1,5 +1,5 @@
 dynquee.py
-dynquee.config.txt
+dynquee.ini
 dynquee.log.conf
 dynquee.png
 clear_framebuffer.sh

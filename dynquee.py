@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-'''a python module to provide a dynamic marquee for Recalbox'''
+'''dynquee - a dynamic marquee for Recalbox'''
 
 
 import subprocess, signal, logging, logging.config, os, glob, random, time
@@ -23,7 +23,7 @@ def getLogger() -> logging.Logger:
 
 
 # Module config file
-_CONFIG_FILE: str = "dynquee.config.txt"
+_CONFIG_FILE: str = "dynquee.ini"
 
 def loadConfig() -> ConfigParser:
     '''Load config file in module directory into ConfigParser instance and return it'''

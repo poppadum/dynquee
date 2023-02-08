@@ -56,5 +56,5 @@ Installation complete: $NAME is now installed in $BASEDIR
 Place your marquee images and videos in the appropriate directory within
 $BASEDIR/media
 
-Please see the file README.md for full details or read the comments in dynquee.config.txt
+Please see the file README.md for full details or read the comments in dynquee.ini
 END

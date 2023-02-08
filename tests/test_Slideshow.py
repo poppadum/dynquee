@@ -10,7 +10,7 @@ log.setLevel(logging.INFO)
 # set up config for test environment
 def setupTestConfig():
     '''read test config file'''
-    configFile = "%s/test_dynquee.config.txt" % os.path.dirname(__file__)
+    configFile = "%s/test_dynquee.ini" % os.path.dirname(__file__)
     config.read(configFile)
     log.info("loaded test config file: %s" % configFile)
     # use live media dir to test
