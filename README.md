@@ -135,6 +135,11 @@ You can use any file format supported by [`fbv2`][fbv] or [`ffmpeg`][ffmpeg].
 I recommend `png` for still images, and `mp4` or `mkv` for video clips.
 Media is resized to fit the screen but the closer you can match the aspect ratio and resolution of your marquee display the better it will look.
 
+
+### Starting & Stopping *dynquee* Manually
+You can start, stop or restart *dynquee* (for example, to force it to reload the config file) by typing:
+`/etc/init.d/S32dynquee start|stop|restart|status`
+
 ---
 
 ## Contributing

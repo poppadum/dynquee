@@ -360,7 +360,7 @@ class TestEventHandler(unittest.TestCase):
     def test_getStateChangeRules(self):
         (changeOn, noChangeOn) = self.eh._getStateChangeRules()
         self.assertEqual(changeOn, 'system/game')
-        self.assertEqual(noChangeOn, 'endgame wakeup')
+        self.assertEqual(noChangeOn, 'endgame')
 
 
 
