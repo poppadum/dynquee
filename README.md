@@ -3,9 +3,7 @@
 A dynamic digital marquee for [Recalbox]
 #
 
-<!-- **TODO**:
-add video of it working?
--->
+<!-- **TODO**: add demo video of it working? -->
 
 ## Contents
 - [About digimarquee](#about-digimarquee)
@@ -15,7 +13,6 @@ add video of it working?
 - [Acknowledgements](#acknowledgements)
 - [To Do](#to-do)
 - [Licence](#licence)
-
 
 ---
 
@@ -33,12 +30,12 @@ The marquee display I've had in mind is an [ultrawide 19" 1920x360 LED panel][DV
 
 For testing I used a spare 19" TV running at 720p resolution.
 
-This project is my attempt to get a dynamic marquee working with [Recalbox].
+This project is the result of my attempts to get a dynamic marquee working with [Recalbox].
 
 ### Goals
 I wanted a solution which would be:
 
-- relatively minimal: work with Recalbox's environment, ideally needing no extra software to be installed
+- fairly lightweight: work with Recalbox's environment, ideally needing no extra software to be installed
 - flexible: allow most settings to be changed via a config file
 - reactive: change the marquee in response to user actions
 
@@ -70,19 +67,15 @@ With the Pi4's default KMS graphics driver both HDMI displays share a single fra
 ## Getting Started
 Steps to get *digimarquee* running on Recalbox:
 
-- download the latest project release (**TODO**: link here)
-- extract the archive and copy it to your Recalbox
-  - ftp or rsync
-  - or direct to SD card
-  - files live in `/recalbox/share/digimarquee`
-- copy init script `S32digimarquee` to `/etc/init.d` and make it executable
-- reboot
+>  **TODO**: get a permalink to latest release on github
 
->  **TODO**:
->  - provide a setup script
->  - probably best to ssh into pi, `wget` archive and run setup script
+1. Connect to your recalbox with `ssh`: see [Recalbox wiki][recalbox-ssh]
+1. Copy and paste this command and press enter:  
+    `wget -o digimarquee.zip <digimarquee-release> && unzip digimarquee.zip && bash install.sh`
+1. If all goes well you should see the `Installation complete` message
 
-Releases include some media files to get started (see [acknowledgements](#acknowledgements)) but is not a complete set. See the [media README][media-readme] for suggestions of where to find media files.
+
+Releases include a few media files to get started (see [acknowledgements](#acknowledgements)) but not a complete set. See the [media README][media-readme] for suggestions of where to find media files.
 
 
 ## Usage
@@ -178,5 +171,6 @@ This project is released under the [MIT Licence][licence].
 [project-image]: digimarquee.png
 [recalbox]: https://www.recalbox.com
 [recalbox-mqtt]: https://wiki.recalbox.com/en/advanced-usage/scripts-on-emulationstation-events#mqtt
+[recalbox-ssh]: https://wiki.recalbox.com/en/tutorials/system/access/root-access-terminal-cli
 [retropie]: https://retropie.org.uk/
 [spectrum]: https://en.wikipedia.org/wiki/ZX_Spectrum
