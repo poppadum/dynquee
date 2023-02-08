@@ -39,16 +39,17 @@ echo Remounting root filesystem read-only
 
 # Create system directories within media directory
 echo Creating system directories in $BASEDIR/media
-for dir in "$ROMDIR/*/"; do
-    mkdir -p "$BASEDIR/media/$(basename "$dir")"
+for dir in $ROMDIR/*/; do
+    if [ "$dir" != "$ROMDIR/240ptestsuite/" ]; then
+        mkdir -p "$BASEDIR/media/$(basename "$dir")"
+    fi
 done
 
 # Start dynquee via init script
-echo Starting $NAME
-$INIT_SCRIPT start
+/etc/init.d/$INIT_SCRIPT start
 
 # Report finished
-echo <<END
+cat <<END
 
 Installation complete: $NAME is now installed in $BASEDIR
 
