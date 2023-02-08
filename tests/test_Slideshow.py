@@ -1,16 +1,16 @@
 #!/usr/bin/python3
 
-# tests for digimarquee.Slideshow class
+# tests for dynquee.Slideshow class
 
 import logging, glob, time, io, os
-from digimarquee import Slideshow, log, config
+from dynquee import Slideshow, log, config
 
 log.setLevel(logging.DEBUG)
 
 # set up config for test environment
 def setupTestConfig():
     '''read test config file'''
-    configFile = "%s/test_digimarquee.config.txt" % os.path.dirname(__file__)
+    configFile = "%s/test_dynquee.config.txt" % os.path.dirname(__file__)
     config.read(configFile)
     log.info("loaded test config file: %s" % configFile)
 

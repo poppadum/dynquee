@@ -1,12 +1,12 @@
 #
-![digimarquee startup image][project-image]
+![dynquee: dynamic marquee for Recalbox][project-image]  \
 A dynamic digital marquee for [Recalbox]
 #
 
 <!-- **TODO**: add demo video of it working? -->
 
 ## Contents
-- [About digimarquee](#about-digimarquee)
+- [About dynquee](#about-dynquee)
 - [Getting Started](#getting-started)
 - [Usage](#usage)
 - [Contributing](#contributing)
@@ -16,10 +16,11 @@ A dynamic digital marquee for [Recalbox]
 
 ---
 
-## About digimarquee
+## About dynquee
 
 ### What Is It?
-A program to run a digital marquee for [Recalbox] on a second display connected via HDMI, similar to the [PiMarquee2][pimarquee2] project for [Retropie][retropie].
+*dynquee* (pronounced '[dinky][dinky-definition]') is
+a program to run a dynamic marquee for [Recalbox] on a second display connected via HDMI, similar to the [PiMarquee2][pimarquee2] project for [Retropie][retropie]. The name stands for **dyn**amic mar**quee**.
 
 ### Why?
 I'm building a bartop arcade machine and I want to have a dynamic marquee which can change depending on which game system is selected and which game is being played.
@@ -45,7 +46,7 @@ I wanted a solution which would be:
 - a Raspberry [Pi 4B][pi4] or [Pi 400][pi400] with dual HDMI outputs
 - a second display connected to the Pi's second HDMI port
 
-It should be possible to get *digimarquee* running on a separate device (e.g. a [Pi Zero][pi-zero]) that just drives the marquee.
+It should be possible to get *dynquee* running on a separate device (e.g. a [Pi Zero][pi-zero]) that just drives the marquee.
 You would need to tweak Recalbox's MQTT config to allow incoming connections from the local network.
 
 <!--
@@ -60,18 +61,18 @@ it listens to [Recalbox's MQTT server][recalbox-mqtt] for events, and it writes 
 
 With the Pi4's default KMS graphics driver both HDMI displays share a single framebuffer, so marquee images are also visible on the primary display for a second or two when an emulator launches or exits. While this is a bit annoying, it doesn't seem to break anything so I'll put up with it.
 
-*digimarquee* is mostly written in Python3.
+*dynquee* is mostly written in Python3.
 
 ---
 
 ## Getting Started
-Steps to get *digimarquee* running on Recalbox:
+Steps to get *dynquee* running on Recalbox:
 
 >  **TODO**: get a permalink to latest release on github
 
 1. Connect to your recalbox with `ssh`: see [Recalbox wiki][recalbox-ssh]
 1. Copy and paste this command and press enter:  
-    `wget -o digimarquee.zip <digimarquee-release> && unzip digimarquee.zip && bash install.sh`
+    `wget -o dynquee.zip <dynquee-release> && unzip dynquee.zip && bash install.sh`
 1. If all goes well you should see the `Installation complete` message
 
 
@@ -79,19 +80,19 @@ Releases include a few media files to get started (see [acknowledgements](#ackno
 
 
 ## Usage
-Most settings can be configured in the config file [`digimarquee.config.txt`](digimarquee.config.txt).
+Most settings can be configured in the config file [`dynquee.config.txt`](dynquee.config.txt).
 
 For each [Emulation Station][emulationstation] action, the config file defines a search precedence rule: an ordered list of search terms indicating where to search for media files.
 
-If no files match a search term *digimarquee* moves on to the next term.
+If no files match a search term *dynquee* moves on to the next term.
 That way you can specify which media files to show in order of priority.
 
-For example, when an arcade game is launched, *digimarquee* can:
+For example, when an arcade game is launched, *dynquee* can:
 1. search for the game's marquee image
 1. if not found, search for the game publisher's banner
 1. if not found, search for a generic arcade banner
 
-For full details see the comments in the `[media]` section of the config file [`digimarquee.config.txt`](digimarquee.config.txt).
+For full details see the comments in the `[media]` section of the config file [`dynquee.config.txt`](dynquee.config.txt).
 
 All media files that match a successful search term are displayed in a random order as a slideshow that loops continuously. How long each image or video is shown can be adjusted in the `[slideshow]` section of the config file.
 
@@ -108,7 +109,7 @@ Media file matching works as follows:
 
 
 ### Adding Your Own Images And Videos
-By default marquee media files live in `/recalbox/share/digimarquee/media`.
+By default marquee media files live in `/recalbox/share/dynquee/media`.
 If for some reason you want to store them somewhere else, change the `media_path` setting in the `[media]` section of the config file.
 
 Place your media files in the appropriate subdirectory (look at the included files for examples):
@@ -122,7 +123,7 @@ the file name must start with Emulation Station's internal system name (use the 
 
 - `publisher/` is for publisher banners & logos
 
-- `startup/` is for files to show when digimarquee first starts up e.g. a welcome banner
+- `startup/` is for files to show when *dynquee* first starts up e.g. a welcome banner
 
 - `generic/` is for media that doesn't belong anywhere else, to be used if no other files match
 
@@ -157,6 +158,7 @@ This project is released under the [MIT Licence][licence].
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 [artwork-readme]: artwork/README.md
 [Defender]: https://en.wikipedia.org/wiki/Defender_(1981_video_game)
+[dinky-definition]: https://dictionary.cambridge.org/dictionary/english/dinky
 [DV190FBM]: https://www.panelook.com/DV190FBM-NB0_BOE_19.1_LCM_overview_32860.html
 [emulationstation]: https://wiki.recalbox.com/en/basic-usage/getting-started/emulationstation
 [fbv]: https://github.com/godspeed1989/fbv
@@ -168,7 +170,7 @@ This project is released under the [MIT Licence][licence].
 [pi400]: https://www.raspberrypi.com/products/raspberry-pi-400-unit/
 [pi-zero]: https://www.raspberrypi.com/products/raspberry-pi-zero/
 [pimarquee2]: https://github.com/losernator/PieMarquee2
-[project-image]: digimarquee.png
+[project-image]: dynquee.png
 [recalbox]: https://www.recalbox.com
 [recalbox-mqtt]: https://wiki.recalbox.com/en/advanced-usage/scripts-on-emulationstation-events#mqtt
 [recalbox-ssh]: https://wiki.recalbox.com/en/tutorials/system/access/root-access-terminal-cli

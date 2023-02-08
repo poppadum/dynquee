@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-# Unit tests for digimarquee module
+# Unit tests for dynquee module
 
-import unittest, os, logging, threading, time, random
-from digimarquee import MQTTSubscriber, MediaManager, EventHandler, Slideshow, log, config
+import unittest, os, logging, time, random
+from dynquee import MQTTSubscriber, MediaManager, EventHandler, Slideshow, log, config
 
 # uncomment for debug output
 # log.setLevel(logging.DEBUG)
@@ -12,7 +12,7 @@ from digimarquee import MQTTSubscriber, MediaManager, EventHandler, Slideshow, l
 # set up config for test environment
 def setupTestConfig():
     '''read test config file'''
-    configFile = "%s/test_digimarquee.config.txt" % os.path.dirname(__file__)
+    configFile = "%s/test_dynquee.config.txt" % os.path.dirname(__file__)
     config.read(configFile)
     log.info("loaded test config file: %s" % configFile)
 
@@ -364,7 +364,7 @@ class TestEventHandler(unittest.TestCase):
                 }
             )
         print(f"\n{cm.output}\n")
-        self.assertEqual(cm.output, ["INFO:digimarquee:EmulationStation state changed: action=systembrowsing system=mame game=", "INFO:digimarquee:new slideshow media=['tests/media/generic/generic01.mp4']"])
+        self.assertEqual(cm.output, ["INFO:dynquee:EmulationStation state changed: action=systembrowsing system=mame game=", "INFO:dynquee:new slideshow media=['tests/media/generic/generic01.mp4']"])
 
 
         #still systembrowsing - should not change slideshow
@@ -383,7 +383,7 @@ class TestEventHandler(unittest.TestCase):
                     'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'
                 }
             )
-        self.assertEqual(cm.output, ['INFO:digimarquee:EmulationStation state changed: action=gamelistbrowsing system=mame game=/recalbox/share_init/roms/mame/chasehq.zip', "INFO:digimarquee:new slideshow media=['tests/media/generic/generic01.mp4']"])
+        self.assertEqual(cm.output, ['INFO:dynquee:EmulationStation state changed: action=gamelistbrowsing system=mame game=/recalbox/share_init/roms/mame/chasehq.zip', "INFO:dynquee:new slideshow media=['tests/media/generic/generic01.mp4']"])
 
         #still gamelistbrowsing - should not change slideshow
         self.eh._handleEvent(
@@ -401,7 +401,7 @@ class TestEventHandler(unittest.TestCase):
                     'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'
                 }
             )
-        self.assertEqual(cm.output, ['INFO:digimarquee:EmulationStation state changed: action=rungame system=mame game=/recalbox/share_init/roms/mame/chasehq.zip', "INFO:digimarquee:new slideshow media=['tests/media/mame/chasehq.png']"])
+        self.assertEqual(cm.output, ['INFO:dynquee:EmulationStation state changed: action=rungame system=mame game=/recalbox/share_init/roms/mame/chasehq.zip', "INFO:dynquee:new slideshow media=['tests/media/mame/chasehq.png']"])
 
         # test rungame with only publisher image available
         with self.assertLogs(log, level=logging.INFO) as cm:
@@ -411,4 +411,4 @@ class TestEventHandler(unittest.TestCase):
                     'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/bublbobl.zip', 'Publisher':'Taito'
                 }
             )
-        self.assertEqual(cm.output, ['INFO:digimarquee:EmulationStation state changed: action=rungame system=mame game=/recalbox/share_init/roms/mame/bublbobl.zip', "INFO:digimarquee:new slideshow media=['tests/media/publisher/taito.png']"])
+        self.assertEqual(cm.output, ['INFO:dynquee:EmulationStation state changed: action=rungame system=mame game=/recalbox/share_init/roms/mame/bublbobl.zip', "INFO:dynquee:new slideshow media=['tests/media/publisher/taito.png']"])

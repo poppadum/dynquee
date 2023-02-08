@@ -5,7 +5,7 @@ This file has Windows-style CRLF (\r\n) line endings.
 
 ## Actions
 
-The following actions are used by `digimarquee`:
+The following actions are used by `dynquee`:
 
 
 ### 1. action = `systembrowsing`

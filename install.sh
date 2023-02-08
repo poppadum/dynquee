@@ -1,9 +1,10 @@
 #!/bin/bash
 
-# Install digimarquee on Recalbox
+# Install dynquee on Recalbox
 
-NAME=digimarquee
-BASEDIR=/recalbox/share/digimarquee
+NAME=dynquee
+BASEDIR=/recalbox/share/dynquee
+INIT_SCRIPT=S32dynquee
 ROMDIR=/recalbox/share/roms
 
 error() {
@@ -29,8 +30,8 @@ echo Mounting root filesystem read/write
 /bin/mount -o rw,remount / || error
 
 echo Installing init script to run at startup
-cp -vf S32digimarquee /etc/init.d/ && \
-chmod -v +x /etc/init.d/S32digimarquee || error
+cp -vf $INIT_SCRIPT /etc/init.d/ && \
+chmod -v +x /etc/init.d/$INIT_SCRIPT || error
 
 echo Remounting root filesystem read-only
 /bin/mount -o ro,remount /
@@ -42,9 +43,9 @@ for dir in "$ROMDIR/*/"; do
     mkdir -p "$BASEDIR/media/$(basename "$dir")"
 done
 
-# Start digimarquee via init script
+# Start dynquee via init script
 echo Starting $NAME
-/etc/init.d/S32digimarquee start
+$INIT_SCRIPT start
 
 # Report finished
 echo <<END
@@ -54,5 +55,5 @@ Installation complete: $NAME is now installed in $BASEDIR
 Place your marquee images and videos in the appropriate directory within
 $BASEDIR/media
 
-Please see the file README.md for full details or read the comments in digimarquee.config.txt
+Please see the file README.md for full details or read the comments in dynquee.config.txt
 END

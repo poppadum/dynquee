@@ -1,12 +1,12 @@
 #!/bin/sh
 
 #
-# Init script to start/Stop digimarquee
+# Init script to start/Stop dynquee
 #
 
-NAME=digimarquee
-PIDFILE=/var/run/digimarquee.pid
-CMD="/usr/bin/python3 /recalbox/share/digimarquee/digimarquee.py"
+NAME=dynquee
+PIDFILE=/var/run/dynquee.pid
+CMD="/usr/bin/python3 /recalbox/share/dynquee/dynquee.py"
 
 
 # return code 0 if process running

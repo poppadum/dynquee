@@ -12,7 +12,7 @@ from typing import ClassVar, Dict, List, Tuple, Optional
 
 
 # Module logging config file
-_LOG_CONFIG_FILE: str = "digimarquee.log.conf"
+_LOG_CONFIG_FILE: str = "dynquee.log.conf"
 
 def getLogger() -> logging.Logger:
     '''Get module logger as defined by logging config file
@@ -23,7 +23,7 @@ def getLogger() -> logging.Logger:
 
 
 # Module config file
-_CONFIG_FILE: str = "digimarquee.config.txt"
+_CONFIG_FILE: str = "dynquee.config.txt"
 
 def loadConfig() -> ConfigParser:
     '''Load config file in module directory into ConfigParser instance and return it'''
@@ -514,7 +514,7 @@ class EventHandler(object):
         # search for media files
         mediaPaths: List[str] = self._mediaManager.getMedia(action, evParams)
         # if no files returned, blank display
-        # Note: should only happen if 'blank' found in predence rule;
+        # Note: should only happen if 'blank' found in precedence rule;
         # MediaManager.getMedia() always returns default image as last resort
         if not mediaPaths:
             self._slideshow.stop()
@@ -618,11 +618,11 @@ config: ConfigParser = loadConfig()
 
 if __name__ == '__main__':
     try:
-        log.info("digimarquee starting")
+        log.info("dynquee starting")
         eventHandler: EventHandler = EventHandler()
         eventHandler.startup()
         eventHandler.readEvents()
-        log.info('digimarquee exiting')
+        log.info('dynquee exiting')
     except Exception as e:
         # log any uncaught exception before exit
         log.critical(f"uncaught exception: {e}", exc_info=True)

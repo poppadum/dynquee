@@ -1,12 +1,12 @@
 #####
-##### digimarquee config file #####
+##### dynquee UNIT TEST config file #####
 #####
 
 
 ### Defaults : shouldn't need to be changed ###
 [DEFAULT]
-# path to top-level digimarquee directory
-digimarquee_path = /recalbox/share/digimarquee
+# path to top-level dynquee directory
+dynquee_path = /net/bungle/chris/projects/Retrocade_22/dynquee
 
 
 ###
@@ -19,7 +19,7 @@ topic = Recalbox/EmulationStation/Event
 keepalive = 60
 
 # path to EmulationStation's state file
-es_state_file = /tmp/es_state.inf
+es_state_file = tests/es_state.inf
 
 
 ###
@@ -28,7 +28,7 @@ es_state_file = /tmp/es_state.inf
 [media]
 
 # path where marquee media files are located
-media_path = %(digimarquee_path)s/media
+media_path = tests/media
 
 # Path to default image relative to BASE_PATH
 # This is used as a media file of last resort, in case
@@ -52,7 +52,7 @@ default_image = default.png
 # * scraped: the selected game's scraped image
 # * publisher: media relating to the publisher of game e.g. Atari or Taito banner
 # * genre: media relating to genre of game e.g. shooters, platform games
-# * system: media relating to game system e.g. Sinclair Spectrum or SNES bannerbase_path
+# * system: media relating to game system e.g. Sinclair Spectrum or SNES banner
 # * generic: generic media unrelated to a game, system or publisher
 # * blank: blank the display e.g. when EmulationStation goes to sleep
 #
@@ -87,7 +87,7 @@ no_change_on = endgame wakeup
 # * system/game - a change of EITHER selected system OR game changes marquee
 # * never - marquee never changes but stays on startup media
 #
-change_on = action
+change_on = system/game
 
 
 ###
@@ -96,29 +96,25 @@ change_on = action
 [slideshow]
 
 # time in seconds to pause between slideshow images/video clips
-time_between_slides = 0.5
+time_between_slides = 0.25
 
 # time in seconds to show each image
-image_display_time = 10.0
+image_display_time = 5.0
 
 # maximum time in seconds to allow video file to play
 # (set a high value if you want all videos to play to the end)
-max_video_time = 60.0
+max_video_time = 15.0
 
 ## Programs used to display media: shouldn't need to be changed ##
 
-# uncomment to force a specific framebuffer resolution
-# e.g. to force 1280x720 16bit colour depth:
-#framebuffer_resolution_cmd = /usr/sbin/fbset -g 1280 720 1280 720 16
-
 # path to image viewer executable & options
-viewer = /usr/bin/fbv2
-viewer_opts = --noinfo --stretch
+viewer = /usr/bin/cvlc
+viewer_opts = --no-audio --no-video-title-show --image-duration 5 --play-and-exit
 
 # commmand & options to clear image (leave blank if not required)
-clear_cmd = /bin/bash
-clear_cmd_opts = %(digimarquee_path)s/clear_framebuffer.sh
+clear_cmd = echo
+clear_cmd_opts = clear framebuffer
 
 # path to video player executable & options
-video_player = /usr/bin/ffmpeg
-video_player_opts = -hide_banner -loglevel error -c:v rawvideo -pix_fmt rgb565le -f fbdev /dev/fb0 -re -i
+video_player = /usr/bin/cvlc
+video_player_opts = --no-audio --no-video-title-show --play-and-exit
