@@ -143,7 +143,7 @@ You can start, stop or restart *dynquee* (for example, to force it to reload the
 ---
 
 ## Contributing
-Bug reports/fixes, improvements, documentation, & translations are also welcome.
+Bug reports/fixes, improvements, documentation, & translations are also welcome. When reporting bugs a copy of the log file `/tmp/dynquee.log` would be helpful.
 
 
 ## Acknowledgements
