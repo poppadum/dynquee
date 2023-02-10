@@ -3,11 +3,12 @@
 '''dynquee - a dynamic marquee for Recalbox'''
 
 
-import subprocess, signal, logging, logging.config, os, glob, random, time
+import subprocess, signal, logging, logging.config, os, glob, random
 from configparser import ConfigParser
 from threading import Thread, Event
 import paho.mqtt.client as mqtt
 from queue import SimpleQueue, Empty
+from dataclasses import dataclass
 from typing import ClassVar, Dict, List, Tuple, Optional
 
 
@@ -428,6 +429,9 @@ class Slideshow(object):
                     self.showImage(mediaFile)
                     # if we only have 1 image, just display it and exit
                     # Note: this only works if viewer leaves image up on framebuffer like fbv
+#
+# TODO: this causes fbv to run multiple times per second
+#
                     if len(mediaPaths) == 1 and not MediaManager.isVideo(mediaPaths[0]):
                         break
                     self._exitSignalled.wait(timeout = self._imgDisplayTime)
@@ -471,16 +475,32 @@ class EventHandler(object):
     _CONFIG_SECTION: ClassVar[str] = 'media'
     "config file section for EventHandler"
 
-    
+
+    @dataclass(frozen = True, eq = False)
+    class ESState(object):
+        '''Keeps track of state of Emulation Station'''
+        action: Optional[str] = None
+        system: Optional[str] = None
+        game: Optional[str] = None
+        isFolder: bool = False
+
+        @classmethod
+        def fromEvent(cls, evParams: Dict[str, str]) -> 'EventHandler.ESState':
+            '''Create ESState object from event parameters'''
+            return EventHandler.ESState(
+                action = evParams.get('Action', ''),
+                system = evParams.get('SystemId', ''),
+                game = evParams.get('GamePath', ''),
+                isFolder = (evParams.get('IsFolder') == '1')
+            )
+
     def __init__(self):
         self._mqttSubscriber: MQTTSubscriber = MQTTSubscriber()
         self._mediaManager: MediaManager = MediaManager()
         self._slideshow: Slideshow = Slideshow()
         self._mqttSubscriber.start()
         # initialise record of EmulationStation state
-        self._currentAction = None
-        self._currentSystem = None
-        self._currentGame = None
+        self._currentState = self.ESState()
 
 
     def readEvents(self):
@@ -500,32 +520,31 @@ class EventHandler(object):
             :param event: EmulationStation action 
             :param evParams: a dict of event parameters
         '''
-        log.debug(f"action={action}, params={evParams}")
+        log.info(f"action={action}, params={evParams}")
         # do we need to change displayed media?
         changeOn: str
         noChangeOn: str
-        (changeOn, noChangeOn) = self._getStateChangeRules()
-        stateChanged: bool = self._hasStateChanged(action, evParams, changeOn, noChangeOn)
-        self._updateState(action, evParams)
+        (changeOn, noChangeOn) = self._getStateChangeRules()       
+        # newState: EventHandler.ESState = EventHandler.ESState.fromEvent(evParams)
+        stateChanged: bool = self._hasStateChanged(evParams, changeOn, noChangeOn)
+        self._updateState(evParams)
         if not stateChanged:
             # do nothing if ES state has not changed
             return
-        log.info(f"EmulationStation state changed: action={action} system={self._currentSystem} game={self._currentGame}")
+        log.info(f"EmulationStation state changed: action={action} _currentState={self._currentState}")
         # search for media files
         mediaPaths: List[str] = self._mediaManager.getMedia(action, evParams)
-        # if no files returned, blank display
-        # Note: should only happen if 'blank' found in precedence rule;
-        # MediaManager.getMedia() always returns default image as last resort
+        # stop slideshow before starting new slideshow or blanking display
+        self._slideshow.stop()
         if not mediaPaths:
-            self._slideshow.stop()
-            log.info("'blank' specified in search precedence rule: clearing display")
+            # Note: should only happen if 'blank' found in precedence rule;
+            # MediaManager.getMedia() always returns default image as last resort
+# TODO: what about wakeup?            
+            log.info("'blank' specified in search precedence rule: blanking display")
         else:
-            # display media slideshow
+            # display new media slideshow
             log.info(f'new slideshow media={mediaPaths}')
-            # stop existing slideshow if running
-            self._slideshow.stop()
-            time.sleep(0.2)
-            # start new slideshow
+            # time.sleep(0.2) #TODO: is this needed?
             self._slideshow.run(mediaPaths)
 
 
@@ -537,12 +556,10 @@ class EventHandler(object):
             self._slideshow.run(mediaPaths)
 
 
-    def _updateState(self, action: str, evParams: Dict[str, str]):
+    def _updateState(self, evParams: Dict[str, str]):
         '''Update record of EmulationStation state with provided values'''
-        self._currentAction = action
-        self._currentSystem = evParams.get('SystemId')
-        self._currentGame = evParams.get('GamePath')
-        log.debug(f"_currentAction={self._currentAction} _currentSystem={self._currentSystem} _currentGame={self._currentGame}")
+        self._currentState = self.ESState.fromEvent(evParams)
+        log.debug(f"_currentState={self._currentState}")
 
 
     def _getStateChangeRules(self) -> Tuple[str, str]:
@@ -555,7 +572,8 @@ class EventHandler(object):
         return (changeOn, noChangeOn)
         
 
-    def _hasStateChanged(self, newAction: str, evParams: Dict[str, str], changeOn: str, noChangeOn:str) -> bool:
+    def _hasStateChanged(self, evParams: Dict[str, str], changeOn: str, noChangeOn:str) -> bool:
+    # def _hasStateChanged(self, newState: ESState, changeOn: str, noChangeOn:str) -> bool:
             '''Determine if EmulationStation's state has changed enough for us to change displayed media.
                 Follows rules defined in config file.
                 :param newAction: EmulationStation action
@@ -564,40 +582,35 @@ class EventHandler(object):
                 :param noChangeOn: rule specifying which actions do not change state
                 :return: True if state has changed
             '''
-            newSystem: str = evParams.get('SystemId', '')
-            newGame: str = evParams.get('GamePath', '')
+            newState: EventHandler.ESState = EventHandler.ESState.fromEvent(evParams)
             log.debug(f"changeOn={changeOn} noChangeOn={noChangeOn}")
-            log.debug(f"_currentAction={self._currentAction} newAction={newAction}")
-            log.debug(f"currentSystem={self._currentSystem} newSystem={newSystem}")
-            log.debug(f"_currentGame={self._currentGame} newGame={newGame}")
+            log.debug(f"_currentState={self._currentState} newState={newState}")
 
             # Use rules defined in config file to determine if state has changed
             # no change if action is ignored or `never` change specified
-            if (newAction in noChangeOn) or (changeOn == 'never'):
+            if (newState.action and (newState.action in noChangeOn)) or (changeOn == 'never'):
                 return False           
             # is `always` change specified?
             elif changeOn == 'always':
                 return True
             # has action changed from previous action?
             elif changeOn == 'action':
-                return not newAction == self._currentAction
+                return not newState.action == self._currentState.action
             # has system changed?
             elif changeOn == 'system':
-                return not newSystem == self._currentSystem
+                return not newState.system == self._currentState.system
             # has game changed?
             elif changeOn == 'game':
-                return not newGame == self._currentGame
+                return not newState.game == self._currentState.game
             # has system OR game changed?
             elif changeOn == 'system/game':
                 log.debug('if changeOn=system/game')
-                return not (newSystem == self._currentSystem and newGame == self._currentGame)
+                return not ((newState.system == self._currentState.system) and (newState.game == self._currentState.game))
             else:
                 # something unexpected happened: log it
                 log.error((
-                    f"unrecognised state change rules: changeOn={changeOn} noChangeOn={noChangeOn}"
-                    f"newAction={newAction} oldAction={self._currentAction}, "
-                    f"newSystem={newSystem} oldSystem={self._currentSystem}, "
-                    f"newGame={newGame} oldGame={self._currentGame}"
+                    f"unrecognised state change rules: changeOn='{changeOn}' noChangeOn='{noChangeOn}'"
+                    f" _currentState={self._currentState} newState={newState}"
                 ))
                 # change marquee
                 return True

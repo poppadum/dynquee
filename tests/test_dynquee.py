@@ -230,132 +230,184 @@ class MockEventHandler(EventHandler):
         self._mm: MediaManager = MediaManager()
         self._sl: Slideshow = Slideshow(timeout=7.0)
         # record current state of EmulationStation
-        self._currentAction = None
-        self._currentSystem = None
-        self._currentGame = None
+        self._currentState = self.ESState()
 
 
 class TestEventHandler(unittest.TestCase):
     '''unit tests for TestHandler'''
 
     _INIT_EV_PARAMS = {
+        'Action': None,
         'SystemId': None,
-        'GamePath': None
+        'GamePath': None,
+        'IsFolder': '0'
     }
 
     _NEW_EV_PARAMS = {
+        'Action': 'systembrowsing',
         'SystemId': 'mame',
-        'GamePath': ''
+        'GamePath': '',
+        'IsFolder': '0'        
     }
+
+    @classmethod
+    def getInitState(cls, action, evParams={}):
+        return EventHandler.ESState(
+            action = action,
+            system = evParams.get('SystemId', cls._INIT_EV_PARAMS['SystemId']),
+            game = evParams.get('GamePath', cls._INIT_EV_PARAMS['GamePath']),
+            isFolder = evParams.get('IsFolder', cls._INIT_EV_PARAMS['IsFolder'])
+        )
+
+    @classmethod
+    def getNewState(cls, action = None, evParams={}):
+        return EventHandler.ESState(
+            action = action or cls._NEW_EV_PARAMS['Action'],
+            system = evParams.get('SystemId', cls._NEW_EV_PARAMS['SystemId']),
+            game = evParams.get('GamePath', cls._NEW_EV_PARAMS['GamePath']),
+            isFolder = evParams.get('IsFolder', cls._NEW_EV_PARAMS['IsFolder'])
+        )
+
+
 
     def setUp(self):
         self.eh = MockEventHandler()
+        self._initEvParams = self._INIT_EV_PARAMS.copy()
+        self._newEvParams = self._NEW_EV_PARAMS.copy()
 
 
     def tearDown(self):
         del(self.eh)
+
     
     def test_updateState(self):
-        self.assertIsNone(self.eh._currentAction)
-        self.assertIsNone(self.eh._currentSystem)
-        self.assertIsNone(self.eh._currentGame)
-        self.eh._updateState(action = 'systembrowsing', evParams=self._NEW_EV_PARAMS)
-        self.assertEqual(self.eh._currentAction, 'systembrowsing')
-        self.assertEqual(self.eh._currentSystem, 'mame')
-        self.assertEqual(self.eh._currentGame, '')
+        self.assertIsNone(self.eh._currentState.action)
+        self.assertIsNone(self.eh._currentState.system)
+        self.assertIsNone(self.eh._currentState.game)
+        self.assertFalse(self.eh._currentState.isFolder)
+        self.eh._updateState(self._NEW_EV_PARAMS)
+        self.assertEqual(self.eh._currentState.action, 'systembrowsing')
+        self.assertEqual(self.eh._currentState.system, 'mame')
+        self.assertEqual(self.eh._currentState.game, '')
+        self.assertFalse(self.eh._currentState.isFolder)
 
 
     def test_hasStateChanged(self):
-        (changeOn, noChangeOn) = self.eh._getStateChangeRules()
-        self.assertFalse(self.eh._hasStateChanged('myaction', self._INIT_EV_PARAMS, changeOn, noChangeOn))
-        self.assertTrue(self.eh._hasStateChanged('myaction', self._NEW_EV_PARAMS, changeOn, noChangeOn))
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
-        self.assertFalse(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        (changeOn, noChangeOn) = ('action', 'endgame wakeup')
+        self._newEvParams['Action'] = 'myaction'
+        # initial blank state: expect no state change
+        self.assertFalse(self.eh._hasStateChanged(self._INIT_EV_PARAMS, changeOn, noChangeOn))
+        # new state: expect state change
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        # update event handler with new state
+        self.eh._updateState(self._newEvParams)
+        # compare to newState: expect no state change
+        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
 
-    
+
     def test_stateChangeAlways(self):
         (changeOn, noChangeOn) = ("always", 'endgame wakeup')
-        self.assertTrue(self.eh._hasStateChanged('myaction', self._INIT_EV_PARAMS, changeOn, noChangeOn))
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
+        self._initEvParams['Action'] = 'myaction'
+        self.assertTrue(self.eh._hasStateChanged(self._initEvParams, changeOn, noChangeOn))
+        self.eh._updateState(self._NEW_EV_PARAMS)
         # check no change of details still causes state change
-        self.assertTrue(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
-        self.assertTrue(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self.assertTrue(self.eh._hasStateChanged(self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self.assertTrue(self.eh._hasStateChanged(self._NEW_EV_PARAMS, changeOn, noChangeOn))
         # check with different actions
-        self.assertTrue(self.eh._hasStateChanged('gamelistbrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
-        self.assertTrue(self.eh._hasStateChanged('rungame', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self._newEvParams['Action'] = 'gamelistbrowsing'
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self._newEvParams['Action'] = 'rungame'
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
 
 
     def test_stateChangeNever(self):
         (changeOn, noChangeOn) = ("never", 'endgame wakeup')
         # check no change of details causes no state change
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
-        self.assertFalse(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
-        self.assertFalse(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
-        self.assertFalse(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self._newEvParams['Action'] = 'systembrowsing'
+        self.eh._updateState(self._NEW_EV_PARAMS)
+        self.assertFalse(self.eh._hasStateChanged(self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged(self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged(self._NEW_EV_PARAMS, changeOn, noChangeOn))
         # check with different action
-        self.assertFalse(self.eh._hasStateChanged('gamelistbrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self._newEvParams['Action'] = 'gamelistbrowsing'
+        self.assertFalse(self.eh._hasStateChanged(self._NEW_EV_PARAMS, changeOn, noChangeOn))
         # check with different system or game
-        self.assertFalse(self.eh._hasStateChanged('systembrowsing', {'SystemId':'snes','GamePath':''}, changeOn, noChangeOn))
-        self.assertFalse(self.eh._hasStateChanged('systembrowsing', {'SystemId':'mame','GamePath':'asteroid.zip'}, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged({'Action':'systembrowsing','SystemId':'snes','GamePath':''}, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged({'Action':'systembrowsing','SystemId':'mame','GamePath':'asteroid.zip'}, changeOn, noChangeOn))
 
-
+    
     def test_stateChangeOnAction(self):
         (changeOn, noChangeOn) = ("action", 'endgame wakeup')
         # check with same action & different system & game
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
-        self.assertFalse(self.eh._hasStateChanged('systembrowsing', self._INIT_EV_PARAMS, changeOn, noChangeOn))
+        self.eh._updateState(self._NEW_EV_PARAMS)
+        self._newEvParams['Action'] = 'systembrowsing'
+        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
         # check with different action & game system & game
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
-        self.assertTrue(self.eh._hasStateChanged('gamelistbrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self._newEvParams['Action'] = 'gamelistbrowsing'
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
         # check sleep action & no params
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
-        self.assertTrue(self.eh._hasStateChanged('sleep', self._INIT_EV_PARAMS, changeOn, noChangeOn))
+        self.eh._updateState(self._newEvParams)
+        self._newEvParams['Action'] = 'sleep'
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
 
     
     def test_stateChangeOnSystem(self):
         (changeOn, noChangeOn) = ("system", 'endgame wakeup')
         # check with same action, system & game
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
-        self.assertFalse(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self.eh._updateState(self._newEvParams)
+        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
         # check with new action, same system & game
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
-        self.assertFalse(self.eh._hasStateChanged('gamelistbrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self._newEvParams['Action'] = 'gamelistbrowsing'
+        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
         # check with same action & game, new system
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
-        self.assertTrue(self.eh._hasStateChanged('systembrowsing', {'SystemId':'snes','GamePath':''}, changeOn, noChangeOn))
+        self._newEvParams['Action'] = 'systembrowsing'
+        self._newEvParams['SystemId'] = 'snes'
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
 
     
     def test_stateChangeOnGame(self):
         (changeOn, noChangeOn) = ("game", 'endgame wakeup')
         # check with same action, system & game
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
-        self.assertFalse(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self.eh._updateState(self._newEvParams)
+        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
         # check with new action, same system & game
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
-        self.assertFalse(self.eh._hasStateChanged('gamelistbrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self._newEvParams['Action'] = 'gamelistbrowsing'
+        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
         # check with same action & system, new game
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
-        self.assertTrue(self.eh._hasStateChanged('systembrowsing', {'SystemId':'mame','GamePath':'asteroid.zip'}, changeOn, noChangeOn))
+        self._newEvParams['Action'] = 'systembrowsing'
+        self._newEvParams['SystemId'] = 'mame'
+        self._newEvParams['GamePath'] = 'asteroid.zip'
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
     
-
+    
     def test_stateChangeOnSystemOrGame(self):
         (changeOn, noChangeOn) = ("system/game", 'endgame wakeup')
         # check with same action, system & game
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
-        self.assertFalse(self.eh._hasStateChanged('systembrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self.eh._updateState(self._newEvParams)
+        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
         # check with new action, same system & game
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
-        self.assertFalse(self.eh._hasStateChanged('gamelistbrowsing', self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self._newEvParams['Action'] = 'gamelistbrowsing'
+        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
         # check with same action & game, new system
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
-        self.assertTrue(self.eh._hasStateChanged('systembrowsing', {'SystemId':'snes','GamePath':''}, changeOn, noChangeOn))
+        self._newEvParams['Action'] = 'systembrowsing'
+        self._newEvParams['SystemId'] = 'snes'
+        self._newEvParams['GamePath'] = ''
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
         # check with same action & system, new game
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
-        self.assertTrue(self.eh._hasStateChanged('systembrowsing', {'SystemId':'mame','GamePath':'asteroid.zip'}, changeOn, noChangeOn))
+        self._newEvParams['GamePath'] = 'asteroid.zip'
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
         # check with same action, new system & game
-        self.eh._updateState('systembrowsing', self._NEW_EV_PARAMS)
-        self.assertTrue(self.eh._hasStateChanged('systembrowsing', {'SystemId':'megadrive','GamePath':'sonic.zip'}, changeOn, noChangeOn))
+        self._newEvParams['SystemId'] = 'megadrive'
+        self._newEvParams['GamePath'] = 'sonic.zip'
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
         
+
+    def test_stateChangeOnInvalidSearchTerm(self):
+        (changeOn, noChangeOn) = ("blah", 'endgame wakeup')
+        # check invalid search term causes error
+        with self.assertLogs(log, logging.ERROR):
+            self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn)
+
 
     def test_getStateChangeRules(self):
         (changeOn, noChangeOn) = self.eh._getStateChangeRules()
@@ -423,3 +475,37 @@ class TestEventHandler(unittest.TestCase):
                 }
             )
         self.assertEqual(cm.output, ['INFO:dynquee:EmulationStation state changed: action=rungame system=mame game=/recalbox/share_init/roms/mame/bublbobl.zip', "INFO:dynquee:new slideshow media=['tests/media/publisher/taito.png']"])
+
+
+class TestESState(unittest.TestCase):
+
+    def testInit(self):
+        # test constructor with no args
+        state = EventHandler.ESState()
+        self.assertIsNone(state.action)
+        self.assertIsNone(state.system)
+        self.assertIsNone(state.game)
+        self.assertFalse(state.isFolder)
+        # test constructor with kw args
+        state = EventHandler.ESState(
+            action='ABC123',
+            game='DEF456',
+            isFolder=True
+        )
+        self.assertEqual(state.action, 'ABC123')
+        self.assertIsNone(state.system)
+        self.assertEqual(state.game, 'DEF456')
+        self.assertTrue(state.isFolder)
+
+
+    def testFromEvent(self):
+        evParams = {
+            'Action': 'XYZ987',
+            'SystemId': 'UVW654',
+            'IsFolder': '1'
+        }
+        state = EventHandler.ESState.fromEvent(evParams)
+        self.assertEqual(state.action, 'XYZ987')
+        self.assertEqual(state.system, 'UVW654')
+        self.assertEqual(state.game, '')
+        self.assertTrue(state.isFolder)
