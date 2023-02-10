@@ -418,7 +418,6 @@ class TestEventHandler(unittest.TestCase):
         evParams['Action'] = 'sleep'
         evParams['GamePath'] = '/path/to/mygame.zip'
         evParams['IsFolder'] = '1'
-        print(evParams)
         self.eh._updateState(evParams)
         # check state before sleep recorded
         self.assertEqual(self.eh._stateBeforeSleep.action, 'systembrowsing')
