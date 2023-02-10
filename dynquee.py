@@ -427,14 +427,16 @@ class Slideshow(object):
                 else:
                     # show image, wait for `_imgDisplayTime` to expire or SIGTERM, and clear it
                     self.showImage(mediaFile)
-                    # if we only have 1 image, just display it and exit
+                    # If we only have 1 image, just display it and wait until exit signalled
                     # Note: this only works if viewer leaves image up on framebuffer like fbv
-#
-# TODO: this causes fbv to run multiple times per second
-#
                     if len(mediaPaths) == 1 and not MediaManager.isVideo(mediaPaths[0]):
-                        break
-                    self._exitSignalled.wait(timeout = self._imgDisplayTime)
+                        log.debug("single image file in slideshow: waiting for exit signal")
+                        self._exitSignalled.wait()
+                        log.debug("single image file in slideshow: exit signalled")
+                    else:
+                        # leave image showing for configured time
+                        self._exitSignalled.wait(timeout = self._imgDisplayTime)
+                        log.debug("showing image for up to {self._imgDisplayTime}s")
                     self.clearImage()
                 # exit slideshow if SIGTERM received or `stop()` was called
                 log.debug(f"_exitSignalled={self._exitSignalled.is_set()}")

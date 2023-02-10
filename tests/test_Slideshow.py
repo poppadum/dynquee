@@ -5,7 +5,7 @@
 import logging, glob, time, io, os
 from dynquee import Slideshow, log, config
 
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 
 # set up config for test environment
 def setupTestConfig():
@@ -51,7 +51,17 @@ def test_slideshow():
     sl.stop()
 
 
+def test_slideshow1File():
+    sl = Slideshow()
+    imagePaths = ['./media/default.png']
+    sl.run(imagePaths)
+    time.sleep(10)
+    sl.stop()
+
+
+
 if __name__ == '__main__':
     setupTestConfig()
+    test_slideshow1File()
     test_slideshow()
     test_slideshowExit()
