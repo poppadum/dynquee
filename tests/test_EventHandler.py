@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
-# integration tests for dynquee.EventHandler class
-# uses unittest framework
+# Integration tests for dynquee.EventHandler class
+# uses unittest framework with time delays
 
 import unittest, logging, time, io, os
 from dynquee import EventHandler, MQTTSubscriber, MediaManager, Slideshow, log, config
@@ -33,7 +33,7 @@ class MockMQTTSubscriber(MQTTSubscriber):
     def _onConnect(self, client, user, flags, rc: int):
         pass
     
-    def _onDisconnect(self, client, user, flags, rc: int):
+    def _onDisconnect(self, client, userdata, rc: int):
         pass
 
     def stop(self):
@@ -87,6 +87,12 @@ class MockEventHandler(EventHandler):
 
 class testEventHandler(unittest.TestCase):
 
+    _EV_PARAMS = {
+        'SystemId': 'snes',
+        'GamePath': '/path/to/mario.zip',
+        'IsFolder': '0'
+    }
+
     def setUp(self):
         '''create a MockEventHandler and start the event send thread'''
         self.eh = MockEventHandler()
@@ -101,30 +107,94 @@ class testEventHandler(unittest.TestCase):
 
     def wait(self):
         '''time delay to let event propagate'''
-        time.sleep(1.0)
+        time.sleep(0.25)
+
+    def fireEventAndAssert(self, action: str, evParams: Dict[str, str], expectedOutput: Dict[str, str]):
+        with self.assertLogs(log, logging.INFO) as cm:
+            self.eh._mqttSubscriber.mockEvent(action, evParams)
+            self.wait()
+            for index, logStr in expectedOutput.items():
+                self.assertEqual(cm.output[int(index)], logStr)
+        self.wait()
+
 
     def testEventHandlerSystem(self):
-        evParams = {
-            'SystemId': 'snes',
-            'GamePath': '/path/to/mario.zip',
-            'IsFolder': '0'
-        }
-
-        with self.assertLogs(log, logging.INFO) as cm:
-            self.eh._mqttSubscriber.mockEvent('systembrowsing', {})
-            self.wait()
-            self.assertEqual(cm.output[0], 'INFO:dynquee:generate action systembrowsing')
-            self.assertEqual(cm.output[2], "INFO:dynquee:action=systembrowsing, params={'Action': 'systembrowsing'}")
-        self.wait()
+        self.fireEventAndAssert(
+            action = 'systembrowsing',
+            evParams = {},
+            expectedOutput = {
+                '0': 'INFO:dynquee:generate action systembrowsing',
+                '2': "INFO:dynquee:action=systembrowsing, params={'Action': 'systembrowsing'}"
+            }
+        )
         
-        with self.assertLogs(log, logging.INFO) as cm:
-            self.eh._mqttSubscriber.mockEvent('gamelistbrowsing', evParams)
-            self.wait()
-            self.assertEqual(cm.output[0], 'INFO:dynquee:generate action gamelistbrowsing')
-            self.assertEqual(cm.output[2], "INFO:dynquee:action=gamelistbrowsing, params={'SystemId': 'snes', 'GamePath': '/path/to/mario.zip', 'IsFolder': '0', 'Action': 'gamelistbrowsing'}")
-        self.wait()
+        self.fireEventAndAssert(
+            action = 'gamelistbrowsing',
+            evParams = self._EV_PARAMS,
+            expectedOutput = {
+                '0': 'INFO:dynquee:generate action gamelistbrowsing',
+                '2': "INFO:dynquee:action=gamelistbrowsing, params={'SystemId': 'snes', 'GamePath': '/path/to/mario.zip', 'IsFolder': '0', 'Action': 'gamelistbrowsing'}"
+            }
+        )
 
-        self.eh._mqttSubscriber.stop()
+
+    def testEventHandlerSleepWakeup(self):
+        # send normal event first
+        self.fireEventAndAssert(
+            action = 'systembrowsing',
+            evParams = self._EV_PARAMS,
+            expectedOutput = {
+                '0': 'INFO:dynquee:generate action systembrowsing',
+                '2': "INFO:dynquee:action=systembrowsing, params={'SystemId': 'snes', 'GamePath': '/path/to/mario.zip', 'IsFolder': '0', 'Action': 'systembrowsing'}"
+            }
+        )
+
+        # test sleep
+        self.fireEventAndAssert(
+            action = 'sleep',
+            evParams = {},
+            expectedOutput = {
+                '0': 'INFO:dynquee:generate action sleep',
+                '2': "INFO:dynquee:action=sleep, params={'Action': 'sleep'}"
+            }
+        )
+        # check state before sleep recorded
+        self.assertEqual(self.eh._stateBeforeSleep.action, 'systembrowsing')
+        self.assertEqual(self.eh._stateBeforeSleep.system, 'snes')
+        self.assertEqual(self.eh._stateBeforeSleep.game, '/path/to/mario.zip')
+        self.assertFalse(self.eh._stateBeforeSleep.isFolder)
+        
+        # test wakeup
+        self.fireEventAndAssert(
+            action = 'wakeup',
+            evParams = {},
+            expectedOutput = {
+                '0': 'INFO:dynquee:generate action wakeup',
+                '2': "INFO:dynquee:action=wakeup, params={'Action': 'wakeup'}"
+            }
+        )
+        # check state before sleep restored
+        self.assertEqual(self.eh._currentState.action, 'systembrowsing')
+        self.assertEqual(self.eh._currentState.system, 'snes')
+        self.assertEqual(self.eh._currentState.game, '/path/to/mario.zip')
+        self.assertFalse(self.eh._currentState.isFolder)
+
+        # test normal event after wakeup
+        self.fireEventAndAssert(
+            action = 'systembrowsing',
+            evParams = {'SystemId': 'megadrive'},
+            expectedOutput = {
+                '0': 'INFO:dynquee:generate action systembrowsing',
+                '2': "INFO:dynquee:action=systembrowsing, params={'SystemId': 'megadrive', 'Action': 'systembrowsing'}"
+            }
+        )
+        # check state
+        self.assertEqual(self.eh._currentState.action, 'systembrowsing')
+        self.assertEqual(self.eh._currentState.system, 'megadrive')
+        self.assertEqual(self.eh._currentState.game, '')
+        self.assertFalse(self.eh._currentState.isFolder)
+
+
 
 
 if __name__ == '__main__':
