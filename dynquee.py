@@ -497,15 +497,6 @@ class EventHandler(object):
                 isFolder = (evParams.get('IsFolder') == '1')
             )
 
-        def toEventParams(self) -> EventParams:
-            '''Convert state to matching event parameters: used when restoring state after wakeup'''
-            return {
-                'Action': self.action,
-                'SystemId': self.system,
-                'GamePath': self.game,
-                'IsFolder': '1' if self.isFolder else '0'
-            }
-
 
     def __init__(self):
         self._mqttSubscriber: MQTTSubscriber = MQTTSubscriber()
@@ -513,7 +504,8 @@ class EventHandler(object):
         self._slideshow: Slideshow = Slideshow()
         self._mqttSubscriber.start()
         # initialise record of EmulationStation state
-        self._currentState = self.ESState()
+        self._currentState: EventHandler.ESState = EventHandler.ESState()
+        self._previousEvParams: EventParams = {}
         # in case first event is 'sleep', initialise state before sleep
         self._stateBeforeSleep = self._currentState
 
@@ -577,15 +569,19 @@ class EventHandler(object):
         '''
         # workaround for ES bug: ES doesn't consistently fire another event after wakeup
         # if action == sleep, record state before sleep so we can restore it after wakeup
-        if evParams.get('Action') == 'sleep':
+        action: str = evParams.get('Action', '')
+        if action == 'sleep':
             self._stateBeforeSleep = self._currentState
             log.info(f"record _stateBeforeSleep={self._stateBeforeSleep}")
+        # update record of evParams unless action is sleep or wakeup
+        if action not in ['sleep', 'wakeup']:
+            self._previousEvParams = evParams.copy()
         # update state
         self._currentState = self.ESState.fromEvent(evParams)
-        # if action == wakeup, restore state and evParams before sleep (ES bug workaround)
-        if evParams.get('Action') == 'wakeup':
+        # if action is wakeup, restore state and evParams before sleep (ES bug workaround)
+        if action == 'wakeup':
             self._currentState = self._stateBeforeSleep
-            evParams = self._currentState.toEventParams()
+            evParams = self._previousEvParams
             log.info(f"restore _stateBeforeSleep={self._stateBeforeSleep}")
             log.info(f"restore _evParams={evParams}")
         log.debug(f"_currentState={self._currentState}")

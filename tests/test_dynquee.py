@@ -394,6 +394,7 @@ class TestEventHandler(unittest.TestCase):
 
     def test_recordStateBeforeSleep(self):
         evParams = self._newEvParams.copy()
+        evParamsBeforeSleep = evParams.copy()
         self.eh._updateState(evParams)
         evParams['Action'] = 'sleep'
         evParams['GamePath'] = '/path/to/mygame.zip'
@@ -417,7 +418,7 @@ class TestEventHandler(unittest.TestCase):
         self.assertEqual(self.eh._currentState.game, '')
         self.assertFalse(self.eh._stateBeforeSleep.isFolder)
         # check evParams changed on _updateState wakeup
-        self.assertEqual(evParams, self.eh._currentState.toEventParams())
+        self.assertEqual(evParams, evParamsBeforeSleep)
 
 
     def test_getStateChangeRules(self):
@@ -459,20 +460,3 @@ class TestESState(unittest.TestCase):
         self.assertEqual(state.system, 'UVW654')
         self.assertEqual(state.game, '')
         self.assertTrue(state.isFolder)
-
-    
-    def testToEventParams(self):
-        evParams = {
-            'Action': 'ABC123',
-            'SystemId': 'DEF456',
-            'GamePath': 'GHI789',
-            'IsFolder': '0'
-        }
-        state = EventHandler.ESState.fromEvent(evParams)
-        self.assertEqual(state.action, 'ABC123')
-        self.assertEqual(state.system, 'DEF456')
-        self.assertEqual(state.game, 'GHI789')
-        self.assertFalse(state.isFolder)
-
-        newParams = state.toEventParams()
-        self.assertEqual(evParams, newParams)
