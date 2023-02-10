@@ -425,67 +425,6 @@ class TestEventHandler(unittest.TestCase):
 
 
 
-    @unittest.skip('method not suitable for unit testing; TODO: refactor into 2 or more methods')
-    def test_handleEvent(self):
-        #test systembrowsing
-        with self.assertLogs(log, level=logging.INFO) as cm:
-            self.eh._handleEvent(
-                action = 'systembrowsing',
-                evParams = {
-                    'SystemId':'mame', 'GamePath':''
-                }
-            )
-        print(f"\n{cm.output}\n")
-        self.assertEqual(cm.output, ["INFO:dynquee:EmulationStation state changed: action=systembrowsing system=mame game=", "INFO:dynquee:new slideshow media=['tests/media/generic/generic01.mp4']"])
-
-
-        #still systembrowsing - should not change slideshow
-        self.eh._handleEvent(
-            action = 'systembrowsing',
-            evParams = {
-                'SystemId':'mame', 'GamePath':''
-            }
-        )
-
-        #now gamelistbrowsing
-        with self.assertLogs(log, level=logging.INFO) as cm:
-            self.eh._handleEvent(
-                action = 'gamelistbrowsing',
-                evParams = {
-                    'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'
-                }
-            )
-        self.assertEqual(cm.output, ['INFO:dynquee:EmulationStation state changed: action=gamelistbrowsing system=mame game=/recalbox/share_init/roms/mame/chasehq.zip', "INFO:dynquee:new slideshow media=['tests/media/generic/generic01.mp4']"])
-
-        #still gamelistbrowsing - should not change slideshow
-        self.eh._handleEvent(
-            action = 'gamelistbrowsing',
-            evParams = {
-                'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/asteroid.zip', 'Publisher':'Atari'
-            }
-        )
-
-        # test rungame
-        with self.assertLogs(log, level=logging.INFO) as cm:
-            self.eh._handleEvent(
-                action = 'rungame',
-                evParams = {
-                    'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'
-                }
-            )
-        self.assertEqual(cm.output, ['INFO:dynquee:EmulationStation state changed: action=rungame system=mame game=/recalbox/share_init/roms/mame/chasehq.zip', "INFO:dynquee:new slideshow media=['tests/media/mame/chasehq.png']"])
-
-        # test rungame with only publisher image available
-        with self.assertLogs(log, level=logging.INFO) as cm:
-            self.eh._handleEvent(
-                action = 'rungame',
-                evParams = {
-                    'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/bublbobl.zip', 'Publisher':'Taito'
-                }
-            )
-        self.assertEqual(cm.output, ['INFO:dynquee:EmulationStation state changed: action=rungame system=mame game=/recalbox/share_init/roms/mame/bublbobl.zip', "INFO:dynquee:new slideshow media=['tests/media/publisher/taito.png']"])
-
-
 class TestESState(unittest.TestCase):
 
     def testInit(self):
