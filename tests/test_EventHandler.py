@@ -124,7 +124,7 @@ class testEventHandler(unittest.TestCase):
             evParams = {},
             expectedOutput = {
                 '0': 'INFO:dynquee:generate action systembrowsing',
-                '2': "INFO:dynquee:action=systembrowsing, params={'Action': 'systembrowsing'}"
+                '2': "INFO:dynquee:event params={'Action': 'systembrowsing'}"
             }
         )
         
@@ -133,7 +133,7 @@ class testEventHandler(unittest.TestCase):
             evParams = self._EV_PARAMS,
             expectedOutput = {
                 '0': 'INFO:dynquee:generate action gamelistbrowsing',
-                '2': "INFO:dynquee:action=gamelistbrowsing, params={'SystemId': 'snes', 'GamePath': '/path/to/mario.zip', 'IsFolder': '0', 'Action': 'gamelistbrowsing'}"
+                '2': "INFO:dynquee:event params={'SystemId': 'snes', 'GamePath': '/path/to/mario.zip', 'IsFolder': '0', 'Action': 'gamelistbrowsing'}"
             }
         )
 
@@ -145,7 +145,7 @@ class testEventHandler(unittest.TestCase):
             evParams = self._EV_PARAMS,
             expectedOutput = {
                 '0': 'INFO:dynquee:generate action systembrowsing',
-                '2': "INFO:dynquee:action=systembrowsing, params={'SystemId': 'snes', 'GamePath': '/path/to/mario.zip', 'IsFolder': '0', 'Action': 'systembrowsing'}"
+                '2': "INFO:dynquee:event params={'SystemId': 'snes', 'GamePath': '/path/to/mario.zip', 'IsFolder': '0', 'Action': 'systembrowsing'}"
             }
         )
 
@@ -155,7 +155,7 @@ class testEventHandler(unittest.TestCase):
             evParams = {},
             expectedOutput = {
                 '0': 'INFO:dynquee:generate action sleep',
-                '2': "INFO:dynquee:action=sleep, params={'Action': 'sleep'}"
+                '2': "INFO:dynquee:event params={'Action': 'sleep'}"
             }
         )
         # check state before sleep recorded
@@ -170,7 +170,7 @@ class testEventHandler(unittest.TestCase):
             evParams = {},
             expectedOutput = {
                 '0': 'INFO:dynquee:generate action wakeup',
-                '2': "INFO:dynquee:action=wakeup, params={'Action': 'wakeup'}"
+                '2': "INFO:dynquee:event params={'Action': 'wakeup'}"
             }
         )
         # check state before sleep restored
@@ -185,7 +185,7 @@ class testEventHandler(unittest.TestCase):
             evParams = {'SystemId': 'megadrive'},
             expectedOutput = {
                 '0': 'INFO:dynquee:generate action systembrowsing',
-                '2': "INFO:dynquee:action=systembrowsing, params={'SystemId': 'megadrive', 'Action': 'systembrowsing'}"
+                '2': "INFO:dynquee:event params={'SystemId': 'megadrive', 'Action': 'systembrowsing'}"
             }
         )
         # check state

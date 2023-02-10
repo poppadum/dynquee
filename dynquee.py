@@ -265,15 +265,15 @@ class MediaManager(object):
         return self._getMediaMatching(globPattern)
 
 
-    def getMedia(self, action: str, evParams: Dict[str, str]) -> List[str]:
+    def getMedia(self, evParams: Dict[str, str]) -> List[str]:
         '''Work out which media files to display for given action using search 
             precedence rules defined in config file.
-            :param action: EmulationStation action
             :param evParams: a dict of event parameters
             :return: list of paths to media files, or [] if marquee should be blank
         '''
-        log.debug(f"action={action} params={evParams}")
+        log.debug(f"params={evParams}")
         # get search precedence rule for this action
+        action:str = evParams.get('Action', '')
         precedenceRule: List[str] = self._getPrecedence(action)
         # find best matching media file for system/game, trying each search term of precedence rule in turn
         for searchTerm in precedenceRule:
@@ -513,15 +513,14 @@ class EventHandler(object):
                 break
             log.debug(f'event received: {event}')
             params: Dict[str, str] = self._mqttSubscriber.getEventParams()
-            self._handleEvent(params.get('Action'), params)
+            self._handleEvent(params)
 
 
-    def _handleEvent(self, action: str, evParams: Dict[str, str]):
+    def _handleEvent(self, evParams: Dict[str, str]):
         '''Find appropriate media files for the event and display them
-            :param event: EmulationStation action 
             :param evParams: a dict of event parameters
         '''
-        log.info(f"action={action}, params={evParams}")
+        log.info(f"event params={evParams}")
         # do we need to change displayed media?
         changeOn: str
         noChangeOn: str
@@ -532,9 +531,9 @@ class EventHandler(object):
         if not stateChanged:
             # do nothing if ES state has not changed
             return
-        log.info(f"EmulationStation state changed: action={action} _currentState={self._currentState}")
+        log.info(f"EmulationStation state changed: _currentState={self._currentState}")
         # search for media files
-        mediaPaths: List[str] = self._mediaManager.getMedia(action, evParams)
+        mediaPaths: List[str] = self._mediaManager.getMedia(evParams)
         # stop slideshow before starting new slideshow or blanking display
         self._slideshow.stop()
         if not mediaPaths:
@@ -563,13 +562,13 @@ class EventHandler(object):
         # if action == sleep, record state before sleep so we can restore it after wakeup
         if evParams.get('Action') == 'sleep':
             self._stateBeforeSleep = self._currentState
-            log.info(f"record  _stateBeforeSleep={self._stateBeforeSleep}")
+            log.info(f"record _stateBeforeSleep={self._stateBeforeSleep}")
         # update state
         self._currentState = self.ESState.fromEvent(evParams)
         # if action == wakeup, restore state before sleep (ES bug workaround)
         if evParams.get('Action') == 'wakeup':
             self._currentState = self._stateBeforeSleep
-            log.info(f"restore  _stateBeforeSleep={self._stateBeforeSleep}")
+            log.info(f"restore _stateBeforeSleep={self._stateBeforeSleep}")
         log.debug(f"_currentState={self._currentState}")
 
 
@@ -584,10 +583,8 @@ class EventHandler(object):
         
 
     def _hasStateChanged(self, evParams: Dict[str, str], changeOn: str, noChangeOn:str) -> bool:
-    # def _hasStateChanged(self, newState: ESState, changeOn: str, noChangeOn:str) -> bool:
             '''Determine if EmulationStation's state has changed enough for us to change displayed media.
                 Follows rules defined in config file.
-                :param newAction: EmulationStation action
                 :param evParams: dict of EmulationStation event params
                 :param changeOn: rule specifying when to change state
                 :param noChangeOn: rule specifying which actions do not change state
@@ -621,9 +618,10 @@ class EventHandler(object):
                 log.debug('if changeOn=system/game')
                 return not ((newState.system == self._currentState.system) and (newState.game == self._currentState.game))
             else:
-                # something unexpected happened: log it
+                # unrecognised action in state change rule: log it
                 log.error((
-                    f"unrecognised state change rules: changeOn='{changeOn}' noChangeOn='{noChangeOn}'"
+                    "Unrecognised state change rule - check config file: "
+                    f" changeOn='{changeOn}' noChangeOn='{noChangeOn}'"
                     f" _currentState={self._currentState} newState={newState}"
                 ))
                 # change marquee

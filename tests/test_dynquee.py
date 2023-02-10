@@ -141,66 +141,49 @@ class TestMediaManager(unittest.TestCase):
         
         self.assertEqual(
             self.mm.getMedia(
-                action = 'rungame',
-                evParams = {
-                    'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'
-                }
+                {'Action': 'rungame', 'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'}
             ),
             ['tests/media/mame/chasehq.png']
         )
         # publisher media
         self.assertEqual(
             self.mm.getMedia(
-                action = 'rungame',
-                evParams = {
-                    'SystemId': 'mame', 'GamePath': '/recalbox/share_init/roms/mame/UNKNOWN.zip', 'Publisher': 'Taito'
-                }
+                {'Action': 'rungame', 'SystemId': 'mame', 'GamePath': '/recalbox/share_init/roms/mame/UNKNOWN.zip', 'Publisher': 'Taito'}
             ),
             ['tests/media/publisher/taito.png']
         )
         # publisher media containing space
         self.assertEqual(
             self.mm.getMedia(
-                action = 'rungame',
-                evParams = {
-                    'SystemId': 'mame', 'GamePath': '/recalbox/share_init/roms/mame/UNKNOWN.zip', 'Publisher': 'Data East'
-                }
+                {'Action': 'rungame', 'SystemId': 'mame', 'GamePath': '/recalbox/share_init/roms/mame/UNKNOWN.zip', 'Publisher': 'Data East'}
             ),
             ['tests/media/publisher/data east.png']
         )
         # scraped game image: should return imagePath
         self.assertEqual(
             self.mm.getMedia(
-                action = 'rungame',
-                evParams = {
-                    'ImagePath': '/path/to/scraped_image'
-                }
+                {'Action': 'rungame', 'ImagePath': '/path/to/scraped_image'}
             ),
             ['/path/to/scraped_image']
         )
         # genre image:
         self.assertEqual(
             self.mm.getMedia(
-                action = 'rungame',
-                evParams = {
-                    'SystemId': 'UNKNOWN', 'GamePath': '/recalbox/share_init/roms/_/UNKNOWN.zip', 'Genre': 'Shooter'
-                }
+                {'Action': 'rungame', 'SystemId': 'UNKNOWN', 'GamePath': '/recalbox/share_init/roms/_/UNKNOWN.zip', 'Genre': 'Shooter'}
             ),
             ['tests/media/genre/shooter.png']
         )
         # generic
         self.assertEqual(
             self.mm.getMedia(
-                action = 'rungame',
-                evParams = {'SystemId': 'UNKNOWN'}
+                {'Action': 'rungame', 'SystemId': 'UNKNOWN'}
             ),
             ['tests/media/generic/generic01.mp4']
         )
         # test ROM it won't know: should return generic media file
         self.assertEqual(
             self.mm.getMedia(
-                action = 'gamelistbrowsing',
-                evParams = {'SystemId': 'UNKNOWN', 'GamePath': 'XXXX'}
+                {'Action': 'gamelistbrowsing', 'SystemId': 'UNKNOWN', 'GamePath': 'XXXX'}
             ),
             ['tests/media/generic/generic01.mp4']
         )
@@ -209,10 +192,7 @@ class TestMediaManager(unittest.TestCase):
         config.set(self.mm._CONFIG_SECTION, 'rungame', 'rom+publisher+system scraped')
         self.assertEqual(
             self.mm.getMedia(
-                action = 'rungame',
-                evParams = {
-                    'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'
-                }
+                {'Action': 'rungame', 'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'}
             ),
             ['tests/media/mame/chasehq.png', 'tests/media/publisher/taito.png']
         )
