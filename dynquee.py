@@ -11,6 +11,7 @@ from queue import SimpleQueue, Empty
 from dataclasses import dataclass
 from typing import ClassVar, Dict, List, Tuple, Optional
 
+EventParams = Dict[str, str]
 
 # Module logging config file
 _LOG_CONFIG_FILE: str = "dynquee.log.conf"
@@ -231,7 +232,7 @@ class MediaManager(object):
         return precedence
 
 
-    def _getMediaForSearchTerm(self, searchTerm: str, evParams: Dict[str, str]) -> List[str]:
+    def _getMediaForSearchTerm(self, searchTerm: str, evParams: EventParams) -> List[str]:
         '''Locate media matching a single component of a search rule. See config file
             for list of valid search terms.
             :param searchTerm: the search term
@@ -265,7 +266,7 @@ class MediaManager(object):
         return self._getMediaMatching(globPattern)
 
 
-    def getMedia(self, evParams: Dict[str, str]) -> List[str]:
+    def getMedia(self, evParams: EventParams) -> List[str]:
         '''Work out which media files to display for given action using search 
             precedence rules defined in config file.
             :param evParams: a dict of event parameters
@@ -481,13 +482,13 @@ class EventHandler(object):
     @dataclass(frozen = True, eq = False)
     class ESState(object):
         '''Keeps track of state of Emulation Station (immutable)'''
-        action: Optional[str] = None
-        system: Optional[str] = None
-        game: Optional[str] = None
+        action: str = ''
+        system: str = ''
+        game: str = ''
         isFolder: bool = False
 
         @classmethod
-        def fromEvent(cls, evParams: Dict[str, str]) -> 'EventHandler.ESState':
+        def fromEvent(cls, evParams: EventParams) -> 'EventHandler.ESState':
             '''Create ESState object from supplied event parameters'''
             return EventHandler.ESState(
                 action = evParams.get('Action', ''),
@@ -495,6 +496,15 @@ class EventHandler(object):
                 game = evParams.get('GamePath', ''),
                 isFolder = (evParams.get('IsFolder') == '1')
             )
+
+        def toEventParams(self) -> EventParams:
+            '''Convert state to matching event parameters: used when restoring state after wakeup'''
+            return {
+                'Action': self.action,
+                'SystemId': self.system,
+                'GamePath': self.game,
+                'IsFolder': '1' if self.isFolder else '0'
+            }
 
 
     def __init__(self):
@@ -504,6 +514,8 @@ class EventHandler(object):
         self._mqttSubscriber.start()
         # initialise record of EmulationStation state
         self._currentState = self.ESState()
+        # in case first event is 'sleep', initialise state before sleep
+        self._stateBeforeSleep = self._currentState
 
 
     def readEvents(self):
@@ -518,7 +530,7 @@ class EventHandler(object):
             self._handleEvent(params)
 
 
-    def _handleEvent(self, evParams: Dict[str, str]):
+    def _handleEvent(self, evParams: EventParams):
         '''Find appropriate media files for the event and display them
             :param evParams: a dict of event parameters
         '''
@@ -527,9 +539,10 @@ class EventHandler(object):
         changeOn: str
         noChangeOn: str
         (changeOn, noChangeOn) = self._getStateChangeRules()       
-        # newState: EventHandler.ESState = EventHandler.ESState.fromEvent(evParams)
+        # has ES state changed?
         stateChanged: bool = self._hasStateChanged(evParams, changeOn, noChangeOn)
-        self._updateState(evParams)
+        # update state: on wakeup, restores state & evParams from before sleep
+        evParams = self._updateState(evParams)
         if not stateChanged:
             # do nothing if ES state has not changed
             return
@@ -541,7 +554,6 @@ class EventHandler(object):
         if not mediaPaths:
             # Note: should only happen if 'blank' found in precedence rule;
             # MediaManager.getMedia() always returns default image as last resort
-# TODO: what about wakeup?            
             log.info("'blank' specified in search precedence rule: blanking display")
         else:
             # display new media slideshow
@@ -558,8 +570,11 @@ class EventHandler(object):
             self._slideshow.run(mediaPaths)
 
 
-    def _updateState(self, evParams: Dict[str, str]):
-        '''Update record of EmulationStation state with provided values'''
+    def _updateState(self, evParams: EventParams) -> EventParams:
+        '''Update record of EmulationStation state with provided values
+            :param evParams: event params
+            :return: either same event params as passed in, or event params before sleep if action is `wakeup`
+        '''
         # workaround for ES bug: ES doesn't consistently fire another event after wakeup
         # if action == sleep, record state before sleep so we can restore it after wakeup
         if evParams.get('Action') == 'sleep':
@@ -567,11 +582,14 @@ class EventHandler(object):
             log.info(f"record _stateBeforeSleep={self._stateBeforeSleep}")
         # update state
         self._currentState = self.ESState.fromEvent(evParams)
-        # if action == wakeup, restore state before sleep (ES bug workaround)
+        # if action == wakeup, restore state and evParams before sleep (ES bug workaround)
         if evParams.get('Action') == 'wakeup':
             self._currentState = self._stateBeforeSleep
+            evParams = self._currentState.toEventParams()
             log.info(f"restore _stateBeforeSleep={self._stateBeforeSleep}")
+            log.info(f"restore _evParams={evParams}")
         log.debug(f"_currentState={self._currentState}")
+        return evParams
 
 
     def _getStateChangeRules(self) -> Tuple[str, str]:
@@ -584,7 +602,7 @@ class EventHandler(object):
         return (changeOn, noChangeOn)
         
 
-    def _hasStateChanged(self, evParams: Dict[str, str], changeOn: str, noChangeOn:str) -> bool:
+    def _hasStateChanged(self, evParams: EventParams, changeOn: str, noChangeOn:str) -> bool:
             '''Determine if EmulationStation's state has changed enough for us to change displayed media.
                 Follows rules defined in config file.
                 :param evParams: dict of EmulationStation event params

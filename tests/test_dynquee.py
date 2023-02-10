@@ -217,9 +217,9 @@ class TestEventHandler(unittest.TestCase):
     '''unit tests for TestHandler'''
 
     _INIT_EV_PARAMS = {
-        'Action': None,
-        'SystemId': None,
-        'GamePath': None,
+        'Action': '',
+        'SystemId': '',
+        'GamePath': '',
         'IsFolder': '0'
     }
 
@@ -261,9 +261,9 @@ class TestEventHandler(unittest.TestCase):
 
     
     def test_updateState(self):
-        self.assertIsNone(self.eh._currentState.action)
-        self.assertIsNone(self.eh._currentState.system)
-        self.assertIsNone(self.eh._currentState.game)
+        self.assertEqual(self.eh._currentState.action, '')
+        self.assertEqual(self.eh._currentState.system, '')
+        self.assertEqual(self.eh._currentState.game, '')
         self.assertFalse(self.eh._currentState.isFolder)
         evParams = self._NEW_EV_PARAMS.copy()
         evParams['GamePath'] = 'path/to/agame.zip'
@@ -411,11 +411,13 @@ class TestEventHandler(unittest.TestCase):
         self.assertTrue(self.eh._currentState.isFolder)
         # check previous state restored on wakeup
         evParams['Action'] = 'wakeup'
-        self.eh._updateState(evParams)
+        evParams = self.eh._updateState(evParams)
         self.assertEqual(self.eh._currentState.action, 'systembrowsing')
         self.assertEqual(self.eh._currentState.system, 'mame')
         self.assertEqual(self.eh._currentState.game, '')
         self.assertFalse(self.eh._stateBeforeSleep.isFolder)
+        # check evParams changed on _updateState wakeup
+        self.assertEqual(evParams, self.eh._currentState.toEventParams())
 
 
     def test_getStateChangeRules(self):
@@ -430,9 +432,9 @@ class TestESState(unittest.TestCase):
     def testInit(self):
         # test constructor with no args
         state = EventHandler.ESState()
-        self.assertIsNone(state.action)
-        self.assertIsNone(state.system)
-        self.assertIsNone(state.game)
+        self.assertEqual(state.action, '')
+        self.assertEqual(state.system, '')
+        self.assertEqual(state.game, '')
         self.assertFalse(state.isFolder)
         # test constructor with kw args
         state = EventHandler.ESState(
@@ -441,7 +443,7 @@ class TestESState(unittest.TestCase):
             isFolder=True
         )
         self.assertEqual(state.action, 'ABC123')
-        self.assertIsNone(state.system)
+        self.assertEqual(state.system, '')
         self.assertEqual(state.game, 'DEF456')
         self.assertTrue(state.isFolder)
 
@@ -457,3 +459,20 @@ class TestESState(unittest.TestCase):
         self.assertEqual(state.system, 'UVW654')
         self.assertEqual(state.game, '')
         self.assertTrue(state.isFolder)
+
+    
+    def testToEventParams(self):
+        evParams = {
+            'Action': 'ABC123',
+            'SystemId': 'DEF456',
+            'GamePath': 'GHI789',
+            'IsFolder': '0'
+        }
+        state = EventHandler.ESState.fromEvent(evParams)
+        self.assertEqual(state.action, 'ABC123')
+        self.assertEqual(state.system, 'DEF456')
+        self.assertEqual(state.game, 'GHI789')
+        self.assertFalse(state.isFolder)
+
+        newParams = state.toEventParams()
+        self.assertEqual(evParams, newParams)
