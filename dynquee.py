@@ -478,7 +478,7 @@ class EventHandler(object):
 
     @dataclass(frozen = True, eq = False)
     class ESState(object):
-        '''Keeps track of state of Emulation Station'''
+        '''Keeps track of state of Emulation Station (immutable)'''
         action: Optional[str] = None
         system: Optional[str] = None
         game: Optional[str] = None
@@ -486,13 +486,14 @@ class EventHandler(object):
 
         @classmethod
         def fromEvent(cls, evParams: Dict[str, str]) -> 'EventHandler.ESState':
-            '''Create ESState object from event parameters'''
+            '''Create ESState object from supplied event parameters'''
             return EventHandler.ESState(
                 action = evParams.get('Action', ''),
                 system = evParams.get('SystemId', ''),
                 game = evParams.get('GamePath', ''),
                 isFolder = (evParams.get('IsFolder') == '1')
             )
+
 
     def __init__(self):
         self._mqttSubscriber: MQTTSubscriber = MQTTSubscriber()
@@ -558,7 +559,17 @@ class EventHandler(object):
 
     def _updateState(self, evParams: Dict[str, str]):
         '''Update record of EmulationStation state with provided values'''
+        # workaround for ES bug: ES doesn't consistently fire another event after wakeup
+        # if action == sleep, record state before sleep so we can restore it after wakeup
+        if evParams.get('Action') == 'sleep':
+            self._stateBeforeSleep = self._currentState
+            log.info(f"record  _stateBeforeSleep={self._stateBeforeSleep}")
+        # update state
         self._currentState = self.ESState.fromEvent(evParams)
+        # if action == wakeup, restore state before sleep (ES bug workaround)
+        if evParams.get('Action') == 'wakeup':
+            self._currentState = self._stateBeforeSleep
+            log.info(f"restore  _stateBeforeSleep={self._stateBeforeSleep}")
         log.debug(f"_currentState={self._currentState}")
 
 
@@ -586,6 +597,9 @@ class EventHandler(object):
             log.debug(f"changeOn={changeOn} noChangeOn={noChangeOn}")
             log.debug(f"_currentState={self._currentState} newState={newState}")
 
+            # 'wakeup' action always causes a state change as we restore the state before sleep
+            if newState.action == 'wakeup':
+                return True
             # Use rules defined in config file to determine if state has changed
             # no change if action is ignored or `never` change specified
             if (newState.action and (newState.action in noChangeOn)) or (changeOn == 'never'):

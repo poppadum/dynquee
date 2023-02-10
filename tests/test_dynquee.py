@@ -285,11 +285,14 @@ class TestEventHandler(unittest.TestCase):
         self.assertIsNone(self.eh._currentState.system)
         self.assertIsNone(self.eh._currentState.game)
         self.assertFalse(self.eh._currentState.isFolder)
-        self.eh._updateState(self._NEW_EV_PARAMS)
+        evParams = self._NEW_EV_PARAMS.copy()
+        evParams['GamePath'] = 'path/to/agame.zip'
+        evParams['IsFolder'] = '1'
+        self.eh._updateState(evParams)
         self.assertEqual(self.eh._currentState.action, 'systembrowsing')
         self.assertEqual(self.eh._currentState.system, 'mame')
-        self.assertEqual(self.eh._currentState.game, '')
-        self.assertFalse(self.eh._currentState.isFolder)
+        self.assertEqual(self.eh._currentState.game, 'path/to/agame.zip')
+        self.assertTrue(self.eh._currentState.isFolder)
 
 
     def test_hasStateChanged(self):
@@ -407,6 +410,33 @@ class TestEventHandler(unittest.TestCase):
         # check invalid search term causes error
         with self.assertLogs(log, logging.ERROR):
             self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn)
+
+
+    def test_recordStateBeforeSleep(self):
+        evParams = self._newEvParams.copy()
+        self.eh._updateState(evParams)
+        evParams['Action'] = 'sleep'
+        evParams['GamePath'] = '/path/to/mygame.zip'
+        evParams['IsFolder'] = '1'
+        print(evParams)
+        self.eh._updateState(evParams)
+        # check state before sleep recorded
+        self.assertEqual(self.eh._stateBeforeSleep.action, 'systembrowsing')
+        self.assertEqual(self.eh._stateBeforeSleep.system, 'mame')
+        self.assertEqual(self.eh._stateBeforeSleep.game, '')
+        self.assertFalse(self.eh._stateBeforeSleep.isFolder)
+        # check new state recorded
+        self.assertEqual(self.eh._currentState.action, 'sleep')
+        self.assertEqual(self.eh._currentState.system, 'mame')
+        self.assertEqual(self.eh._currentState.game, '/path/to/mygame.zip')
+        self.assertTrue(self.eh._currentState.isFolder)
+        # check previous state restored on wakeup
+        evParams['Action'] = 'wakeup'
+        self.eh._updateState(evParams)
+        self.assertEqual(self.eh._currentState.action, 'systembrowsing')
+        self.assertEqual(self.eh._currentState.system, 'mame')
+        self.assertEqual(self.eh._currentState.game, '')
+        self.assertFalse(self.eh._stateBeforeSleep.isFolder)
 
 
     def test_getStateChangeRules(self):
