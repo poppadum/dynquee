@@ -22,8 +22,8 @@ build/release*.zip
 build/release_HOWTO.md
 
 # misc
-media/tft_logos
 examples/
-scripts/
 info/
+logs/
+scripts/
 todo.md
