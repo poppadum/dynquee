@@ -436,7 +436,7 @@ class Slideshow(object):
                     else:
                         # leave image showing for configured time
                         self._exitSignalled.wait(timeout = self._imgDisplayTime)
-                        log.debug("showing image for up to {self._imgDisplayTime}s")
+                        log.debug(f"showing image for up to {self._imgDisplayTime}s")
                     self.clearImage()
                 # exit slideshow if SIGTERM received or `stop()` was called
                 log.debug(f"_exitSignalled={self._exitSignalled.is_set()}")

@@ -5,7 +5,7 @@
 import logging, glob, time, io, os
 from dynquee import Slideshow, log, config
 
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 
 # set up config for test environment
 def setupTestConfig():
