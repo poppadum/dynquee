@@ -322,6 +322,11 @@ class Slideshow(object):
         "how long to wait for external processes to complete (seconds)"
         self._exitSignalled: Event = Event()
         "indicates whether slideshow loop should exit"
+        self._hasExited: Event = Event()
+        "indicates whether slideshow thread has exited"
+        # initially, no slidesho is running so set hasExited flag to true
+        self._hasExited.set()
+
         self._workerThread: Optional[Thread] = None
         "slideshow worker thread"
         self._subProcess: Optional[subprocess.Popen] = None
@@ -447,6 +452,7 @@ class Slideshow(object):
                 self._exitSignalled.wait(timeout = config.getfloat(self._CONFIG_SECTION, 'time_between_slides'))
         # clear reference to slideshow worker thread once finished
         self._workerThread = None
+        self._hasExited.set()
         log.debug(f"worker thread exiting")
     
 
@@ -454,6 +460,11 @@ class Slideshow(object):
         '''Start thread to run randomised slideshow of images/videos until `stop()` called or we receive SIGTERM signal
             :param mediaPaths: list of paths to media files
         '''
+        # wait for previous slideshow to exit (if any) before starting
+        log.debug("wait for _hasExited to be true")
+        self._hasExited.wait()
+        self._hasExited.clear()
+        # start new slideshow thread
         self._workerThread = Thread(
             name = 'slideshow_thread',
             target = self._doRun,
