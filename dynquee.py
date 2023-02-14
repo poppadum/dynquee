@@ -11,7 +11,10 @@ from queue import SimpleQueue, Empty
 from dataclasses import dataclass
 from typing import ClassVar, Dict, List, Tuple, Optional
 
+# Type aliases
 EventParams = Dict[str, str]
+SlideshowMedia = List[str]
+
 
 # Module logging config file
 _LOG_CONFIG_FILE: str = "dynquee.log.conf"
@@ -54,7 +57,7 @@ class SignalHandler(object):
         self._events.remove(event)
 
     def _sigReceived(self, signum: int, _stackFrame):
-        '''Called when SIGTERM received: set exit flags on registered Events objects'''
+        '''Called when SIGTERM received: set exit flags on registered Event objects'''
         log.info(f'received signal {signal.Signals(signum).name}')
         for event in self._events:
             event.set()
@@ -206,7 +209,7 @@ class MediaManager(object):
         return False
 
 
-    def _getMediaMatching(self, globPattern: str) -> List[str]:
+    def _getMediaMatching(self, globPattern: str) -> SlideshowMedia:
         '''Search for media files matching globPattern within media directory
             :return: list of paths of matching files, or []
         '''
@@ -228,11 +231,11 @@ class MediaManager(object):
             # if no rules defined for this action, use the default rules
             fallback = config.get(self._CONFIG_SECTION, 'default')
         ).split()
-        log.info(f"action={action}; search precedence={precedence}")
+        log.debug(f"action={action}; search precedence={precedence}")
         return precedence
 
 
-    def _getMediaForSearchTerm(self, searchTerm: str, evParams: EventParams) -> List[str]:
+    def _getMediaForSearchTerm(self, searchTerm: str, evParams: EventParams) -> SlideshowMedia:
         '''Locate media matching a single component of a search rule. See config file
             for list of valid search terms.
             :param searchTerm: the search term
@@ -266,7 +269,7 @@ class MediaManager(object):
         return self._getMediaMatching(globPattern)
 
 
-    def getMedia(self, evParams: EventParams) -> List[str]:
+    def getMedia(self, evParams: EventParams) -> SlideshowMedia:
         '''Work out which media files to display for given action using search 
             precedence rules defined in config file.
             :param evParams: a dict of event parameters
@@ -296,7 +299,7 @@ class MediaManager(object):
             return [f"{config.get(self._CONFIG_SECTION, 'media_path')}/{config.get(self._CONFIG_SECTION, 'default_image')}"]
 
 
-    def getStartupMedia(self) -> List[str]:
+    def getStartupMedia(self) -> SlideshowMedia:
         '''Get list of media files to be played at program startup'''
         log.debug(f"getting startup media files")
         globPattern: str = self._GLOB_PATTERNS['startup']
@@ -306,7 +309,8 @@ class MediaManager(object):
 
 class Slideshow(object):
     '''Display slideshow of images/videos on the marquee; runs in a separate thread.
-        Use `run()` to start slideshow and `stop()` to stop it.
+        Call `setMedia()` to change the media set displayed.
+        Call  `stop()` to stop slideshow thread.
     '''
 
     _CONFIG_SECTION: ClassVar[str] = 'slideshow'
@@ -320,26 +324,39 @@ class Slideshow(object):
         "maximum time to let video file play before being stopped (seconds)"
         self._timeout = timeout
         "how long to wait for external processes to complete (seconds)"
-        self._exitSignalled: Event = Event()
-        "indicates whether slideshow loop should exit"
-        self._hasExited: Event = Event()
-        "indicates whether slideshow thread has exited"
-        # initially, no slidesho is running so set hasExited flag to true
-        self._hasExited.set()
 
-        self._workerThread: Optional[Thread] = None
+        # properties for communication with slideshow thread
+        self._queue: SimpleQueue[SlideshowMedia] = SimpleQueue()
+        "queue of slideshow media sets"
+        self._currentMedia: SlideshowMedia = []
+        "the media set currently displayed"
+        self._mediaChangeRequested: Event = Event()
+        "indicates slideshow media is to be changed"
+        self._slideshowExited: Event = Event()
+        "indicates slideshow has exited"
+        # On first run don't wait for slideshow exit before starting
+        self._slideshowExited.set()
+        
+        self._slideshowThread: Optional[Thread] = None
         "slideshow worker thread"
         self._subProcess: Optional[subprocess.Popen] = None
         "media player/viewer subprocess"
         
+        # handle program exit cleanly
+        self._exitSignalled: Event = Event()
+        "indicates program exit has been signalled"
         # register with signal handler to exit slideshow gracefully if SIGTERM received
         _signalHander.addEvent(self._exitSignalled)
 
         # set initial framebuffer resolution if set in config files
         self._setFramebufferResolution()
 
+        # start slideshow thread
+        self.start()
+
 
     def __del__(self):
+        self.stop()
         # de-register from signal handler
         _signalHander.removeEvent(self._exitSignalled)
 
@@ -377,7 +394,7 @@ class Slideshow(object):
             return False
 
 
-    def showImage(self, imgPath: str):
+    def _showImage(self, imgPath: str):
         '''Run the display image command defined in config file
             :param imgPath: full path to image file
         '''
@@ -385,7 +402,7 @@ class Slideshow(object):
         self._runCmd(cmd)
 
 
-    def clearImage(self):
+    def _clearImage(self):
         '''Run the clear image command defined in config file (if any)'''
         clearCmd: str = config.get(self._CONFIG_SECTION,'clear_cmd')
         if clearCmd:
@@ -393,10 +410,10 @@ class Slideshow(object):
             self._runCmd(cmd)
 
 
-    def showVideo(self, videoPath: str, maxVideoTime: float):
+    def _showVideo(self, videoPath: str, maxVideoTime: float):
         '''Launch video player command defined in config file, allow it to play
             for up to `maxVideoTime` seconds (or to the end if sooner) then exit.
-            To stop video, call `stopVideo()` to terminate video player process.
+            To stop video, call `_stopVideo()` to terminate video player process.
             :param videoPath: full path to video file
             :param maxVideoTime: how many seconds to let the video play before stopping it
         '''
@@ -404,7 +421,7 @@ class Slideshow(object):
         self._runCmd(cmd, waitForExit=True, timeout=maxVideoTime)
 
 
-    def stopVideo(self):
+    def _stopVideo(self):
         '''Stop running video player (if running) by terminating process'''
         if self._subProcess is not None:
             self._subProcess.terminate()
@@ -415,71 +432,112 @@ class Slideshow(object):
             log.debug(f"terminated video player: rc={rc}")
 
 
-    def _doRun(self, mediaPaths: List[str]):
-        '''Thread worker: loop image/video slideshow for ever until `stop()` called or SIGTERM signal received
+    def _doSlideshow(self, mediaPaths: SlideshowMedia):
+        '''Loop a slideshow media set for ever until either:
+            1. media changed with `setMedia()`
+            2. `stop()` called
+            3.  SIGTERM signal received
+
             :param mediaPaths: list of full paths to media files to show
         '''
-        self._exitSignalled.clear()
-        while not self._exitSignalled.is_set():
+        self._slideshowExited.clear()
+        while not self._mediaChangeRequested.is_set() and not self._exitSignalled.is_set():
             # random order of media each time through slideshow
             random.shuffle(mediaPaths)
             for mediaFile in mediaPaths:
                 # is file still image or video?
-                isVideo: bool = MediaManager.isVideo(mediaFile)
-                if isVideo:
-                    # start video, wait for clip to finish or `_maxVideoTime` to expire, and stop it
-                    self.showVideo(mediaFile, self._maxVideoTime)
-                    self.stopVideo()
+                if MediaManager.isVideo(mediaFile):
+                    # start video, wait for clip to finish or `_maxVideoTime` to expire, then stop it
+                    self._showVideo(mediaFile, self._maxVideoTime)
+                    self._stopVideo()
                 else:
-                    # show image, wait for `_imgDisplayTime` to expire or SIGTERM, and clear it
-                    self.showImage(mediaFile)
-                    # If we only have 1 image, just display it and wait until exit signalled
-                    # Note: this only works if viewer leaves image up on framebuffer like fbv
+                    # show image, wait for `_imgDisplayTime` to expire or media change event, then clear it
+                    self._showImage(mediaFile)
+                    # If we only have 1 image, just display it and wait until media change signalled
+                    # Note: this only works if viewer leaves image up on framebuffer like fbv?
                     if len(mediaPaths) == 1 and not MediaManager.isVideo(mediaPaths[0]):
-                        log.debug("single image file in slideshow: waiting for exit signal")
-                        self._exitSignalled.wait()
-                        log.debug("single image file in slideshow: exit signalled")
+                        log.debug("single image file in slideshow: waiting for media change")
+                        self._mediaChangeRequested.wait()
                     else:
                         # leave image showing for configured time
-                        self._exitSignalled.wait(timeout = self._imgDisplayTime)
+                        self._mediaChangeRequested.wait(timeout = self._imgDisplayTime)
                         log.debug(f"showing image for up to {self._imgDisplayTime}s")
-                    self.clearImage()
-                # exit slideshow if SIGTERM received or `stop()` was called
-                log.debug(f"_exitSignalled={self._exitSignalled.is_set()}")
-                if self._exitSignalled.is_set():
+                    self._clearImage()
+                # exit slideshow if _mediaChange flag set
+                if self._mediaChangeRequested.is_set():
+                    log.debug(f"_mediaChangeRequested flag set")
                     break
                 # pause between slideshow images/clips
-                self._exitSignalled.wait(timeout = config.getfloat(self._CONFIG_SECTION, 'time_between_slides'))
-        # clear reference to slideshow worker thread once finished
-        self._workerThread = None
-        self._hasExited.set()
-        log.debug(f"worker thread exiting")
-    
+                self._mediaChangeRequested.wait(timeout = config.getfloat(self._CONFIG_SECTION, 'time_between_slides'))
+        # indicate that slideshow has exited
+        log.debug("set _slideshowExited flag")
+        self._slideshowExited.set()
 
-    def run(self, mediaPaths: List[str]):
-        '''Start thread to run randomised slideshow of images/videos until `stop()` called or we receive SIGTERM signal
-            :param mediaPaths: list of paths to media files
+
+    def _processMediaQueue(self):
+        '''Slideshow thread: read media sets from the media queue and display them.
+            Exit on `_exitSignalled` event.
+
+            Sends `_mediaChangeRequested` event when a new media set is queued.
         '''
-        # wait for previous slideshow to exit (if any) before starting
-        log.debug("wait for _hasExited to be true")
-        self._hasExited.wait()
-        self._hasExited.clear()
-        # start new slideshow thread
-        self._workerThread = Thread(
+        log.debug(f"slideshow worker thread start")
+        while not self._exitSignalled.is_set():
+            log.debug("waiting for slideshow media set")
+            mediaPaths: SlideshowMedia = self._queue.get(block = True)
+
+# TODO: if qsize > 1, jump to end of queue? But may cause a deadlock?
+        
+            # only change slideshow if new media set is different
+            mediaChanged: bool = not (mediaPaths == self._currentMedia)
+            log.debug(f"media changed={mediaChanged} mediaPaths={mediaPaths} _currentMedia={self._currentMedia}")
+            if mediaChanged:
+                # indicate a media change and wait for current slideshow to exit
+                log.info(f"slideshow media changed media={mediaPaths}")
+                self._mediaChangeRequested.set()
+                self._slideshowExited.wait()
+                # reset media change request flag
+                self._mediaChangeRequested.clear()
+                self._currentMedia = mediaPaths.copy()
+                # start new slideshow unless blanked display requested
+                if mediaPaths:
+                    self._doSlideshow(mediaPaths)
+                else:
+                    # Note: should only happen if 'blank' specified in search precedence rule;
+                    # MediaManager.getMedia() always returns default image as last resort
+                    log.info("'blank' specified in search precedence rule: blanking display")
+        # exit signalled: stop current slideshow
+        self.stop()
+        # self._mediaChangeRequested.set()
+        # self._slideshowExited.wait()
+        log.debug(f"slideshow worker thread exit")
+
+
+    def setMedia(self, mediaPaths: SlideshowMedia):
+        '''Place a new media set in the media queue for display'''
+        # normalise media set: remove duplicates and sort
+        mediaPaths = list(set(mediaPaths))
+        mediaPaths.sort()
+        self._queue.put(mediaPaths)
+
+
+    def start(self):
+        '''Start thread to run slideshow; thread will run until `stop()` called or we receive SIGTERM signal
+        '''
+        self._slideshowThread = Thread(
             name = 'slideshow_thread',
-            target = self._doRun,
-            args = (mediaPaths,),
+            target = self._processMediaQueue,
             daemon = True # terminate slideshow thread on exit
-        )
-        self._workerThread.start()
+        ).start()
 
 
     def stop(self):
         '''Stop the slideshow'''
         log.debug("slideshow stop requested")
+        self._mediaChangeRequested.set()
+        self._slideshowExited.wait()
         self._exitSignalled.set()
-        self.stopVideo()
-        self.clearImage()
+        self._stopVideo()
+        self._clearImage()
 
 
 
@@ -490,7 +548,7 @@ class EventHandler(object):
     "config file section for EventHandler"
 
 
-    @dataclass(frozen = True, eq = False)
+    @dataclass(frozen = True)
     class ESState(object):
         '''Keeps track of state of Emulation Station (immutable)'''
         action: str = ''
@@ -514,6 +572,7 @@ class EventHandler(object):
         self._mediaManager: MediaManager = MediaManager()
         self._slideshow: Slideshow = Slideshow()
         self._mqttSubscriber.start()
+        self._slideshow.start()
         # initialise record of EmulationStation state
         self._currentState: EventHandler.ESState = EventHandler.ESState()
         self._previousEvParams: EventParams = {}
@@ -529,7 +588,7 @@ class EventHandler(object):
             if not event:
                 break
             log.debug(f'event received: {event}')
-            params: Dict[str, str] = self._mqttSubscriber.getEventParams()
+            params: EventParams = self._mqttSubscriber.getEventParams()
             self._handleEvent(params)
 
 
@@ -544,33 +603,34 @@ class EventHandler(object):
         (changeOn, noChangeOn) = self._getStateChangeRules()       
         # has ES state changed?
         stateChanged: bool = self._hasStateChanged(evParams, changeOn, noChangeOn)
-        # update state: on wakeup, restores state & evParams from before sleep
+        # update state: on wakeup, restore state & evParams from before sleep
         evParams = self._updateState(evParams)
         if not stateChanged:
             # do nothing if ES state has not changed
             return
         log.info(f"EmulationStation state changed: _currentState={self._currentState}")
         # search for media files
-        mediaPaths: List[str] = self._mediaManager.getMedia(evParams)
-        # stop slideshow before starting new slideshow or blanking display
-        self._slideshow.stop()
-        if not mediaPaths:
-            # Note: should only happen if 'blank' found in precedence rule;
-            # MediaManager.getMedia() always returns default image as last resort
-            log.info("'blank' specified in search precedence rule: blanking display")
-        else:
-            # display new media slideshow
-            log.info(f'new slideshow media={mediaPaths}')
-            # time.sleep(0.2) #TODO: is this needed?
-            self._slideshow.run(mediaPaths)
+        mediaPaths: SlideshowMedia = self._mediaManager.getMedia(evParams)
+        log.debug(f'queue slideshow media={mediaPaths}')
+        self._slideshow.setMedia(mediaPaths)
+
+        # if not mediaPaths:
+        #     # Note: should only happen if 'blank' found in precedence rule;
+        #     # MediaManager.getMedia() always returns default image as last resort
+        #     log.info("'blank' specified in search precedence rule: blanking display")
+        # else:
+        #     # change slideshow media
+        #     log.info(f'new slideshow media={mediaPaths}')
+        #     # time.sleep(0.2) #TODO: is this needed?
+        #     self._slideshow.setMedia(mediaPaths)
 
 
     def startup(self):
         '''Show slideshow of startup files'''
-        mediaPaths: List[str] = self._mediaManager.getStartupMedia()
+        mediaPaths: SlideshowMedia = self._mediaManager.getStartupMedia()
         log.info(f"startup slideshow media={mediaPaths}")
         if mediaPaths:
-            self._slideshow.run(mediaPaths)
+            self._slideshow.setMedia(mediaPaths)
 
 
     def _updateState(self, evParams: EventParams) -> EventParams:
@@ -670,11 +730,11 @@ config: ConfigParser = loadConfig()
 
 if __name__ == '__main__':
     try:
-        log.info("dynquee starting")
+        log.info("dynquee start")
         eventHandler: EventHandler = EventHandler()
         eventHandler.startup()
         eventHandler.readEvents()
-        log.info('dynquee exiting')
+        log.info('dynquee exit')
     except Exception as e:
         # log any uncaught exception before exit
         log.critical(f"uncaught exception: {e}", exc_info=True)

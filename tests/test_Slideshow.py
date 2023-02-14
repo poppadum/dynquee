@@ -2,10 +2,10 @@
 
 # tests for dynquee.Slideshow class
 
-import logging, glob, time, io, os
+import logging, logging.config, glob, time, io, os
 from dynquee import Slideshow, log, config
 
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 
 # set up config for test environment
 def setupTestConfig():
@@ -20,14 +20,11 @@ def setupTestConfig():
 
 def test_slideshowExit():
     '''test that slideshow exits gracefully when terminated'''
-    
     sl = Slideshow()
     imagePaths = glob.glob('./media/**/*.png')
-    sl.run(imagePaths)
-   
+    sl.setMedia(imagePaths)
     # capture output
-    out = io.StringIO()
-    
+    out = io.StringIO()   
     # count seconds: should reach 40 before loop exits
     for c in range(1, 41):
         log.info('sleeping %d', c)
@@ -38,30 +35,43 @@ def test_slideshowExit():
             sl.stop()
     log.info('finished')
     out.flush()
-
     # check we reached 40 before loop ended
-    assert out.getvalue().endswith('sleeping 40\n'), "output:\n%s" % out.getvalue()
+    assert out.getvalue().endswith('sleeping 40\n'), f"output:\n{out.getvalue()}"
+    del(sl)
 
 
 def test_slideshow():
     sl = Slideshow()
     imagePaths = glob.glob('./media/**/*')
-    sl.run(imagePaths)
+    sl.setMedia(imagePaths)
     time.sleep(60)
-    sl.stop()
+    del(sl)
 
 
 def test_slideshow1File():
     sl = Slideshow()
+    sl.start()
     imagePaths = ['./media/default.png']
-    sl.run(imagePaths)
+    sl.setMedia(imagePaths)
     time.sleep(10)
-    sl.stop()
+    del(sl)
+
+
+def test_slideshowWaitToStart():
+    sl = Slideshow()
+    sl.start()
+    imagePaths = ['./media/default.png', './media/generic/astrocade.01.png']
+    sl.setMedia(imagePaths)
+    time.sleep(2)
+    sl.setMedia(imagePaths)
+    time.sleep(10)
+    del(sl)
 
 
 
 if __name__ == '__main__':
     setupTestConfig()
-    test_slideshow1File()
-    test_slideshow()
+    # test_slideshow1File()
+    # test_slideshow()
     test_slideshowExit()
+    test_slideshowWaitToStart()
