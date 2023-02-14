@@ -2,7 +2,7 @@
 
 # Unit tests for dynquee module
 
-import unittest, os, logging, time, random
+import unittest, os, logging, time, random, queue, threading
 from dynquee import MQTTSubscriber, MediaManager, EventHandler, Slideshow, log, config
 from typing import Optional
 
@@ -36,7 +36,7 @@ class MockMQTTSubscriber(MQTTSubscriber):
         log.info(f"generate action {action}")
         return action
 
-
+#@unittest.skip('temp skip')
 class TestMQTTSubscriber(unittest.TestCase):
     '''unit tests for MQTTSubscriber'''
 
@@ -105,7 +105,7 @@ class TestMQTTSubscriber(unittest.TestCase):
         time.sleep(2)
 
 
-
+#@unittest.skip('temp skip')
 class TestMediaManager(unittest.TestCase):
     '''unit tests for MediaManager'''
     
@@ -178,14 +178,14 @@ class TestMediaManager(unittest.TestCase):
             self.mm.getMedia(
                 {'Action': 'rungame', 'SystemId': 'UNKNOWN'}
             ),
-            ['tests/media/generic/generic01.mp4']
+            ['tests/media/generic/generic01.mp4', 'tests/media/generic/1MinCountdown.mp4']
         )
         # test ROM it won't know: should return generic media file
         self.assertEqual(
             self.mm.getMedia(
                 {'Action': 'gamelistbrowsing', 'SystemId': 'UNKNOWN', 'GamePath': 'XXXX'}
             ),
-            ['tests/media/generic/generic01.mp4']
+            ['tests/media/generic/generic01.mp4', 'tests/media/generic/1MinCountdown.mp4']
         )
 
         # test complex rule chunk
@@ -204,15 +204,33 @@ class TestMediaManager(unittest.TestCase):
 
 
 
+class TestSlideshow(unittest.TestCase):
+    def setUp(self):
+        self.sl = Slideshow()
+
+    def tearDown(self):
+        self.sl.stop()
+
+    def test_init(self):
+        self.assertIsInstance(self.sl._queue, queue.SimpleQueue)
+        self.assertTrue(self.sl._queue.empty())
+        self.assertEqual(self.sl._currentMedia, [])
+        self.assertFalse(self.sl._mediaChange.is_set())
+        self.assertFalse(self.sl._exitSignalled.is_set())
+        self.assertIsNone(self.sl._slideshowThread)
+        self.assertIsInstance(self.sl._queueReaderThread, threading.Thread)
+
+
+
 class MockEventHandler(EventHandler):
     def __init__(self):
         self._ms: MQTTSubscriber = MockMQTTSubscriber()
         self._mm: MediaManager = MediaManager()
-        self._sl: Slideshow = Slideshow(timeout=7.0)
+        self._sl: Slideshow = Slideshow()
         # record current state of EmulationStation
         self._currentState = self.ESState()
 
-
+#@unittest.skip('temp skip')
 class TestEventHandler(unittest.TestCase):
     '''unit tests for TestHandler'''
 
@@ -257,6 +275,7 @@ class TestEventHandler(unittest.TestCase):
 
 
     def tearDown(self):
+        self.eh._sl.stop()
         del(self.eh)
 
     
@@ -427,7 +446,7 @@ class TestEventHandler(unittest.TestCase):
         self.assertEqual(noChangeOn, 'endgame')
 
 
-
+#@unittest.skip('temp skip')
 class TestESState(unittest.TestCase):
 
     def testInit(self):

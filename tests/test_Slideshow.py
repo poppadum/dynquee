@@ -2,7 +2,7 @@
 
 # tests for dynquee.Slideshow class
 
-import logging, logging.config, glob, time, io, os
+import logging, logging.config, glob, time, io, os, threading
 from dynquee import Slideshow, log, config
 
 log.setLevel(logging.DEBUG)
@@ -20,6 +20,7 @@ def setupTestConfig():
 
 def test_slideshowExit():
     '''test that slideshow exits gracefully when terminated'''
+    log.info('')
     sl = Slideshow()
     imagePaths = glob.glob('./media/**/*.png')
     sl.setMedia(imagePaths)
@@ -41,37 +42,49 @@ def test_slideshowExit():
 
 
 def test_slideshow():
+    log.info('')
     sl = Slideshow()
     imagePaths = glob.glob('./media/**/*')
     sl.setMedia(imagePaths)
     time.sleep(60)
+    sl.stop()  
     del(sl)
 
 
 def test_slideshow1File():
+    log.info('')
     sl = Slideshow()
-    sl.start()
     imagePaths = ['./media/default.png']
     sl.setMedia(imagePaths)
     time.sleep(10)
+    sl.stop()
     del(sl)
 
 
-def test_slideshowWaitToStart():
+def test_slideshowMediaChange():
+    log.info('')
     sl = Slideshow()
-    sl.start()
-    imagePaths = ['./media/default.png', './media/generic/astrocade.01.png']
+    imagePaths = ['./media/default.png', './tests/media/generic/1MinCountdown.mp4']
     sl.setMedia(imagePaths)
-    time.sleep(2)
-    sl.setMedia(imagePaths)
+    print("sleeping 10s")
     time.sleep(10)
+    print("changing media set")
+    sl.setMedia(['./media/default.png'])
+    sl._mediaChange.set()
+    time.sleep(10)
+    sl.stop()
     del(sl)
 
 
 
 if __name__ == '__main__':
     setupTestConfig()
-    # test_slideshow1File()
-    # test_slideshow()
+    test_slideshow1File()
+    test_slideshow()
     test_slideshowExit()
-    test_slideshowWaitToStart()
+    test_slideshowMediaChange()
+
+    # report threads on exit: should only be MainThread
+    time.sleep(1)
+    print(f"threads remaining: {threading.enumerate()}")
+    assert len(threading.enumerate()) == 1, f"expected only MainThread"
