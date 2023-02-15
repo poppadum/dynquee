@@ -3,12 +3,15 @@
 """dynquee - a dynamic marquee for Recalbox"""
 
 
-import subprocess, signal, logging, logging.config, os, glob, random, threading
+import subprocess, signal, logging, logging.config, os, glob, json, random
 from configparser import ConfigParser
-from threading import Thread, Event
+from threading import Thread, Event, enumerate as enumerate_threads
 import paho.mqtt.client as mqtt
 from queue import SimpleQueue, Empty
 from dataclasses import dataclass
+from urllib.request import urlopen
+from urllib.error import URLError
+from http.client import HTTPResponse
 from typing import ClassVar, Dict, List, Tuple, Optional
 
 # Type aliases
@@ -61,10 +64,6 @@ class SignalHandler(object):
         log.info(f'received signal {signal.Signals(signum).name}')
         for event in self._events:
             event.set()
-
-# Module signal handler instance
-_signalHander: SignalHandler = SignalHandler()
-"module signalHandler object"
 
 
 
@@ -161,16 +160,50 @@ class MQTTSubscriber(object):
 
 
     def getEventParams(self) -> EventParams:
-        """Read event params from ES state file, stripping any CR characters
+        """Read event params from ES state file (either local or remote), stripping any CR characters
             :return: a dict mapping param names to their values
         """
+        if config.getboolean(self._CONFIG_SECTION, 'is_local', fallback = True):
+            rawState: List[str]
+            rawState = self._getEventParamsFromLocalhost()
+        else:
+            rawState = self._getEventParamsFromRemote()
         params: EventParams = {}
-        with open(config.get(self._CONFIG_SECTION, 'es_state_file')) as f:
-            for line in f:
-                key, value = line.strip().split('=', 1)
-                params[key] = value
+        for line in rawState:
+            # split line on first = character
+            key, value = line.strip().split('=', 1)
+            params[key] = value
         log.debug(f"params={params}")
         return params
+
+
+    def _getEventParamsFromLocalhost(self) -> List[str]:
+        """Read event params from local file.
+            :return: contents of ES state file as a list of str
+        """
+        with open(config.get(self._CONFIG_SECTION, 'es_state_local_file')) as f:
+            return f.readlines()
+
+
+    def _getEventParamsFromRemote(self) -> List[str]:
+        """Read event params from ES State file on a remote host.
+        
+            Uses Recalbox Manager's `/get` route (see Recalbox file `/usr/recalbox-manager2/dist/routes/get.js`)
+            :return: contents of remote ES state file as a list of str, with CR characters removed
+        """
+        url: str = config.get(self._CONFIG_SECTION, 'es_state_remote_url')
+        try:
+            response: HTTPResponse
+            with urlopen(url) as response:
+                log.debug(f"HTTP response status={response.status} reason={response.reason}")
+                contents = json.load(response)
+                log.debug(f"remote ES state JSON={contents}")
+                # retrieve relevant JSON property & split into lines
+                contents = contents.get("data", "").get("readFile", "").split('\r\n')
+                return contents
+        except (URLError, json.decoder.JSONDecodeError):
+            log.error(f"failed to get ES state from remote host: url={url}", exc_info=True)
+            return []
 
 
 
@@ -547,7 +580,7 @@ class Slideshow(object):
         self.setMedia([])
         log.debug(f"waiting for queue reader thread to exit: {self._queueReaderThread}")
         self._queueReaderThread.join()
-        log.debug(f"remaining threads: {threading.enumerate()}")
+        log.debug(f"remaining threads: {enumerate_threads()}")
 
 
 
@@ -582,12 +615,11 @@ class EventHandler(object):
 
 
     def __init__(self):
-        """Create `MQTTSubscriber`, `MediaManager` & `Slideshow` instances; start the `MQTTSubscriber` read loop & the `Slideshow` queue reader thread."""
+        """Create `MQTTSubscriber`, `MediaManager` & `Slideshow` instances; start the `MQTTSubscriber` read loop."""
         self._mqttSubscriber: MQTTSubscriber = MQTTSubscriber()
         self._mediaManager: MediaManager = MediaManager()
         self._slideshow: Slideshow = Slideshow()
         self._mqttSubscriber.start()
-        self._slideshow.start()
         # initialise record of EmulationStation state
         self._currentState: EventHandler.ESState = EventHandler.ESState()
         "current EmulationStation state"
@@ -721,12 +753,14 @@ class EventHandler(object):
                 return True
 
 
+### Module init ###
+
+# Module signal handler instance
+_signalHander: SignalHandler = SignalHandler()
+"module signalHandler object"
 
 # Configure logging from log config file
 log: logging.Logger = getLogger()
-
-# Uncomment for debug output:
-#log.setLevel(logging.DEBUG)
 
 # Read module config file
 config: ConfigParser = _loadConfig()

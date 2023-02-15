@@ -53,7 +53,7 @@ class TestMQTTSubscriber(unittest.TestCase):
         self.assertEqual(config.get('recalbox', 'host'), '127.0.0.1')
         self.assertEqual(config.getint('recalbox', 'port'), 1883)
         self.assertEqual(config.getint('recalbox', 'keepalive'), 60)
-        self.assertEqual(config.get('recalbox', 'ES_STATE_FILE'), 'tests/es_state.inf')
+        self.assertEqual(config.get('recalbox', 'es_state_local_file'), 'tests/es_state.inf')
 
     
     def test_getEventParams(self):
