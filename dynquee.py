@@ -376,7 +376,11 @@ class Slideshow(object):
             fallback=''
         ).split()
         if fbResCmd:
-            self._runCmd(fbResCmd, waitForExit=True, timeout=self._timeout)
+            if self._runCmd(fbResCmd):
+                try:
+                    self._subProcess.wait(self._subProcessTimeout)
+                except subprocess.TimeoutExpired:
+                    log.warning(f"timed out waiting {self._subProcessTimeout}s for framebuffer_resolution_cmd to complete: {fbResCmd}")
 
 
     def _runCmd(self, cmd: List[str]) -> bool:
@@ -436,7 +440,7 @@ class Slideshow(object):
         """Slideshow thread: loop a slideshow media set until a `_mediaChange` event occurs.
             Gets media set to show from `_currentMedia` property
         """
-        mediaPaths: SlideshowMediaSet = self._currentMedia
+        mediaPaths: SlideshowMediaSet = self._currentMedia.copy()
         log.debug(f"slideshow worker thread start")
         while not self._mediaChange.is_set():
             # random order of media each time through slideshow
@@ -500,9 +504,9 @@ class Slideshow(object):
                 if self._slideshowThread is not None:
                     self._slideshowThread.join()
                 # record current media set
+                self._currentMedia = mediaPaths
                 self._mediaChange.clear()
                 # start new slideshow unless blanked display requested
-                self._currentMedia = mediaPaths.copy()
                 if mediaPaths:
                     self._slideshowThread = Thread(
                         name = 'slideshow_thread',
