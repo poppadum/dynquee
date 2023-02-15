@@ -196,12 +196,11 @@ class MQTTSubscriber(object):
             response: HTTPResponse
             with urlopen(url) as response:
                 log.debug(f"HTTP response status={response.status} reason={response.reason}")
-                contents = json.load(response)
-                log.debug(f"remote ES state JSON={contents}")
+                jsonResponse: dict = json.load(response)
+                log.debug(f"remote ES state JSON={jsonResponse}")
                 # retrieve relevant JSON property & split into lines
-                contents = contents.get("data", "").get("readFile", "").split('\r\n')
-                return contents
-        except (URLError, json.decoder.JSONDecodeError):
+                return jsonResponse["data"]["readFile"].split('\r\n')
+        except (URLError, json.decoder.JSONDecodeError, KeyError):
             log.error(f"failed to get ES state from remote host: url={url}", exc_info=True)
             return []
 
