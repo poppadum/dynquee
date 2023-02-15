@@ -129,9 +129,9 @@ class TestMediaManager(unittest.TestCase):
 
     
     def test_getPrecedence(self):
-        self.assertEqual(self.mm._getPrecedence('default'), ['generic'])
-        self.assertEqual(self.mm._getPrecedence('__NOT_FOUND'), ['generic'])
-        self.assertEqual(self.mm._getPrecedence('gamelistbrowsing'), ['system', 'generic'])
+        self.assertEqual(self.mm._getPrecedenceRule('default'), ['generic'])
+        self.assertEqual(self.mm._getPrecedenceRule('__NOT_FOUND'), ['generic'])
+        self.assertEqual(self.mm._getPrecedenceRule('gamelistbrowsing'), ['system', 'generic'])
 
     
     def test_getMedia(self):
