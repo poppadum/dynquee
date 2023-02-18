@@ -454,18 +454,18 @@ class Slideshow(object):
         self._runCmd(cmd)
 
 
-    def _stopVideo(self):
-        """Stop running video player (if running) by terminating process"""
+    def _stopSubProcess(self):
+        """Stop running media player (if running) by terminating process"""
         if self._subProcess is not None:
             # try to terminate subprocess cleanly
             self._subProcess.terminate()
             try:
                 rc: int = self._subProcess.wait(self._subProcessTimeout)
-                log.debug(f"terminated video player: rc={rc}")
+                log.debug(f"terminated media player: rc={rc}")
             except subprocess.TimeoutExpired:
                 #subprocess did not exit within timeout so kill it
                 self._subProcess.kill()
-                log.warning(f"video player subprocess pid={self._subProcess.pid} did not terminate within {self._subProcessTimeout}s: sent SIGKILL")
+                log.warning(f"media player subprocess pid={self._subProcess.pid} did not terminate within {self._subProcessTimeout}s: sent SIGKILL")
 
 
     def _runSlideshow(self):
@@ -485,7 +485,7 @@ class Slideshow(object):
                     self._startVideo(mediaFile)
                     log.debug(f"showing video for up to {self._maxVideoTime}s")
                     self._mediaChange.wait(timeout = self._maxVideoTime)
-                    self._stopVideo()
+                    self._stopSubProcess()
                 else:
                     # show image, wait for `_imgDisplayTime` to expire or _mediaChange event, then clear it
                     self._showImage(mediaFile)
@@ -498,6 +498,9 @@ class Slideshow(object):
                         # leave image showing for configured time
                         self._mediaChange.wait(timeout = self._imgDisplayTime)
                         log.debug(f"showing image for up to {self._imgDisplayTime}s")
+                    # terminate image viewer if option set in config file
+                    if config.getboolean(self._CONFIG_SECTION, 'terminate_viewer'):
+                        self._stopSubProcess()
                     self._clearImage()
                 # exit slideshow if _mediaChangeRequested flag set
                 if self._mediaChange.is_set():
