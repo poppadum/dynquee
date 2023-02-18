@@ -18,7 +18,7 @@ media/startup/astrocade.*.png
 sync_to_pi.sh*
 
 # exclude release archives
-build/release*.zip
+build/dynquee-release*.zip
 build/release_HOWTO.md
 
 # misc

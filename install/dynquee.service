@@ -1,0 +1,13 @@
+[Unit]
+Description=dynamic marquee for Recalbox
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/dynquee
+ExecStart=/opt/dynquee/dynquee.py
+Type=exec
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

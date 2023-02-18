@@ -12,3 +12,5 @@ media/startup/*
 media/system/*
 media/default.png
 media/README.md
+logs/
+install/*
