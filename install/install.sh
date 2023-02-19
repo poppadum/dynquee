@@ -36,7 +36,7 @@ echo -e "\nMounting root filesystem read/write"
 /bin/mount -o rw,remount / || error
 
 echo "Installing init script to run at startup"
-cp -vf $INIT_SCRIPT /etc/init.d/ && \
+cp -vf install/$INIT_SCRIPT /etc/init.d/ && \
 chmod -v +x /etc/init.d/$INIT_SCRIPT || error
 
 echo "Remounting root filesystem read-only"
