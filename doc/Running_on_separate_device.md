@@ -130,7 +130,7 @@ Try running the command `sudo ./dynquee.py`. If all goes well, you should see th
 Press Ctrl+C to stop the program.
 
 If it doesn't work as expected, check the log files in the `logs/` directory:  
-- `logs/dynquee.log` contains the summary los
+- `logs/dynquee.log` contains the summary log
 - `logs/dynquee.debug.log` contains the full debug log
 
 If you've checked the logs and still can't see what's wrong, see the [help section](#help).
