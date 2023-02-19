@@ -4,6 +4,7 @@
 
 NAME=dynquee
 BASEDIR=/recalbox/share/dynquee
+RELEASE_URL='<dynquee-release>'
 INIT_SCRIPT=S32dynquee
 ROMDIR=/recalbox/share/roms
 
@@ -18,27 +19,32 @@ if [ ! -d /recalbox ]; then
     exit 1
 fi
 
-# Assume archive is downloaded and extracted
-# (probably in home dir /recalbox/share/system)
 
-# Create base directory if not already present
-mkdir -p "$BASEDIR"
-cd "$BASEDIR"
+# Create a directory for *dynquee* and download release
+echo -e "\nCreating directory $BASEDIR"
+mkdir -p $BASEDIR && \
+cd $BASEDIR || error
+
+echo -e "\nDownloading and extracting latest dynquee release"
+/usr/bin/wget -o dynquee.zip "$RELEASE_URL" && \
+/usr/bin/unzip -q dynquee.zip && \
+rm dynquee.zip || error
+
 
 # Copy init script & make it executable
-echo Mounting root filesystem read/write
+echo -e "\nMounting root filesystem read/write"
 /bin/mount -o rw,remount / || error
 
-echo Installing init script to run at startup
+echo "Installing init script to run at startup"
 cp -vf $INIT_SCRIPT /etc/init.d/ && \
 chmod -v +x /etc/init.d/$INIT_SCRIPT || error
 
-echo Remounting root filesystem read-only
+echo "Remounting root filesystem read-only"
 /bin/mount -o ro,remount /
 
 
 # Create system directories within media directory
-echo Creating system directories in $BASEDIR/media
+echo -e "\nCreating system directories in $BASEDIR/media"
 for dir in $ROMDIR/*/; do
     if [ "$dir" != "$ROMDIR/240ptestsuite/" ]; then
         mkdir -p "$BASEDIR/media/$(basename "$dir")"
@@ -46,7 +52,8 @@ for dir in $ROMDIR/*/; do
 done
 
 # Start dynquee via init script
-/etc/init.d/$INIT_SCRIPT start
+echo -e "\nStarting $NAME"
+/etc/init.d/$INIT_SCRIPT start || error
 
 # Report finished
 cat <<END
