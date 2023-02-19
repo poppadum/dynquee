@@ -47,7 +47,7 @@ Follow these steps to install *dynquee* using the install script:
 1. Log in to your marquee computer either at the console or via `ssh`
 
 1. Fetch and run the installer: type  
-    `wget -qO - <dynquee-installer-remote.sh> | sudo bash`
+    `sudo bash -c "$(wget -qO - <dynquee-installer-remote.sh> )"`
     
     **TODO**: test this
 
@@ -73,8 +73,24 @@ Install the required packages with:
 
 1. Optional: give Recalbox a static IP, either by [editing the Recalbox config file][recalbox-static-ip] or adding a reservation in your DHCP server
 
-1. Test connectivity by pinging Recalbox from your marquee machine e.g. `ping recalbox`  
-    Make a note of the hostname or IP address of your Recalbox
+1. Test connectivity by pinging Recalbox by hostname or IP address from your marquee machine:  
+    ```sh
+    $ ping -c 5 recalbox
+    PING recalbox (10.0.0.70) 56(84) bytes of data.
+    64 bytes from recalbox (10.0.0.70): icmp_seq=1 ttl=64 time=5.93 ms
+    64 bytes from recalbox (10.0.0.70): icmp_seq=2 ttl=64 time=6.35 ms
+    64 bytes from recalbox (10.0.0.70): icmp_seq=3 ttl=64 time=5.43 ms
+    64 bytes from recalbox (10.0.0.70): icmp_seq=4 ttl=64 time=5.55 ms
+    64 bytes from recalbox (10.0.0.70): icmp_seq=5 ttl=64 time=6.81 ms
+
+    --- recalbox ping statistics ---
+    5 packets transmitted, 5 received, 0% packet loss, time 9ms
+    rtt min/avg/max/mdev = 5.426/6.011/6.808/0.520 ms
+
+    ```
+    If ping fails to get a reply, double-check the hostname / IP address of your Recalbox and that it's connected to your local network.
+
+    Once ping is working, make a note of the hostname or IP address of your Recalbox.
 
 
 ### Download
@@ -105,7 +121,7 @@ Install the required packages with:
 
     - in the `[DEFAULT]` section, change `dynquee_path` if you installed dynquee somewhere other than `/opt/dynquee`
 
-    - in the `[recalbox]` section, change `host` to the hostname or IP address of your Recalbox
+    - in the `[recalbox]` section, change `host` to the hostname or IP address of your Recalbox you noted earlier
 
 
 ### Test
@@ -147,6 +163,7 @@ To test, reboot your marquee machine and check that *dynquee* starts automatical
 
 ---
 
+
 ## Help
 If you've checked the log files and still can't get it working, \
 post on the Recalbox forum **TODO: link needed** or discuss on github?
@@ -154,6 +171,7 @@ post on the Recalbox forum **TODO: link needed** or discuss on github?
 Please paste your debug log files on [pastebin][pastebin] and provide a link when reporting issues.
 
 ---
+
 
 ## Using Other Media Players
 If you don't want to use [`fbi`][fbi] or [`ffmpeg`][ffmpeg], look in the config file `dynquee.ini` at the `[slideshow]` section, in particular the settings:  
@@ -175,7 +193,7 @@ video_player_opts = --no-audio --no-video-title-show --play-and-exit --quiet
 
 [omxplayer][omxplayer]:
 ```ini
-video_player = omxplayer
+video_player = /usr/bin/omxplayer
 video_player_opts = --no-osd --no-keys
 ```
 
