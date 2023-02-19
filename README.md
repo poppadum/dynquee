@@ -1,14 +1,17 @@
-#
-![dynquee: dynamic marquee for Recalbox][project-image]  \
+![dynquee: dynamic marquee for Recalbox][project-image]  
 A dynamic digital marquee for [Recalbox]
-#
+===
+
 
 <!-- **TODO**: add demo video of it working? -->
 
 ## Contents
 - [About dynquee](#about-dynquee)
 - [Getting Started](#getting-started)
+    + [Quick Installation](#quick-installation)
+    - [Manual Installation](#manual-installation)
 - [Usage](#usage)
+- [Help](#help)
 - [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
 - [To Do](#to-do)
@@ -19,14 +22,16 @@ A dynamic digital marquee for [Recalbox]
 ## About dynquee
 
 ### What Is It?
-*dynquee* (pronounced '[dinky][dinky-definition]') is a program to run a dynamic marquee for [Recalbox] on a second display connected via HDMI, similar to the [PiMarquee2][pimarquee2] project for [Retropie][retropie]. The name stands for **dyn**amic mar**quee**.
+*dynquee* (pronounced '[dinky][dinky-definition]') is a program to run a dynamic marquee for [Recalbox]. The name stands for **dyn**amic mar**quee**.
+
+It was originally intended to run on a [Raspberry Pi 4B][pi4] with two displays, Recalbox using the primary display for games and *dynquee* driving a second display for the marquee, similar to the [PiMarquee2][pimarquee2] project for [Retropie][retropie]. But it can also run on a separate device and communicate with Recalbox via the network.
 
 ### Why?
 I'm building a bartop arcade machine and I want to have a dynamic marquee which can change depending on which game system is selected and which game is being played.
 
-I want to use [Recalbox] to run the machine and I already have a [Raspberry Pi 4][pi4] to run it on. As the Pi4 has dual HDMI outputs I want to drive the marquee from the second HDMI output. 
+I'm using [Recalbox] to run the machine on a [Raspberry Pi 4][pi4]. As the Pi4 has dual HDMI outputs I want to drive the marquee from the second HDMI output. 
 
-The marquee display I've had in mind is an [ultrawide 19" 1920x360 LED panel][DV190FBM] which is the ideal size for my build. Unfortunately it's quite expensive so I may have to settle for a [cheaper 14.9" TN panel][LTA149B780F] available from Amazon or ebay.
+The marquee display I have is an [ultrawide 19" 1920x360 LED panel][DV190FBM] which is the ideal size for my build. It was quite expensive and hard to obtain; another possiblity would be a [cheaper 14.9" TN panel][LTA149B780F] available from Amazon or ebay.
 
 For testing I used a spare 19" TV running at 720p resolution.
 
@@ -40,43 +45,93 @@ I wanted a solution which would be:
 - reactive: change the marquee in response to user actions
 
 
-### Requirements
-- [Recalbox] v8.1.1 Electron or later
-- a Raspberry [Pi 4B][pi4] or [Pi 400][pi400] with dual HDMI outputs
-- a second display connected to the Pi's second HDMI port
-
-It should be possible to get *dynquee* running on a separate device (e.g. a [Pi Zero][pi-zero]) that just drives the marquee.
-You would need to tweak Recalbox's MQTT config to allow incoming connections from the local network.
-
-<!--
-**TODO**:
-- try it out, provide instructions
-- which file to edit
--->
-
 ### How Does It Work?
 It works very like [Recalbox]'s built-in mini TFT support: 
-it listens to [Recalbox's MQTT server][recalbox-mqtt] for events, and it writes media files direct to the framebuffer using `fbv2` for still images and `ffmpeg` for videos.
+it listens to [Recalbox's MQTT broker][recalbox-mqtt] for events, and it writes media files direct to the framebuffer using `fbv2` for still images and `ffmpeg` for videos.
 
 With the Pi4's default KMS graphics driver both HDMI displays share a single framebuffer, so marquee images are also visible on the primary display for a second or two when an emulator launches or exits. While this is a bit annoying, it doesn't seem to break anything so I'll put up with it.
 
-*dynquee* is mostly written in Python3.
+*dynquee* is mostly written in Python 3.
+
+
+### Requirements
+- [Recalbox] v8.1.1 Electron or later
+- Python v3.7+ (Recalbox 8.1.1 ships with Python v3.9.5)
+- EITHER:
+    - a Raspberry [Pi 4B][pi4] or [Pi 400][pi400] with a second display connected to the Pi's second HDMI port
+- OR:
+    - a separate device with a connected display: an older Pi or [Pi Zero][pi-zero] should be ideal
+
+I have tested *dynquee* running on a different device on the same network as the Recalbox machine.
+It works fine but needs a few config file changes: see [Running *dynquee* on a different device][different-device].
 
 ---
 
 ## Getting Started
-Steps to get *dynquee* running on Recalbox:
 
->  **TODO**: get a permalink to latest release on github
+To get *dynquee* running on your Recalbox follow the instructions below.
 
-1. Connect to your recalbox with `ssh`: see [Recalbox wiki][recalbox-ssh]
-1. Copy and paste this command and press enter:  
-    `wget -o dynquee.zip <dynquee-release> && unzip dynquee.zip && bash install.sh`
-1. If all goes well you should see the `Installation complete` message
-
+To get *dynquee* running on a different machine see [instructions here][different-device].
 
 Releases include a few media files to get started (see [acknowledgements](#acknowledgements)) but not a complete set. See the [media README][media-readme] for suggestions of where to find media files.
 
+
+### Quick Installation
+
+Follow these steps to install *dynquee* using the install script:
+
+>  **TODO**: get a permalink to latest release on github
+
+1. Connect to your recalbox with `ssh` (see the [Recalbox wiki][recalbox-ssh])
+1. Copy and paste this command and press enter:  
+    ```sh
+    bash -c "$( wget -qO - <dynquee-installer.sh> )"
+    ```
+1. If all goes well you should see the *Installation complete* message
+
+
+### Manual Installation
+If you prefer to install everything manually, follow these instructions. 
+
+<details>
+<summary>Click to expand full instructions:</summary>
+
+#### Download
+1. Create the *dynquee* directory: `sudo mkdir -p /recalbox/share/dynquee`
+1. Change to that directory: `cd /opt/dynquee`
+1. Download the *dynquee* release and unzip it:  
+     `wget -o dynquee.zip <dynquee-release> && unzip dynquee.zip`
+
+#### Test
+Try running the command `python3 dynquee.py`. If all goes well, you should see the startup image on your marquee display. Check that it responds to Recalbox actions by selecting a game system: the marquee should change to the logo or console image of that system.
+
+Press Ctrl+C to stop the program.
+
+If it doesn't work as expected, check the log files in the `logs/` directory:  
+- `logs/dynquee.log` contains the summary log
+- `logs/dynquee.debug.log` contains the full debug log
+
+If you've checked the logs and still can't see what's wrong, see the [help section](#help).
+
+
+#### Run At Startup
+1. To get *dynquee* to run automatically at startup, remount the root filesystem read/write and copy the init script to `/etc/init.d/`:
+
+    ```sh
+    mount -o rw,remount /
+    cp install/S32dynquee /etc/init.d/
+    chmod +x /etc/init.d/$INIT_SCRIPT
+    mount -o ro,remount /
+    ```
+    
+1. Check that *dynquee* can be started with:  
+
+    ```sh
+    /etc/init.d/S32dynquee start
+    ```
+</details>
+
+---
 
 ## Usage
 Most settings can be configured in the config file [`dynquee.ini`](dynquee.ini).
@@ -142,18 +197,34 @@ You can start, stop or restart *dynquee* (for example, to force it to reload the
 
 ---
 
+## Help
+
+If things aren't working, first check the log files in the `logs/` directory:  
+- `logs/dynquee.log` contains the summary log
+- `logs/dynquee.debug.log` contains the full debug log
+
+The logs should provide some clues as to what is wrong.
+
+**TODO**
+If you still can't get it working, post on forum **TODO: link needed**
+
+Please paste your debug log files on [pastebin][pastebin] and provide a link.
+
+---
+
 ## Contributing
-Bug reports/fixes, improvements, documentation, & translations are also welcome. When reporting bugs a copy of the log file `/tmp/dynquee.log` would be helpful.
+Bug reports/fixes, improvements, documentation, & translations are welcome. When reporting bugs please include a copy of the debug log file `logs/dynquee.debug.log`.
 
 
 ## Acknowledgements
 For convenience, releases include some starter images collected from various sources.
-These are not my  work: credit remains with the original authors.
+Most of these are not my work: credit remains with the original authors.
 See the [artwork README file][artwork-readme] for sources.
 
 
 ## To Do
-- [ ] Genre matching is very dumb: make it more useful. Is there a master list of genres that [Emulation Station][emulationstation] uses somewhere?
+- [ ] Genre matching is very dumb: make it more useful.  
+Is there a master list of genres that [Emulation Station][emulationstation] uses somewhere?
 
 ---
 
@@ -165,6 +236,7 @@ This project is released under the [MIT Licence][licence].
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 [artwork-readme]: artwork/README.md
 [Defender]: https://en.wikipedia.org/wiki/Defender_(1981_video_game)
+[different-device]: doc/Running_on_separate_device.md
 [dinky-definition]: https://dictionary.cambridge.org/dictionary/english/dinky
 [DV190FBM]: https://www.panelook.com/DV190FBM-NB0_BOE_19.1_LCM_overview_32860.html
 [emulationstation]: https://wiki.recalbox.com/en/basic-usage/getting-started/emulationstation
