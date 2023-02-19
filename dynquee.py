@@ -3,7 +3,7 @@
 """dynquee - a dynamic marquee for Recalbox"""
 
 
-import subprocess, signal, logging, logging.config, os, glob, json, random
+import subprocess, signal, logging, logging.config, os, sys, glob, json, random
 from configparser import ConfigParser
 from threading import Thread, Event, enumerate as enumerate_threads
 import paho.mqtt.client as mqtt
@@ -780,3 +780,4 @@ if __name__ == '__main__':
     except Exception as e:
         # log any uncaught exception before exit
         log.critical(f"uncaught exception: {e}", exc_info=True)
+        sys.exit(1)
