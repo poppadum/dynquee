@@ -47,7 +47,7 @@ Follow these steps to install *dynquee* using the install script:
 1. Log in to your marquee computer either at the console or via `ssh`
 
 1. Fetch and run the installer: type  
-    `sudo bash -c "$(wget -qO - <dynquee-installer-remote.sh> )"`
+    `sudo bash -c "$(wget -qO - https://github.com/poppadum/dynquee/raw/main/install/installer-remote.sh )"`
     
     **TODO**: test this
 
@@ -101,20 +101,24 @@ Install the required packages with:
 1. Change to that directory: `cd /opt/dynquee`
 
 1. Download the *dynquee* release and unzip it:  
-     `sudo wget -o dynquee.zip <dynquee-release> && sudo unzip dynquee.zip`
+     ```sh
+     sudo wget https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
+     sudo unzip dynquee.zip
+     ```
 
 
 ### Configure
 
-1. Copy the config and log config files for remote running:
+1. Copy the config file for remote running:
     ```sh
     sudo cp install/dynquee-remote.ini ./dynquee.ini
-    sudo cp install/dynquee-remote.log.conf ./dynquee.log.conf
     ```
 
 
 1. Optional: make the `media/` directory world-writeable so you can copy files to it without sudo:  
-    `chmod -R +w ./media/`
+    ```sh
+    chmod -R +w ./media/
+    ```
 
 
 1. Edit the config file `dynquee.ini` as follows:

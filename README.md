@@ -85,7 +85,7 @@ Follow these steps to install *dynquee* using the install script:
 1. Connect to your recalbox with `ssh` (see the [Recalbox wiki][recalbox-ssh])
 1. Copy and paste this command and press enter:  
     ```sh
-    bash -c "$( wget -qO - <dynquee-installer.sh> )"
+    bash -c "$( wget -qO - https://github.com/poppadum/dynquee/raw/main/install/installer.sh )"
     ```
 1. If all goes well you should see the *Installation complete* message
 
@@ -100,7 +100,10 @@ If you prefer to install everything manually, follow these instructions.
 1. Create the *dynquee* directory: `sudo mkdir -p /recalbox/share/dynquee`
 1. Change to that directory: `cd /opt/dynquee`
 1. Download the *dynquee* release and unzip it:  
-     `wget -o dynquee.zip <dynquee-release> && unzip dynquee.zip`
+     ```sh
+     wget https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
+     unzip dynquee.zip`
+     ```
 
 #### Test
 Try running the command `python3 dynquee.py`. If all goes well, you should see the startup image on your marquee display. Check that it responds to Recalbox actions by selecting a game system: the marquee should change to the logo or console image of that system.

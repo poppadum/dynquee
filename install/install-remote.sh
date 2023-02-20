@@ -86,16 +86,13 @@ done
 # Make media/ directory world-writeable so users don't need sudo to copy media
 chmod --recursive a+w ./media/
 
-
-# copy remote/ versions of config & log config files
-echo -e "\nInstalling config file and log config file for remote running"
-cp -v install/dynquee-remote.ini ./dynquee.ini && \
-cp -v install/dynquee-remote.log.conf ./dynquee.log.conf || error
+# copy remote version of config
+echo -e "\nInstalling config file for remote running"
+cp -v install/dynquee-remote.ini ./dynquee.ini || error
 
 # substitute discovered value of recalbox_host in config file
 echo -e "\nSetting Recalbox hostname / IP address to $reacalbox_host in config file"
 /usr/bin/sed -i "s/^host = recalbox$/host = $recalbox_host/" dynquee.ini
-
 
 # install systemd service
 echo -e "\nInstalling systemd service: $SERVICE"
