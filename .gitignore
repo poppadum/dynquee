@@ -2,17 +2,22 @@
 *.pyc
 .mypy_cache/
 
-# exclude generated files in media/system
-media/system/
-media/publisher/
+# logs
+logs/*
+
+# exclude media files not specifically included
+media/**/*
+!media/generic/
+!media/publisher/
+!media/startup/
+!media/startup/*
+!media/system/
+!media/default.png
+!media/README.md
 
 # exclude artwork fetched from gitlab
 artwork/recalbox-next/
 artwork/recalbox_logos/
-
-# exclude media files personal to me
-media/generic/astrocade.*.png
-media/startup/astrocade.*.png
 
 # personal sync script
 sync_to_pi.sh*
@@ -24,6 +29,5 @@ build/release_HOWTO.md
 # misc
 examples/
 info/
-logs/
 scripts/
 todo.md
