@@ -220,6 +220,8 @@ Bug reports/fixes, improvements, documentation, & translations are welcome. When
 
 
 ## Acknowledgements
+[`WaitableEvent`](https://lat.sk/2015/02/multiple-event-waiting-python-3/) class written by [Radek Lát](https://lat.sk) used to wait for two thread events at the same time.
+
 For convenience, releases include some starter images collected from various sources.
 Most of these are not my work: credit remains with the original authors.
 See the [artwork README file][artwork-readme] for sources.

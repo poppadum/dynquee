@@ -35,13 +35,14 @@ def test_slideshowExit():
             # end slideshow thread after 25s
             sl.stop()
     log.info('finished')
-    out.flush()
     # check we reached 40 before loop ended
     assert out.getvalue().endswith('sleeping 40\n'), f"output:\n{out.getvalue()}"
+    out.close()
     del(sl)
 
 
 def test_slideshow():
+    """test slideshow with multiple images for 60s"""
     log.info('')
     sl = Slideshow()
     imagePaths = glob.glob('./media/**/*')
@@ -52,6 +53,7 @@ def test_slideshow():
 
 
 def test_slideshow1File():
+    """test slideshow with a single still image"""
     log.info('')
     sl = Slideshow()
     imagePaths = ['./media/default.png']
@@ -76,13 +78,46 @@ def test_slideshowMediaChange():
     del(sl)
 
 
+def test_slideshowVideoFinish():
+    log.info('')
+    sl = Slideshow()
+    imagePaths = ['./tests/media/generic/10sCountdown.mp4', './media/default.png']
+    sl.setMedia(imagePaths)
+    time.sleep(45)
+    sl.stop()
+    del(sl)
+
+
+def test_slideshowMaxVideoTime():
+    """test that video stops after max_video_time set in config file"""
+    log.info('')
+    out = io.StringIO()
+    ch = logging.StreamHandler(out)
+    ch.setLevel(logging.DEBUG)
+    log.addHandler(ch)
+    sl = Slideshow()
+    filePath = './tests/media/generic/1MinCountdown.mp4'
+    imagePaths = [filePath]
+    sl.setMedia(imagePaths)
+    time.sleep(20)
+    out.flush()
+    sl.stop()
+    # check how many times video player launched
+    assert out.getvalue().count(filePath) == 4, f"expected 4 occurrences of file in output, got {out.getvalue().count(filePath)}"
+    log.removeHandler(ch)
+    out.close()
+    del(sl)
+
 
 if __name__ == '__main__':
     setupTestConfig()
     test_slideshow1File()
-    test_slideshow()
     test_slideshowExit()
     test_slideshowMediaChange()
+    test_slideshowVideoFinish()
+    test_slideshowMaxVideoTime()
+    test_slideshow()
+
 
     # report threads on exit: should only be MainThread
     time.sleep(1)

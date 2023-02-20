@@ -179,14 +179,14 @@ class TestMediaManager(unittest.TestCase):
             self.mm.getMedia(
                 {'Action': 'rungame', 'SystemId': 'UNKNOWN'}
             ),
-            ['tests/media/generic/generic01.mp4', 'tests/media/generic/1MinCountdown.mp4']
+            ['tests/media/generic/10sCountdown.mp4', 'tests/media/generic/1MinCountdown.mp4']
         )
         # test ROM it won't know: should return generic media file
         self.assertEqual(
             self.mm.getMedia(
                 {'Action': 'gamelistbrowsing', 'SystemId': 'UNKNOWN', 'GamePath': 'XXXX'}
             ),
-            ['tests/media/generic/generic01.mp4', 'tests/media/generic/1MinCountdown.mp4']
+            ['tests/media/generic/10sCountdown.mp4', 'tests/media/generic/1MinCountdown.mp4']
         )
 
         # test complex rule chunk

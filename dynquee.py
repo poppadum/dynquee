@@ -4,6 +4,7 @@
 
 
 import subprocess, signal, logging, logging.config, os, sys, glob, json, random
+import select, selectors
 from configparser import ConfigParser
 from threading import Thread, Event, enumerate as enumerate_threads
 import paho.mqtt.client as mqtt
@@ -353,6 +354,44 @@ class Slideshow(object):
     _subProcessTimeout: ClassVar[float] = 3.0
     "how long to wait for a subprocess to complete or terminate"
 
+    
+    class WaitableEvent:
+        """Provides an abstract object that can be used to resume select loops with
+        indefinite waits from another thread or process. Mimics the standard
+        threading.Event interface.
+
+        Code by Radek Lát: see https://lat.sk/2015/02/multiple-event-waiting-python-3/
+        """
+        
+        def __init__(self):
+            self._read_fd, self._write_fd = os.pipe()
+
+        def wait(self, timeout=None):
+            rfds, wfds, efds = select.select([self._read_fd], [], [], timeout)
+            return self._read_fd in rfds
+
+        def is_set(self):
+            return self.wait(0)
+
+        def clear(self):
+            if self.is_set():
+                os.read(self._read_fd, 1)
+
+        def set(self):
+            if not self.is_set():
+                os.write(self._write_fd, b'1')
+
+        def fileno(self):
+            """Return the FD number of the read side of the pipe; allows this object to
+            be used with select.select().
+            """
+            return self._read_fd
+
+        def __del__(self):
+            os.close(self._read_fd)
+            os.close(self._write_fd)
+ 
+     
     def __init__(self):
         """Initialise slideshow object and start queue reader thread.
             Run framebuffer resolution set command if defined in config file.
@@ -368,9 +407,11 @@ class Slideshow(object):
         "queue of slideshow media sets"
         self._currentMedia: SlideshowMediaSet = []
         "the media set currently displayed"
-        self._mediaChange: Event = Event()
+        self._mediaChange: Event = self.WaitableEvent()
         "event to indicate slideshow media is to be changed"
-
+        self._videoFinish: Event = self.WaitableEvent()
+        "event to indicate video file has finished playing"
+        
         # threads & subprocesses
         self._slideshowThread: Optional[Thread] = None
         "slideshow worker thread"
@@ -394,6 +435,11 @@ class Slideshow(object):
         # start queue reader thread
         self._queueReaderThread.start()
 
+        # selector to monitor both _mediaChange & _videoFinish events at same time
+        self._selector: selectors.BaseSelector = selectors.DefaultSelector() # create selector
+        self._selector.register(self._mediaChange, selectors.EVENT_READ, "_mediaChange")
+        self._selector.register(self._videoFinish, selectors.EVENT_READ, "_videoFinish")
+
 
     def __del__(self):
         self.stop()
@@ -415,14 +461,18 @@ class Slideshow(object):
                     log.warning(f"timed out waiting {self._subProcessTimeout}s for framebuffer_resolution_cmd to complete: {fbResCmd}")
 
 
-    def _runCmd(self, cmd: List[str]) -> bool:
+    def _runCmd(self, cmd: List[str], waitForExit: bool = False) -> bool:
         """Launch external command
             :param cmd: sequence of program arguments passed to Popen constructor
+            :param waitForExit: if True, blocks until subprocess exits
             :return: True if command launched successfully, or False otherwise
         """
-        log.debug(f"cmd={cmd}")
+        log.debug(f"cmd={cmd} waitForExit={waitForExit}")
         try:
             self._subProcess = subprocess.Popen(cmd)
+            if waitForExit:
+                rc: int = self._subProcess.wait()
+                log.debug(f"subprocess exited with rc={rc}")
             return True
         except OSError as e:
             log.error(f"failed to run {cmd}: {e}")
@@ -451,7 +501,9 @@ class Slideshow(object):
             :param videoPath: full path to video file
         """
         cmd: List[str] = [config.get(self._CONFIG_SECTION,'video_player')] + config.get(self._CONFIG_SECTION, 'video_player_opts').split() + [videoPath]
-        self._runCmd(cmd)
+        self._videoFinish.clear()
+        self._runCmd(cmd, waitForExit=True)
+        self._videoFinish.set()
 
 
     def _stopSubProcess(self):
@@ -468,6 +520,11 @@ class Slideshow(object):
                 log.warning(f"media player subprocess pid={self._subProcess.pid} did not terminate within {self._subProcessTimeout}s: sent SIGKILL")
 
 
+    def waitForSubProcessEndOrMediaChange(self, timeout: float):
+        # busy loop: wait a bit, check _mediaChange, wait a bit more?
+        pass
+
+
     def _runSlideshow(self):
         """Slideshow thread: loop a slideshow media set until a `_mediaChange` event occurs.
             Gets media set to show from `_currentMedia` property
@@ -482,9 +539,17 @@ class Slideshow(object):
                 if MediaManager.isVideo(mediaFile):
                     # start video, wait for clip to finish or `_maxVideoTime` to expire
                     #  or _mediaChange event to occur, then stop it
-                    self._startVideo(mediaFile)
+                    self._videoThread: Thread = Thread(
+                        name = "video_thread",
+                        target = self._startVideo,
+                        args = (mediaFile,),
+                        daemon = True
+                    )
+                    self._videoThread.start()
                     log.debug(f"showing video for up to {self._maxVideoTime}s")
-                    self._mediaChange.wait(timeout = self._maxVideoTime)
+                    events = self._selector.select(timeout = self._maxVideoTime)
+                    # if not events, it timed out
+                    # self._mediaChange.wait(timeout = self._maxVideoTime)
                     self._stopSubProcess()
                 else:
                     # show image, wait for `_imgDisplayTime` to expire or _mediaChange event, then clear it
