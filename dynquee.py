@@ -2,18 +2,32 @@
 
 """dynquee - a dynamic marquee for Recalbox"""
 
+# MIT Licence: https://opensource.org/licenses/MIT
 
-import subprocess, signal, logging, logging.config, os, sys, glob, json, random
-import select, selectors
+# version/build string: updated by git filter
+__version__ = "$Version"
+
+import os
+import sys
+import logging
+import logging.config
 from configparser import ConfigParser
+import glob
+import json
+import random
 from threading import Thread, Event, enumerate as enumerate_threads
-import paho.mqtt.client as mqtt
 from queue import SimpleQueue, Empty
+import subprocess
+import signal
+import select
+import selectors
 from dataclasses import dataclass
 from urllib.request import urlopen
 from urllib.error import URLError
 from http.client import HTTPResponse
 from typing import ClassVar, Dict, List, Tuple, Optional
+
+import paho.mqtt.client as mqtt
 
 # Type aliases
 EventParams = Dict[str, str]
@@ -69,7 +83,7 @@ class SignalHandler(object):
 
 
 class MQTTSubscriber(object):
-    """MQTT subscriber: handles connection to broker to receive events from 
+    """MQTT subscriber: handles connection to broker to receive events from
         EmulationStation and read event params from event file.
 
         Usage:
@@ -124,11 +138,11 @@ class MQTTSubscriber(object):
         )
         self._client.loop_start()
 
-    
+
     def stop(self):
         self._client.disconnect()
 
-    
+
     def _onConnect(self, client, user, flags, rc: int):
         topic: str = config.get(self._CONFIG_SECTION, 'topic')
         self._client.subscribe(topic)
@@ -188,7 +202,7 @@ class MQTTSubscriber(object):
 
     def _getEventParamsFromRemote(self) -> List[str]:
         """Read event params from ES State file on a remote host.
-        
+
             Uses Recalbox Manager's `/get` route (see Recalbox file `/usr/recalbox-manager2/dist/routes/get.js`)
             :return: contents of remote ES state file as a list of str, with CR characters removed
         """
@@ -300,7 +314,7 @@ class MediaManager(object):
 
 
     def getMedia(self, evParams: EventParams) -> SlideshowMediaSet:
-        """Locate media files to display for given action using search 
+        """Locate media files to display for given action using search
             precedence rules defined in config file.
             :param evParams: a dict of event parameters
             :return: list of paths to media files, or [] if marquee should be blank
@@ -354,7 +368,7 @@ class Slideshow(object):
     _subProcessTimeout: ClassVar[float] = 3.0
     "how long to wait for a subprocess to complete or terminate"
 
-    
+
     class WaitableEvent:
         """Provides an abstract object that can be used to resume select loops with
         indefinite waits from another thread or process. Mimics the standard
@@ -362,7 +376,7 @@ class Slideshow(object):
 
         Code by Radek Lát: see https://lat.sk/2015/02/multiple-event-waiting-python-3/
         """
-        
+
         def __init__(self):
             self._read_fd, self._write_fd = os.pipe()
 
@@ -390,8 +404,8 @@ class Slideshow(object):
         def __del__(self):
             os.close(self._read_fd)
             os.close(self._write_fd)
- 
-     
+
+
     def __init__(self):
         """Initialise slideshow object and start queue reader thread.
             Run framebuffer resolution set command if defined in config file.
@@ -411,7 +425,7 @@ class Slideshow(object):
         "event to indicate slideshow media is to be changed"
         self._videoFinish: Event = self.WaitableEvent()
         "event to indicate video file has finished playing"
-        
+
         # threads & subprocesses
         self._slideshowThread: Optional[Thread] = None
         "slideshow worker thread"
@@ -423,7 +437,7 @@ class Slideshow(object):
         "media queue reader thread"
         self._subProcess: Optional[subprocess.Popen] = None
         "media player/viewer subprocess"
-        
+
         # handle program exit cleanly
         self._exitSignalled: Event = Event()
         "event to indicate program exit has been signalled"
@@ -483,13 +497,13 @@ class Slideshow(object):
         """Run the display image command defined in config file
             :param imgPath: full path to image file
         """
-        cmd: List[str] = [config.get(self._CONFIG_SECTION,'viewer')] + config.get(self._CONFIG_SECTION, 'viewer_opts').split() + [imgPath]
+        cmd: List[str] = [config.get(self._CONFIG_SECTION, 'viewer')] + config.get(self._CONFIG_SECTION, 'viewer_opts').split() + [imgPath]
         self._runCmd(cmd)
 
 
     def _clearImage(self):
         """Run the clear image command defined in config file (if any)"""
-        clearCmd: str = config.get(self._CONFIG_SECTION,'clear_cmd')
+        clearCmd: str = config.get(self._CONFIG_SECTION, 'clear_cmd')
         if clearCmd:
             cmd: List[str] = [clearCmd] + config.get(self._CONFIG_SECTION, 'clear_cmd_opts').split()
             self._runCmd(cmd)
@@ -500,7 +514,7 @@ class Slideshow(object):
             To stop video, call `_stopVideo()` to terminate video player process.
             :param videoPath: full path to video file
         """
-        cmd: List[str] = [config.get(self._CONFIG_SECTION,'video_player')] + config.get(self._CONFIG_SECTION, 'video_player_opts').split() + [videoPath]
+        cmd: List[str] = [config.get(self._CONFIG_SECTION, 'video_player')] + config.get(self._CONFIG_SECTION, 'video_player_opts').split() + [videoPath]
         self._videoFinish.clear()
         self._runCmd(cmd, waitForExit=True)
         self._videoFinish.set()
@@ -518,11 +532,6 @@ class Slideshow(object):
                 #subprocess did not exit within timeout so kill it
                 self._subProcess.kill()
                 log.warning(f"media player subprocess pid={self._subProcess.pid} did not terminate within {self._subProcessTimeout}s: sent SIGKILL")
-
-
-    def waitForSubProcessEndOrMediaChange(self, timeout: float):
-        # busy loop: wait a bit, check _mediaChange, wait a bit more?
-        pass
 
 
     def _runSlideshow(self):
@@ -653,7 +662,7 @@ class Slideshow(object):
 
 class EventHandler(object):
     """Receives events from MQTTSubscriber, uses MediaManager to locate media files and Slideshow to show them.
-        
+
         Call `readEvents()` to start event reading loop.
         Call `startup()` to queue startup media for display.
     """
@@ -717,7 +726,7 @@ class EventHandler(object):
         log.info(f"event params={evParams}")
         changeOn: str
         noChangeOn: str
-        (changeOn, noChangeOn) = self._getStateChangeRules()       
+        (changeOn, noChangeOn) = self._getStateChangeRules()
         # has EmulationStation state changed?
         stateChanged: bool = self._hasStateChanged(evParams, changeOn, noChangeOn)
         # update state: on wakeup, restore state & evParams from before sleep
@@ -772,52 +781,52 @@ class EventHandler(object):
         noChangeOn: str = config.get(self._CONFIG_SECTION, 'no_change_on')
         changeOn: str = config.get(self._CONFIG_SECTION, 'change_on')
         return (changeOn, noChangeOn)
-        
 
-    def _hasStateChanged(self, evParams: EventParams, changeOn: str, noChangeOn:str) -> bool:
-            """Determine if EmulationStation's state has changed enough to change displayed media.
-                Follows rules defined in config file.
-                :param evParams: dict of EmulationStation event params
-                :param changeOn: rule specifying when to change state
-                :param noChangeOn: rule specifying which actions do not change state
-                :return: True if state has changed
-            """
-            newState: EventHandler.ESState = EventHandler.ESState.fromEvent(evParams)
-            log.debug(f"changeOn={changeOn} noChangeOn={noChangeOn}")
-            log.debug(f"_currentState={self._currentState} newState={newState}")
 
-            # 'wakeup' action always causes a state change as we restore the state before sleep
-            if newState.action == 'wakeup':
-                return True
-            # Use rules defined in config file to determine if state has changed
-            # no change if action is ignored or `never` change specified
-            if (newState.action and (newState.action in noChangeOn)) or (changeOn == 'never'):
-                return False           
-            # is `always` change specified?
-            elif changeOn == 'always':
-                return True
-            # has action changed from previous action?
-            elif changeOn == 'action':
-                return not newState.action == self._currentState.action
-            # has system changed?
-            elif changeOn == 'system':
-                return not newState.system == self._currentState.system
-            # has game changed?
-            elif changeOn == 'game':
-                return not newState.game == self._currentState.game
-            # has system OR game changed?
-            elif changeOn == 'system/game':
-                log.debug('if changeOn=system/game')
-                return not ((newState.system == self._currentState.system) and (newState.game == self._currentState.game))
-            else:
-                # unrecognised action in state change rule: log it
-                log.error((
-                    "Unrecognised state change rule - check config file: "
-                    f" changeOn='{changeOn}' noChangeOn='{noChangeOn}'"
-                    f" _currentState={self._currentState} newState={newState}"
-                ))
-                # change marquee
-                return True
+    def _hasStateChanged(self, evParams: EventParams, changeOn: str, noChangeOn: str) -> bool:
+        """Determine if EmulationStation's state has changed enough to change displayed media.
+            Follows rules defined in config file.
+            :param evParams: dict of EmulationStation event params
+            :param changeOn: rule specifying when to change state
+            :param noChangeOn: rule specifying which actions do not change state
+            :return: True if state has changed
+        """
+        newState: EventHandler.ESState = EventHandler.ESState.fromEvent(evParams)
+        log.debug(f"changeOn={changeOn} noChangeOn={noChangeOn}")
+        log.debug(f"_currentState={self._currentState} newState={newState}")
+
+        # 'wakeup' action always causes a state change as we restore the state before sleep
+        if newState.action == 'wakeup':
+            return True
+        # Use rules defined in config file to determine if state has changed
+        # no change if action is ignored or `never` change specified
+        if (newState.action and (newState.action in noChangeOn)) or (changeOn == 'never'):
+            return False
+        # is `always` change specified?
+        elif changeOn == 'always':
+            return True
+        # has action changed from previous action?
+        elif changeOn == 'action':
+            return not newState.action == self._currentState.action
+        # has system changed?
+        elif changeOn == 'system':
+            return not newState.system == self._currentState.system
+        # has game changed?
+        elif changeOn == 'game':
+            return not newState.game == self._currentState.game
+        # has system OR game changed?
+        elif changeOn == 'system/game':
+            log.debug('if changeOn=system/game')
+            return not ((newState.system == self._currentState.system) and (newState.game == self._currentState.game))
+        else:
+            # unrecognised action in state change rule: log it
+            log.error((
+                "Unrecognised state change rule - check config file: "
+                f" changeOn='{changeOn}' noChangeOn='{noChangeOn}'"
+                f" _currentState={self._currentState} newState={newState}"
+            ))
+            # change marquee
+            return True
 
 
 ### Module init ###
@@ -837,7 +846,7 @@ config: ConfigParser = _loadConfig()
 
 if __name__ == '__main__':
     try:
-        log.info("dynquee start")
+        log.info(f"dynquee v {__version__} start")
         eventHandler: EventHandler = EventHandler()
         eventHandler.startup()
         eventHandler.readEvents()

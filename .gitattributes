@@ -1,0 +1,13 @@
+dynquee.py              filter=versioner
+
+artwork/                export-ignore
+build/                  export-ignore
+examples/               export-ignore
+info/                   export-ignore
+logs/*                  export-ignore
+scripts/                export-ignore
+tests/                  export-ignore
+
+runTests.sh             export-ignore
+sync_to_pi.sh           export-ignore
+sync_to_pi.sh.exclude   export-ignore
