@@ -5,7 +5,6 @@ dynquee.png
 clear_framebuffer.sh
 LICENSE.txt
 README.md
-S32dynquee
 media/generic/
 media/publisher/*
 media/startup/*
@@ -14,3 +13,5 @@ media/default.png
 media/README.md
 logs/
 install/*
+doc/EmulationStation_events.md
+doc/Running_on_separate_device.md

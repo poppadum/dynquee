@@ -22,9 +22,10 @@ artwork/recalbox_logos/
 # personal sync script
 sync_to_pi.sh*
 
-# exclude release archives
-build/dynquee-release*.zip
+# exclude release archives & generated VERSION file
+build/dynquee*.zip
 build/release_HOWTO.md
+VERSION
 
 # misc
 examples/
