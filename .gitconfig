@@ -1,0 +1,3 @@
+[filter "versioner"]
+smudge = $PWD/build/filter_version.sh --smudge
+clean = $PWD/build/filter_version.sh --clean

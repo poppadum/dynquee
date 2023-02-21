@@ -846,7 +846,7 @@ config: ConfigParser = _loadConfig()
 
 if __name__ == '__main__':
     try:
-        log.info(f"dynquee v {__version__} start")
+        log.info(f"dynquee (build {__version__}) start")
         eventHandler: EventHandler = EventHandler()
         eventHandler.startup()
         eventHandler.readEvents()
