@@ -20,16 +20,23 @@ if ! git diff-index --quiet HEAD -- ; then
     echo "Warning: working copy is not clean!"
 fi
 
-# generate temporary VERSION file to include in release
-VERSION_FILE=VERSION
-$build_dir/gen_version.sh > $build_dir/../$VERSION_FILE
+# generate temporary BUILD file to include in release
+BUILD_FILE=$build_dir/../BUILD
+build_num="$($build_dir/gen_build.sh)"
+echo "$build_num" > $BUILD_FILE
+
+# insert build number into module
+sed -i -E "s/^\s*__build *= *\".*\"/__build = \"$build_num\"/" $build_dir/../dynquee.py
 
 # build archive
 if [ -f "$TARGET" ]; then
     # remove existing archive if present
     rm $TARGET
 fi
-/usr/bin/7z a -tzip -bd $EXCLUDE $TARGET @$MANIFEST $VERSION_FILE
+/usr/bin/7z a -tzip -bd $EXCLUDE $TARGET @$MANIFEST $BUILD_FILE
 
-# remove temporary VERSION file
-rm $build_dir/../$VERSION_FILE
+# remove temporary BUILD file
+rm $BUILD_FILE
+
+# remove build number from module
+sed -i -E "s/^\s*__build *= *\".*\"/__build = \"develop\"/" $build_dir/../dynquee.py

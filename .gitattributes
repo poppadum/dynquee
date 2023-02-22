@@ -1,5 +1,3 @@
-dynquee.py              filter=versioner
-
 artwork/                export-ignore
 build/                  export-ignore
 examples/               export-ignore

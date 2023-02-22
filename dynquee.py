@@ -4,8 +4,8 @@
 
 # MIT Licence: https://opensource.org/licenses/MIT
 
-# version/build string: updated by git filter 'versioner'
-__version__ = "$Version"
+# build number: inserted by build system
+__build = "develop"
 
 import os
 import sys
@@ -820,7 +820,7 @@ config: ConfigParser = _loadConfig()
 
 if __name__ == '__main__':
     try:
-        log.info(f"dynquee (build {__version__}) start")
+        log.info(f"dynquee (build {__build}) start")
         eventHandler: EventHandler = EventHandler()
         eventHandler.startup()
         eventHandler.readEvents()
