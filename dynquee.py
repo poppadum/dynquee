@@ -37,6 +37,7 @@ SlideshowMediaSet = List[str]
 _LOG_CONFIG_FILE: str = "dynquee.log.conf"
 "Module logging config file"
 
+
 def getLogger() -> logging.Logger:
     """Get module logger as defined by logging config file
         :return: a logging.Logger instance for this module
@@ -48,9 +49,10 @@ def getLogger() -> logging.Logger:
 _CONFIG_FILE: str = "dynquee.ini"
 "Module config file"
 
+
 def _loadConfig() -> ConfigParser:
     """Load config file in module directory into ConfigParser instance and return it"""
-    config: ConfigParser = ConfigParser(empty_lines_in_values = False)
+    config: ConfigParser = ConfigParser(empty_lines_in_values=False)
     _configFilesRead: List[str] = config.read(
         f"{os.path.dirname(__file__)}/{_CONFIG_FILE}",
     )
@@ -81,7 +83,6 @@ class SignalHandler(object):
             event.set()
 
 
-
 class MQTTSubscriber(object):
     """MQTT subscriber: handles connection to broker to receive events from
         EmulationStation and read event params from event file.
@@ -101,11 +102,10 @@ class MQTTSubscriber(object):
     _CONFIG_SECTION: ClassVar[str] = 'recalbox'
     "config file section for MQTTSubscriber"
 
-
     def __init__(self):
         self._client = mqtt.Client()
         # log mqtt.Client messages to module logger
-        self._client.enable_logger(logger = log)
+        self._client.enable_logger(logger=log)
         # queue to hold incoming messages
         self._messageQueue: SimpleQueue[mqtt.MQTTMessage] = SimpleQueue()
         # event to signal exit of blocking getEvent() method
@@ -116,13 +116,11 @@ class MQTTSubscriber(object):
         self._client.on_disconnect = self._onDisconnect
         self._client.on_message = self._onMessage
 
-
     def __del__(self):
         # disconnect from broker before exit
         self._client.disconnect()
         # de-register from signal handler
         _signalHander.removeEvent(self._exitEvent)
-
 
     def start(self, *args):
         """Connect to the MQTT broker"""
@@ -131,34 +129,29 @@ class MQTTSubscriber(object):
         keepalive: int = config.getint(self._CONFIG_SECTION, 'keepalive', fallback=60)
         log.info(f"connecting to MQTT broker host={host} port={port} keepalive={keepalive}")
         self._client.connect(
-            host = host,
-            port = port,
-            keepalive = keepalive,
+            host=host,
+            port=port,
+            keepalive=keepalive,
             *args
         )
         self._client.loop_start()
 
-
     def stop(self):
         self._client.disconnect()
-
 
     def _onConnect(self, client, user, flags, rc: int):
         topic: str = config.get(self._CONFIG_SECTION, 'topic')
         self._client.subscribe(topic)
         log.info(f"connected to MQTT broker rc={rc} topic={topic}")
 
-
     def _onDisconnect(self, client, userdata, rc: int):
         log.info(f"disconnected from MQTT broker rc={rc}")
         self._client.loop_stop()
-
 
     def _onMessage(self, client, userdata, message: mqtt.MQTTMessage):
         """Add incoming message to message queue"""
         log.debug(f"message topic={message.topic} payload={message.payload}")
         self._messageQueue.put(message)
-
 
     def getEvent(self, checkInterval: float = 5.0) -> Optional[str]:
         """Read an event from the message queue. Blocks until data is
@@ -168,17 +161,16 @@ class MQTTSubscriber(object):
         """
         while not self._exitEvent.is_set():
             try:
-                return self._messageQueue.get(timeout = checkInterval).payload.decode("utf-8")
+                return self._messageQueue.get(timeout=checkInterval).payload.decode("utf-8")
             except Empty:
                 pass
         return None
-
 
     def getEventParams(self) -> EventParams:
         """Read event params from ES state file (either local or remote), stripping any CR characters
             :return: a dict mapping param names to their values
         """
-        if config.getboolean(self._CONFIG_SECTION, 'is_local', fallback = True):
+        if config.getboolean(self._CONFIG_SECTION, 'is_local', fallback=True):
             rawState: List[str]
             rawState = self._getEventParamsFromLocalhost()
         else:
@@ -191,14 +183,12 @@ class MQTTSubscriber(object):
         log.debug(f"params={params}")
         return params
 
-
     def _getEventParamsFromLocalhost(self) -> List[str]:
         """Read event params from local file.
             :return: contents of ES state file as a list of str
         """
         with open(config.get(self._CONFIG_SECTION, 'es_state_local_file')) as f:
             return f.readlines()
-
 
     def _getEventParamsFromRemote(self) -> List[str]:
         """Read event params from ES State file on a remote host.
@@ -220,7 +210,6 @@ class MQTTSubscriber(object):
             return []
 
 
-
 class MediaManager(object):
     """Locates appropriate media files for an EmulationStation action using ordered search precendence rules.
         Rules are defined for each action in `[media]` section of config file: see config file for documentation.
@@ -237,10 +226,9 @@ class MediaManager(object):
         'genre': "genre/{genre}.*",
         'system': "system/{systemId}.*",
         'generic': "generic/*",
-        'startup': "startup/*" # files to show on startup
+        'startup': "startup/*"  # files to show on startup
     }
     "glob patterns to find media files for each search term"
-
 
     @classmethod
     def isVideo(cls, filePath: str) -> bool:
@@ -251,7 +239,6 @@ class MediaManager(object):
             if filePath.endswith(ext):
                 return True
         return False
-
 
     def _getMediaMatching(self, globPattern: str) -> SlideshowMediaSet:
         """Search for media files matching globPattern within media directory
@@ -264,7 +251,6 @@ class MediaManager(object):
         log.debug(f"found {len(files)} files: {files}")
         return files
 
-
     def _getPrecedenceRule(self, action: str) -> List[str]:
         """Get precedence rule for this action from config file
             :return: precedence rule: an ordered list of search terms
@@ -273,11 +259,10 @@ class MediaManager(object):
             self._CONFIG_SECTION,
             action,
             # if no rule defined for this action, use the default rule
-            fallback = config.get(self._CONFIG_SECTION, 'default')
+            fallback=config.get(self._CONFIG_SECTION, 'default')
         ).split()
         log.debug(f"action={action}; search precedence={precedence}")
         return precedence
-
 
     def _getMediaForSearchTerm(self, searchTerm: str, evParams: EventParams) -> SlideshowMediaSet:
         """Locate media matching a single component of a search rule. See config file
@@ -303,15 +288,14 @@ class MediaManager(object):
         log.debug(f"gameBasename={gameBasename}")
         # insert event params into search term's glob pattern
         globPattern: str = self._GLOB_PATTERNS[searchTerm].format(
-            gameBasename = gameBasename,
-            systemId = evParams.get('SystemId', '').lower(),
-            publisher = evParams.get('Publisher', '').lower(),
-            genre = evParams.get('Genre', '').lower(),
+            gameBasename=gameBasename,
+            systemId=evParams.get('SystemId', '').lower(),
+            publisher=evParams.get('Publisher', '').lower(),
+            genre=evParams.get('Genre', '').lower(),
         )
         log.debug(f"searchTerm={searchTerm} globPattern={globPattern}")
         # return media files matching this glob pattern, if any
         return self._getMediaMatching(globPattern)
-
 
     def getMedia(self, evParams: EventParams) -> SlideshowMediaSet:
         """Locate media files to display for given action using search
@@ -340,15 +324,15 @@ class MediaManager(object):
                 return files
         # if no matching files were found for any search term, return the default image as a last resort
         else:
-            return [f"{config.get(self._CONFIG_SECTION, 'media_path')}/{config.get(self._CONFIG_SECTION, 'default_image')}"]
-
+            return [
+                f"{config.get(self._CONFIG_SECTION, 'media_path')}/{config.get(self._CONFIG_SECTION, 'default_image')}"
+            ]
 
     def getStartupMedia(self) -> SlideshowMediaSet:
         """Get list of media files to be played at program startup"""
         log.debug(f"getting startup media files")
         globPattern: str = self._GLOB_PATTERNS['startup']
         return self._getMediaMatching(globPattern)
-
 
 
 class Slideshow(object):
@@ -367,7 +351,6 @@ class Slideshow(object):
 
     _subProcessTimeout: ClassVar[float] = 3.0
     "how long to wait for a subprocess to complete or terminate"
-
 
     class WaitableEvent:
         """Provides an abstract object that can be used to resume select loops with
@@ -405,7 +388,6 @@ class Slideshow(object):
             os.close(self._read_fd)
             os.close(self._write_fd)
 
-
     def __init__(self):
         """Initialise slideshow object and start queue reader thread.
             Run framebuffer resolution set command if defined in config file.
@@ -430,9 +412,9 @@ class Slideshow(object):
         self._slideshowThread: Optional[Thread] = None
         "slideshow worker thread"
         self._queueReaderThread: Thread = Thread(
-            name = 'queue_reader_thread',
-            target = self._readMediaQueue,
-            daemon = True
+            name='queue_reader_thread',
+            target=self._readMediaQueue,
+            daemon=True
         )
         "media queue reader thread"
         self._subProcess: Optional[subprocess.Popen] = None
@@ -450,16 +432,14 @@ class Slideshow(object):
         self._queueReaderThread.start()
 
         # selector to monitor both _mediaChange & _videoFinish events at same time
-        self._selector: selectors.BaseSelector = selectors.DefaultSelector() # create selector
+        self._selector: selectors.BaseSelector = selectors.DefaultSelector()  # create selector
         self._selector.register(self._mediaChange, selectors.EVENT_READ, "_mediaChange")
         self._selector.register(self._videoFinish, selectors.EVENT_READ, "_videoFinish")
-
 
     def __del__(self):
         self.stop()
         # de-register from signal handler
         _signalHander.removeEvent(self._exitSignalled)
-
 
     def _setFramebufferResolution(self):
         """Set a specific framebuffer resolution if defined in config file"""
@@ -472,8 +452,10 @@ class Slideshow(object):
                 try:
                     self._subProcess.wait(self._subProcessTimeout)
                 except subprocess.TimeoutExpired:
-                    log.warning(f"timed out waiting {self._subProcessTimeout}s for framebuffer_resolution_cmd to complete: {fbResCmd}")
-
+                    log.warning((
+                        f"timed out waiting {self._subProcessTimeout}s for "
+                        f"framebuffer_resolution_cmd to complete: {fbResCmd}"
+                    ))
 
     def _runCmd(self, cmd: List[str], waitForExit: bool = False) -> bool:
         """Launch external command
@@ -492,14 +474,14 @@ class Slideshow(object):
             log.error(f"failed to run {cmd}: {e}")
             return False
 
-
     def _showImage(self, imgPath: str):
         """Run the display image command defined in config file
             :param imgPath: full path to image file
         """
-        cmd: List[str] = [config.get(self._CONFIG_SECTION, 'viewer')] + config.get(self._CONFIG_SECTION, 'viewer_opts').split() + [imgPath]
+        cmd: List[str] = [config.get(self._CONFIG_SECTION, 'viewer')] \
+            + config.get(self._CONFIG_SECTION, 'viewer_opts').split() \
+            + [imgPath]
         self._runCmd(cmd)
-
 
     def _clearImage(self):
         """Run the clear image command defined in config file (if any)"""
@@ -508,17 +490,17 @@ class Slideshow(object):
             cmd: List[str] = [clearCmd] + config.get(self._CONFIG_SECTION, 'clear_cmd_opts').split()
             self._runCmd(cmd)
 
-
     def _startVideo(self, videoPath: str):
         """Launch video player command defined in config file.
             To stop video, call `_stopVideo()` to terminate video player process.
             :param videoPath: full path to video file
         """
-        cmd: List[str] = [config.get(self._CONFIG_SECTION, 'video_player')] + config.get(self._CONFIG_SECTION, 'video_player_opts').split() + [videoPath]
+        cmd: List[str] = [config.get(self._CONFIG_SECTION, 'video_player')] \
+            + config.get(self._CONFIG_SECTION, 'video_player_opts').split() \
+            + [videoPath]
         self._videoFinish.clear()
         self._runCmd(cmd, waitForExit=True)
         self._videoFinish.set()
-
 
     def _stopSubProcess(self):
         """Stop running media player (if running) by terminating process"""
@@ -529,10 +511,12 @@ class Slideshow(object):
                 rc: int = self._subProcess.wait(self._subProcessTimeout)
                 log.debug(f"terminated media player: rc={rc}")
             except subprocess.TimeoutExpired:
-                #subprocess did not exit within timeout so kill it
+                # subprocess did not exit within timeout so kill it
                 self._subProcess.kill()
-                log.warning(f"media player subprocess pid={self._subProcess.pid} did not terminate within {self._subProcessTimeout}s: sent SIGKILL")
-
+                log.warning((
+                    f"media player subprocess pid={self._subProcess.pid} did not terminate"
+                    f" within {self._subProcessTimeout}s: sent SIGKILL"
+                ))
 
     def _runSlideshow(self):
         """Slideshow thread: loop a slideshow media set until a `_mediaChange` event occurs.
@@ -549,14 +533,14 @@ class Slideshow(object):
                     # start video, wait for clip to finish or `_maxVideoTime` to expire
                     #  or _mediaChange event to occur, then stop it
                     self._videoThread: Thread = Thread(
-                        name = "video_thread",
-                        target = self._startVideo,
-                        args = (mediaFile,),
-                        daemon = True
+                        name="video_thread",
+                        target=self._startVideo,
+                        args=(mediaFile,),
+                        daemon=True
                     )
                     self._videoThread.start()
                     log.debug(f"showing video for up to {self._maxVideoTime}s")
-                    events = self._selector.select(timeout = self._maxVideoTime)
+                    events = self._selector.select(timeout=self._maxVideoTime)
                     # if not events, it timed out
                     # self._mediaChange.wait(timeout = self._maxVideoTime)
                     self._stopSubProcess()
@@ -570,7 +554,7 @@ class Slideshow(object):
                         self._mediaChange.wait()
                     else:
                         # leave image showing for configured time
-                        self._mediaChange.wait(timeout = self._imgDisplayTime)
+                        self._mediaChange.wait(timeout=self._imgDisplayTime)
                         log.debug(f"showing image for up to {self._imgDisplayTime}s")
                     # terminate image viewer if option set in config file
                     if config.getboolean(self._CONFIG_SECTION, 'terminate_viewer'):
@@ -581,10 +565,9 @@ class Slideshow(object):
                     log.debug(f"_mediaChangeRequested flag set")
                     break
                 # pause between slideshow images/clips
-                self._mediaChange.wait(timeout = config.getfloat(self._CONFIG_SECTION, 'time_between_slides'))
+                self._mediaChange.wait(timeout=config.getfloat(self._CONFIG_SECTION, 'time_between_slides'))
         # slideshow loop interrupted by _mediaChange event
         log.debug(f"slideshow worker thread exit")
-
 
     def _readMediaQueue(self):
         """Media queue reader thread: read media sets from the media queue
@@ -596,7 +579,7 @@ class Slideshow(object):
         log.debug(f"media queue thread start")
         while not self._exitSignalled.is_set():
             log.debug("wait for slideshow media set")
-            mediaPaths: SlideshowMediaSet = self._queue.get(block = True)
+            mediaPaths: SlideshowMediaSet = self._queue.get(block=True)
             # TODO: if qsize > 1, jump to end of queue? But may cause a deadlock?
 
             # Check for exit signal before launching a slideshow:
@@ -618,8 +601,8 @@ class Slideshow(object):
                 # start new slideshow unless blanked display requested
                 if mediaPaths:
                     self._slideshowThread = Thread(
-                        name = 'slideshow_thread',
-                        target = self._runSlideshow,
+                        name='slideshow_thread',
+                        target=self._runSlideshow,
                     )
                     self._slideshowThread.start()
                 else:
@@ -628,7 +611,6 @@ class Slideshow(object):
                     log.info("'blank' specified in search precedence rule: blanking display")
         # queue reader loop interrupted by stop() or _exitSignalled event
         log.debug(f"media queue thread exit")
-
 
     def setMedia(self, mediaPaths: SlideshowMediaSet):
         """Queue a media set for display.
@@ -640,7 +622,6 @@ class Slideshow(object):
         mediaPaths = list(set(mediaPaths))
         mediaPaths.sort()
         self._queue.put(mediaPaths)
-
 
     def stop(self):
         """Stop the slideshow and clear the display; also stops queue reader thread."""
@@ -659,7 +640,6 @@ class Slideshow(object):
         log.debug(f"remaining threads: {enumerate_threads()}")
 
 
-
 class EventHandler(object):
     """Receives events from MQTTSubscriber, uses MediaManager to locate media files and Slideshow to show them.
 
@@ -673,7 +653,7 @@ class EventHandler(object):
     # type alias
     ChangeRuleSet = Dict[str, str]
 
-    @dataclass(frozen = True)
+    @dataclass(frozen=True)
     class ESState(object):
         """Keeps track of state of Emulation Station (immutable)"""
         action: str = ''
@@ -685,12 +665,11 @@ class EventHandler(object):
         def fromEvent(cls, evParams: EventParams) -> 'EventHandler.ESState':
             """Create ESState object from supplied event parameters"""
             return EventHandler.ESState(
-                action = evParams.get('Action', ''),
-                system = evParams.get('SystemId', ''),
-                game = evParams.get('GamePath', ''),
-                isFolder = (evParams.get('IsFolder') == '1')
+                action=evParams.get('Action', ''),
+                system=evParams.get('SystemId', ''),
+                game=evParams.get('GamePath', ''),
+                isFolder=(evParams.get('IsFolder') == '1')
             )
-
 
     def __init__(self):
         """Create `MQTTSubscriber`, `MediaManager` & `Slideshow` instances; start the `MQTTSubscriber` read loop."""
@@ -707,7 +686,6 @@ class EventHandler(object):
         self._stateBeforeSleep = self._currentState
         "EmulationStation state before last sleep action"
 
-
     def readEvents(self):
         """Read and handle all events from the MQTTSubscriber. Exit on SIGTERM."""
         while True:
@@ -719,7 +697,6 @@ class EventHandler(object):
             log.debug(f'event received: {event}')
             params: EventParams = self._mqttSubscriber.getEventParams()
             self._handleEvent(params)
-
 
     def _handleEvent(self, evParams: EventParams):
         """Find appropriate media files for the event and display them
@@ -738,14 +715,12 @@ class EventHandler(object):
             log.debug(f'queue slideshow media={mediaPaths}')
             self._slideshow.setMedia(mediaPaths)
 
-
     def startup(self):
         """Queue slideshow of startup media"""
         mediaPaths: SlideshowMediaSet = self._mediaManager.getStartupMedia()
         log.info(f"startup slideshow media={mediaPaths}")
         if mediaPaths:
             self._slideshow.setMedia(mediaPaths)
-
 
     def _updateState(self, evParams: EventParams) -> EventParams:
         """Update record of EmulationStation state with provided values
@@ -772,7 +747,6 @@ class EventHandler(object):
         log.debug(f"_currentState={self._currentState}")
         return evParams
 
-
     def _getStateChangeRules(self) -> Dict[str, str]:
         """Look up state change rules in config file
             :return: mapping from action to change criterion
@@ -780,10 +754,9 @@ class EventHandler(object):
         _CONFIG_SECTION_CHANGE: str = 'change'
         changeRules: EventHandler.ChangeRuleSet = {
             action: config.get(_CONFIG_SECTION_CHANGE, action)
-                for action in config.options(_CONFIG_SECTION_CHANGE)
+            for action in config.options(_CONFIG_SECTION_CHANGE)
         }
         return changeRules
-
 
     def _hasStateChanged(self, evParams: EventParams, changeRules: ChangeRuleSet) -> bool:
         """Determine if EmulationStation's state has changed enough to change displayed media.
@@ -818,8 +791,7 @@ class EventHandler(object):
             return not newState.game == self._currentState.game
         # has system OR game changed?
         elif changeWhen == 'system/game':
-            return not ((newState.system == self._currentState.system) 
-                and (newState.game == self._currentState.game))
+            return not ((newState.system == self._currentState.system) and (newState.game == self._currentState.game))
         else:
             # unrecognised state change rule: log it
             log.error((
@@ -831,7 +803,7 @@ class EventHandler(object):
             return True
 
 
-### Module init ###
+# --- Module init --- #
 
 # Module signal handler instance
 _signalHander: SignalHandler = SignalHandler()
@@ -844,7 +816,7 @@ log: logging.Logger = getLogger()
 config: ConfigParser = _loadConfig()
 
 
-### main ###
+# --- main --- #
 
 if __name__ == '__main__':
     try:
