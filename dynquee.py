@@ -4,7 +4,7 @@
 
 # MIT Licence: https://opensource.org/licenses/MIT
 
-# version/build string: updated by git filter
+# version/build string: updated by git filter 'versioner'
 __version__ = "$Version"
 
 import os
@@ -34,7 +34,7 @@ EventParams = Dict[str, str]
 SlideshowMediaSet = List[str]
 
 
-_LOG_CONFIG_FILE: str = "dynquee.log.conf"
+_LOG_CONFIG_FILE: Final[str] = "dynquee.log.conf"
 "Module logging config file"
 
 
@@ -46,7 +46,7 @@ def getLogger() -> logging.Logger:
     return logging.getLogger(__name__)
 
 
-_CONFIG_FILE: str = "dynquee.ini"
+_CONFIG_FILE: Final[str] = "dynquee.ini"
 "Module config file"
 
 
@@ -99,7 +99,7 @@ class MQTTSubscriber(object):
         ```
     """
 
-    _CONFIG_SECTION: ClassVar[str] = 'recalbox'
+    _CONFIG_SECTION: Final[str] = 'recalbox'
     "config file section for MQTTSubscriber"
 
     def __init__(self):
@@ -217,10 +217,10 @@ class MediaManager(object):
         Call `getMedia()` to return a list of media files suitable for the action and selected system or game.
     """
 
-    _CONFIG_SECTION: ClassVar[str] = 'media'
+    _CONFIG_SECTION: Final[str] = 'media'
     "config file section for MediaManager"
 
-    _GLOB_PATTERNS: ClassVar[Dict[str, str]] = {
+    _GLOB_PATTERNS: Final[Dict[str, str]] = {
         'rom': "{systemId}/{gameBasename}.*",
         'publisher': "publisher/{publisher}.*",
         'genre': "genre/{genre}.*",
@@ -346,7 +346,7 @@ class Slideshow(object):
         Call  `stop()` to stop queue reader thread cleanly before exit.
     """
 
-    _CONFIG_SECTION: ClassVar[str] = 'slideshow'
+    _CONFIG_SECTION: Final[str] = 'slideshow'
     "config file section for Slideshow"
 
     _subProcessTimeout: ClassVar[float] = 3.0
@@ -647,7 +647,7 @@ class EventHandler(object):
         Call `startup()` to queue startup media for display.
     """
 
-    _CONFIG_SECTION: ClassVar[str] = 'media'
+    _CONFIG_SECTION: Final[str] = 'media'
     "config file section for EventHandler"
 
     # type alias
