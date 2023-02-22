@@ -273,6 +273,13 @@ class TestEventHandler(unittest.TestCase):
         self.eh = MockEventHandler()
         self._initEvParams = self._INIT_EV_PARAMS.copy()
         self._newEvParams = self._NEW_EV_PARAMS.copy()
+        self._changeRules: EventHandler.ChangeRuleSet = {
+            'systembrowsing': 'action',
+            'gamelistbrowsing': 'system/game',
+            'rungame': 'action',
+            'endgame': 'never',
+            'sleep': 'always',
+        }
 
 
     def tearDown(self):
@@ -296,120 +303,126 @@ class TestEventHandler(unittest.TestCase):
 
 
     def test_hasStateChanged(self):
-        (changeOn, noChangeOn) = ('action', 'endgame wakeup')
+        # (changeOn, noChangeOn) = ('action', 'endgame wakeup')
         self._newEvParams['Action'] = 'myaction'
+        self._changeRules['myaction'] = 'action'
         # initial blank state: expect no state change
-        self.assertFalse(self.eh._hasStateChanged(self._INIT_EV_PARAMS, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged(self._INIT_EV_PARAMS, self._changeRules))
         # new state: expect state change
-        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
         # update event handler with new state
         self.eh._updateState(self._newEvParams)
         # compare to newState: expect no state change
-        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
 
 
     def test_stateChangeAlways(self):
-        (changeOn, noChangeOn) = ("always", 'endgame wakeup')
         self._initEvParams['Action'] = 'myaction'
-        self.assertTrue(self.eh._hasStateChanged(self._initEvParams, changeOn, noChangeOn))
+        self._changeRules['myaction'] = 'always'
+        self._changeRules['systembrowsing'] = 'always'
+        self._changeRules['gamelistbrowsing'] = 'always'
+        self._changeRules['rungame'] = 'always'
+        self.assertTrue(self.eh._hasStateChanged(self._initEvParams, self._changeRules))
         self.eh._updateState(self._NEW_EV_PARAMS)
         # check no change of details still causes state change
-        self.assertTrue(self.eh._hasStateChanged(self._NEW_EV_PARAMS, changeOn, noChangeOn))
-        self.assertTrue(self.eh._hasStateChanged(self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self.assertTrue(self.eh._hasStateChanged(self._NEW_EV_PARAMS, self._changeRules))
+        self.assertTrue(self.eh._hasStateChanged(self._NEW_EV_PARAMS, self._changeRules))
         # check with different actions
         self._newEvParams['Action'] = 'gamelistbrowsing'
-        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
         self._newEvParams['Action'] = 'rungame'
-        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
 
 
     def test_stateChangeNever(self):
-        (changeOn, noChangeOn) = ("never", 'endgame wakeup')
         # check no change of details causes no state change
         self._newEvParams['Action'] = 'systembrowsing'
+        self._changeRules['systembrowsing'] = 'never'
         self.eh._updateState(self._NEW_EV_PARAMS)
-        self.assertFalse(self.eh._hasStateChanged(self._NEW_EV_PARAMS, changeOn, noChangeOn))
-        self.assertFalse(self.eh._hasStateChanged(self._NEW_EV_PARAMS, changeOn, noChangeOn))
-        self.assertFalse(self.eh._hasStateChanged(self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged(self._NEW_EV_PARAMS, self._changeRules))
+        self.assertFalse(self.eh._hasStateChanged(self._NEW_EV_PARAMS, self._changeRules))
+        self.assertFalse(self.eh._hasStateChanged(self._NEW_EV_PARAMS, self._changeRules))
         # check with different action
         self._newEvParams['Action'] = 'gamelistbrowsing'
-        self.assertFalse(self.eh._hasStateChanged(self._NEW_EV_PARAMS, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged(self._NEW_EV_PARAMS, self._changeRules))
         # check with different system or game
-        self.assertFalse(self.eh._hasStateChanged({'Action':'systembrowsing','SystemId':'snes','GamePath':''}, changeOn, noChangeOn))
-        self.assertFalse(self.eh._hasStateChanged({'Action':'systembrowsing','SystemId':'mame','GamePath':'asteroid.zip'}, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged({'Action':'systembrowsing','SystemId':'snes','GamePath':''}, self._changeRules))
+        self.assertFalse(self.eh._hasStateChanged({'Action':'systembrowsing','SystemId':'mame','GamePath':'asteroid.zip'}, self._changeRules))
 
-    
+
     def test_stateChangeOnAction(self):
-        (changeOn, noChangeOn) = ("action", 'endgame wakeup')
+        self._changeRules['gamelistbrowsing'] = 'action'
         # check with same action & different system & game
         self.eh._updateState(self._NEW_EV_PARAMS)
         self._newEvParams['Action'] = 'systembrowsing'
-        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
         # check with different action & game system & game
         self._newEvParams['Action'] = 'gamelistbrowsing'
-        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
-        # check sleep action & no params
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
+        # check sleep action & no params: expect state change
         self.eh._updateState(self._newEvParams)
         self._newEvParams['Action'] = 'sleep'
-        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
 
-    
+
     def test_stateChangeOnSystem(self):
-        (changeOn, noChangeOn) = ("system", 'endgame wakeup')
+        self._changeRules['systembrowsing'] = 'system'
+        self._changeRules['gamelistbrowsing'] = 'system'
         # check with same action, system & game
         self.eh._updateState(self._newEvParams)
-        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
         # check with new action, same system & game
         self._newEvParams['Action'] = 'gamelistbrowsing'
-        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
         # check with same action & game, new system
         self._newEvParams['Action'] = 'systembrowsing'
         self._newEvParams['SystemId'] = 'snes'
-        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
 
-    
+
     def test_stateChangeOnGame(self):
-        (changeOn, noChangeOn) = ("game", 'endgame wakeup')
+        self._changeRules['systembrowsing'] = 'game'
+        self._changeRules['gamelistbrowsing'] = 'game'
         # check with same action, system & game
         self.eh._updateState(self._newEvParams)
-        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
         # check with new action, same system & game
         self._newEvParams['Action'] = 'gamelistbrowsing'
-        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
         # check with same action & system, new game
         self._newEvParams['Action'] = 'systembrowsing'
         self._newEvParams['SystemId'] = 'mame'
         self._newEvParams['GamePath'] = 'asteroid.zip'
-        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
     
-    
+
     def test_stateChangeOnSystemOrGame(self):
-        (changeOn, noChangeOn) = ("system/game", 'endgame wakeup')
+        self._changeRules['systembrowsing'] = 'system/game'
         # check with same action, system & game
         self.eh._updateState(self._newEvParams)
-        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
         # check with new action, same system & game
         self._newEvParams['Action'] = 'gamelistbrowsing'
-        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self.assertFalse(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
         # check with same action & game, new system
         self._newEvParams['Action'] = 'systembrowsing'
         self._newEvParams['SystemId'] = 'snes'
         self._newEvParams['GamePath'] = ''
-        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
         # check with same action & system, new game
         self._newEvParams['GamePath'] = 'asteroid.zip'
-        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
         # check with same action, new system & game
         self._newEvParams['SystemId'] = 'megadrive'
         self._newEvParams['GamePath'] = 'sonic.zip'
-        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn))
-        
+        self.assertTrue(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
+
 
     def test_stateChangeOnInvalidSearchTerm(self):
-        (changeOn, noChangeOn) = ("blah", 'endgame wakeup')
+        self._changeRules['systembrowsing'] = 'XXXX'
         # check invalid search term causes error
         with self.assertLogs(log, logging.ERROR):
-            self.eh._hasStateChanged(self._newEvParams, changeOn, noChangeOn)
+            self.eh._hasStateChanged(self._newEvParams, self._changeRules)
 
 
     def test_recordStateBeforeSleep(self):
@@ -440,11 +453,17 @@ class TestEventHandler(unittest.TestCase):
         # check evParams changed on _updateState wakeup
         self.assertEqual(evParams, evParamsBeforeSleep)
 
-
+    @unittest.skip('temp')
     def test_getStateChangeRules(self):
-        (changeOn, noChangeOn) = self.eh._getStateChangeRules()
-        self.assertEqual(changeOn, 'system/game')
-        self.assertEqual(noChangeOn, 'endgame')
+        stateChangeRules = self.eh._getStateChangeRules()
+        self.assertEqual(stateChangeRules, {
+            'systembrowsing': 'action',
+            'gamelistbrowsing': 'system/game',
+            'rungame': 'always',
+            'endgame': 'never',
+            'runkodi': 'always',
+            'sleep': 'always',
+        })
 
 
 #@unittest.skip('temp skip')

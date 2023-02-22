@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from urllib.request import urlopen
 from urllib.error import URLError
 from http.client import HTTPResponse
-from typing import ClassVar, Dict, List, Tuple, Optional
+from typing import ClassVar, Dict, List, Optional, Final
 
 import paho.mqtt.client as mqtt
 
@@ -670,6 +670,8 @@ class EventHandler(object):
     _CONFIG_SECTION: ClassVar[str] = 'media'
     "config file section for EventHandler"
 
+    # type alias
+    ChangeRuleSet = Dict[str, str]
 
     @dataclass(frozen = True)
     class ESState(object):
@@ -724,11 +726,9 @@ class EventHandler(object):
             :param evParams: a dict of event parameters
         """
         log.info(f"event params={evParams}")
-        changeOn: str
-        noChangeOn: str
-        (changeOn, noChangeOn) = self._getStateChangeRules()
+        stateChangeRules: EventHandler.ChangeRuleSet = self._getStateChangeRules()
         # has EmulationStation state changed?
-        stateChanged: bool = self._hasStateChanged(evParams, changeOn, noChangeOn)
+        stateChanged: bool = self._hasStateChanged(evParams, stateChangeRules)
         # update state: on wakeup, restore state & evParams from before sleep
         evParams = self._updateState(evParams)
         if stateChanged:
@@ -773,56 +773,58 @@ class EventHandler(object):
         return evParams
 
 
-    def _getStateChangeRules(self) -> Tuple[str, str]:
+    def _getStateChangeRules(self) -> Dict[str, str]:
         """Look up state change rules in config file
-            :return: tuple of values in the format (change_on, no_change_on)
+            :return: mapping from action to change criterion
         """
-        # get state change rules from config file
-        noChangeOn: str = config.get(self._CONFIG_SECTION, 'no_change_on')
-        changeOn: str = config.get(self._CONFIG_SECTION, 'change_on')
-        return (changeOn, noChangeOn)
+        _CONFIG_SECTION_CHANGE: str = 'change'
+        changeRules: EventHandler.ChangeRuleSet = {
+            action: config.get(_CONFIG_SECTION_CHANGE, action)
+                for action in config.options(_CONFIG_SECTION_CHANGE)
+        }
+        return changeRules
 
 
-    def _hasStateChanged(self, evParams: EventParams, changeOn: str, noChangeOn: str) -> bool:
+    def _hasStateChanged(self, evParams: EventParams, changeRules: ChangeRuleSet) -> bool:
         """Determine if EmulationStation's state has changed enough to change displayed media.
             Follows rules defined in config file.
             :param evParams: dict of EmulationStation event params
-            :param changeOn: rule specifying when to change state
-            :param noChangeOn: rule specifying which actions do not change state
+            :param changeRules: ruleset specifying when to change state
             :return: True if state has changed
         """
         newState: EventHandler.ESState = EventHandler.ESState.fromEvent(evParams)
-        log.debug(f"changeOn={changeOn} noChangeOn={noChangeOn}")
+        log.debug(f"changeRules={changeRules}")
         log.debug(f"_currentState={self._currentState} newState={newState}")
 
         # 'wakeup' action always causes a state change as we restore the state before sleep
         if newState.action == 'wakeup':
             return True
         # Use rules defined in config file to determine if state has changed
-        # no change if action is ignored or `never` change specified
-        if (newState.action and (newState.action in noChangeOn)) or (changeOn == 'never'):
+        changeWhen: str = changeRules.get(newState.action, '')
+        # no change if no action sent yet (at startup) or `never` specified
+        if (changeWhen == '') or (changeWhen == 'never'):
             return False
-        # is `always` change specified?
-        elif changeOn == 'always':
+        # always change if `always` specified?
+        elif changeWhen == 'always':
             return True
         # has action changed from previous action?
-        elif changeOn == 'action':
+        elif changeWhen == 'action':
             return not newState.action == self._currentState.action
         # has system changed?
-        elif changeOn == 'system':
+        elif changeWhen == 'system':
             return not newState.system == self._currentState.system
         # has game changed?
-        elif changeOn == 'game':
+        elif changeWhen == 'game':
             return not newState.game == self._currentState.game
         # has system OR game changed?
-        elif changeOn == 'system/game':
-            log.debug('if changeOn=system/game')
-            return not ((newState.system == self._currentState.system) and (newState.game == self._currentState.game))
+        elif changeWhen == 'system/game':
+            return not ((newState.system == self._currentState.system) 
+                and (newState.game == self._currentState.game))
         else:
-            # unrecognised action in state change rule: log it
+            # unrecognised state change rule: log it
             log.error((
                 "Unrecognised state change rule - check config file: "
-                f" changeOn='{changeOn}' noChangeOn='{noChangeOn}'"
+                f" changeWhen='{changeWhen}'"
                 f" _currentState={self._currentState} newState={newState}"
             ))
             # change marquee
