@@ -114,6 +114,10 @@ def convertTheme(inPath: str, outPath: str, dryrun: bool = False) -> None:
                 else:
                     print(f"not found")                
         it.close()
+    
+    # Fixups:
+    # Oric has systemId `oricatmos`
+    os.rename(f"{outPath}/oric.logo.png", f"{outPath}/oricatmos.logo.png")
 
 
 def convertDanPatrick(inPath: str, outPath: str, dryrun: bool = False) -> None:
@@ -183,11 +187,11 @@ if __name__ == '__main__':
     BASEDIR: str = Path(__file__).resolve().parents[1]
     logging.debug(f"BASEDIR={BASEDIR}")
 
-    # convertTheme(
-    #     inPath = f"{BASEDIR}/artwork/recalbox-next",
-    #     outPath = f"{BASEDIR}/media/system",
-    #     dryrun = False
-    # )
+    convertTheme(
+        inPath = f"{BASEDIR}/artwork/recalbox-next",
+        outPath = f"{BASEDIR}/media/system",
+        dryrun = False
+    )
 
     convertDanPatrick(
         inPath = f"{BASEDIR}/artwork/Dan_Patrick_v2_platform_logos",
