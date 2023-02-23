@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # Integration tests for dynquee.EventHandler class
 # uses unittest framework with time delays

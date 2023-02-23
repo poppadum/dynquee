@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # Convert sourced artwork in SVG format to PNG
 # 1. Recalbox EmulationStation theme's system images

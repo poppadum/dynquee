@@ -23,6 +23,7 @@ fi
 # generate temporary BUILD file to include in release
 BUILD_FILE=$build_dir/../BUILD
 build_num="$($build_dir/gen_build.sh)"
+echo "Build number: $build_num"
 echo "$build_num" > $BUILD_FILE
 
 # insert build number into module

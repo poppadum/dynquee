@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Fetch latest version of recalbox-next theme's system logos from gitlab
 

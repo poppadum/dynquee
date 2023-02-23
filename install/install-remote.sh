@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env/bash
 
 # Install dynquee on a different machine to Recalbox
 
