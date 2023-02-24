@@ -14,7 +14,7 @@ from typing import List
 
 
 # preferred output sizing
-OUT_WIDTH: int = 1280
+OUT_WIDTH: int = 1920
 OUT_HEIGHT: int = 360
 
 BORDER_WIDTH: int = 10
@@ -66,7 +66,7 @@ def convertTheme(inPath: str, outPath: str, dryrun: bool = False) -> None:
 
     # Recalbox-next logos requiring a light background
     _SYSTEMS_NEED_LIGHT_BG: List[str] = [
-        '3ds', 'amigacd32', 'amigacdtv', 'amstradcpc', 'apple2gs', 'atari800',
+        '3ds', 'amiga600', 'amigacd32', 'amigacdtv', 'amstradcpc', 'apple2gs', 'atari800',
         'atomiswave', 'cavestory', 'channelf', 'dreamcast', 'fds', 'gameboy',
         'gamegear', 'gc', 'gw', 'intellivision', 'kodi', 'macintosh', 'mame',
         'moonlight', 'msx2', 'naomi', 'naomigd', 'nds', 'neogeo', 'neogeocd',
@@ -80,10 +80,10 @@ def convertTheme(inPath: str, outPath: str, dryrun: bool = False) -> None:
         print(f"converting to {outFile}", end='')
         if not dryrun:
             _convertToPNG(infile, outFile)
+            _addBorder(outFile)
             if (suffix == 'logo') and (systemId.name in _SYSTEMS_NEED_LIGHT_BG):
                 print(" (light b/g)", end='')
                 _changeImageBackground(outFile, '#ccc')
-        _addBorder(outFile)
         print('')
 
 
@@ -101,18 +101,16 @@ def convertTheme(inPath: str, outPath: str, dryrun: bool = False) -> None:
                     print(f'looking for {infile}: ', end = '')
                     if os.path.isfile(infile):
                         convertThemeImage(systemId, infile, 'logo')
-                        foundSystem = True
                     else:
                         print(f"not found")
-                    # found a logo: no need to look further for this system
-                    if foundSystem: break
-                # search for console image
-                infile: str = f"{inPath}/{systemId.name}/console.svg"
-                print(f'looking for {infile}: ', end = '')
-                if os.path.isfile(infile):
-                    convertThemeImage(systemId, infile, 'console')
-                else:
-                    print(f"not found")                
+
+                    # search for console image
+                    infile: str = f"{inPath}/{systemId.name}/{dir}/console.svg"
+                    print(f'looking for {infile}: ', end = '')
+                    if os.path.isfile(infile):
+                        convertThemeImage(systemId, infile, 'console')
+                    else:
+                        print(f"not found")                
         it.close()
     
     # Fixups:
