@@ -3,10 +3,10 @@ A dynamic digital marquee for [Recalbox]
 ===
 
 
-<!-- **TODO**: add demo video of it working? -->
+<!-- **TODO**: add photos / demo video of it working? -->
 
 ## Contents
-- [About dynquee](#about-dynquee)
+- [About *dynquee*](#about-dynquee)
 - [Getting Started](#getting-started)
     + [Quick Installation](#quick-installation)
     - [Manual Installation](#manual-installation)
@@ -56,7 +56,7 @@ With the Pi4's default KMS graphics driver both HDMI displays share a single fra
 
 ### Requirements
 - [Recalbox] v8.1.1 Electron or later
-- Python v3.7+ (Recalbox 8.1.1 ships with Python v3.9.5)
+- Python v3.7 or later (Recalbox 8.1.1 ships with Python v3.9.5)
 - EITHER:
     - a Raspberry [Pi 4B][pi4] or [Pi 400][pi400] with a second display connected to the Pi's second HDMI port
 - OR:
@@ -71,7 +71,7 @@ It works fine but needs a few config file changes: see [Running *dynquee* on a d
 
 To get *dynquee* running on your Recalbox follow the instructions below.
 
-To get *dynquee* running on a different machine see [instructions here][different-device].
+To get *dynquee* running on a different machine see [the separate instructions here][different-device].
 
 Releases include a few media files to get started (see [acknowledgements](#acknowledgements)) but not a complete set. See the [media README][media-readme] for suggestions of where to find media files.
 
@@ -82,27 +82,27 @@ Follow these steps to install *dynquee* using the install script:
 
 >  **TODO**: get a permalink to latest release on github
 
-1. Connect to your recalbox with `ssh` (see the [Recalbox wiki][recalbox-ssh])
+1. Connect to your recalbox with `ssh` (the [Recalbox wiki][recalbox-ssh] explains how)
 1. Copy and paste this command and press enter:  
     ```sh
-    bash -c "$( wget -qO - https://github.com/poppadum/dynquee/raw/main/install/installer.sh )"
+    bash -c "$(wget -qO - https://github.com/poppadum/dynquee/raw/main/install/install.sh)"
     ```
 1. If all goes well you should see the *Installation complete* message
 
 
 ### Manual Installation
-If you prefer to install everything manually, follow these instructions. 
+If you prefer to install everything manually, follow these steps. 
 
 <details>
 <summary>Click to expand full instructions:</summary>
 
 #### Download
-1. Create the *dynquee* directory: `sudo mkdir -p /recalbox/share/dynquee`
-1. Change to that directory: `cd /opt/dynquee`
+1. Create the *dynquee* directory: `mkdir -p /recalbox/share/dynquee`
+1. Change to that directory: `cd /recalbox/share/dynquee`
 1. Download the *dynquee* release and unzip it:  
      ```sh
      wget https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
-     unzip dynquee.zip`
+     unzip dynquee.zip
      ```
 
 #### Test
@@ -123,7 +123,7 @@ If you've checked the logs and still can't see what's wrong, see the [help secti
     ```sh
     mount -o rw,remount /
     cp install/S32dynquee /etc/init.d/
-    chmod +x /etc/init.d/$INIT_SCRIPT
+    chmod +x /etc/init.d/S32dynquee
     mount -o ro,remount /
     ```
     
@@ -164,7 +164,7 @@ Media file matching works as follows:
     - e.g. `Data East` becomes `data east.`
 
 1. Names are then matched against the beginning of media filenames.
-    - e.g. a ROM named `Chuckie Egg.zip` would match media files named `chuckie egg.*`
+    - e.g. a ROM named `Chuckie Egg.zip` would match media files named `Chuckie Egg.*`
     - or a game published by `Bally Midway` would match files named `bally midway.*`
 
 
@@ -175,15 +175,15 @@ If for some reason you want to store them somewhere else, change the `media_path
 Place your media files in the appropriate subdirectory (look at the included files for examples):
 
 - *game-specific* media go in the appropriate system directory
-    - e.g. for the arcade version of [Defender] with a ROM named `defender.zip`, put your file in `mame/` & name it `defender.<something>` e.g. `mame/defender.01.png`
+    - e.g. for the arcade version of [Defender] with a ROM named `defender.zip`, put your media file in `mame/` and name it `defender.<something>` e.g. `mame/defender.01.png`
 
-- `system/` is for game system media (e.g. console logos);
+- `system/` is for game system media (e.g. console banners and logos);
 the file name must start with Emulation Station's internal system name (use the same names as in `/recalbox/share/roms/`)
     - e.g. for a [Sinclair ZX Spectrum][spectrum] logo, name the file `zxspectrum.<something>` e.g. `system/zxspectrum.logo.png`
 
 - `publisher/` is for publisher banners & logos
 
-- `startup/` is for files to show when *dynquee* first starts up e.g. a welcome banner
+- `startup/` is for files to show when *dynquee* first starts up e.g. a welcome banner or video
 
 - `generic/` is for media that doesn't belong anywhere else, to be used if no other files match
 
@@ -220,7 +220,7 @@ Bug reports/fixes, improvements, documentation, & translations are welcome. When
 
 
 ## Acknowledgements
-[`WaitableEvent`](https://lat.sk/2015/02/multiple-event-waiting-python-3/) class written by [Radek Lát](https://lat.sk) used to wait for two thread events at the same time.
+[`WaitableEvent`](https://lat.sk/2015/02/multiple-event-waiting-python-3/) class written by [Radek Lát](https://lat.sk) is used to wait for several events simultaneously.
 
 For convenience, releases include some starter images collected from various sources.
 Most of these are not my work: credit remains with the original authors.
@@ -229,7 +229,7 @@ See the [artwork README file][artwork-readme] for sources.
 
 ## To Do
 - [ ] Genre matching is very dumb: make it more useful.  
-Is there a master list of genres that [Emulation Station][emulationstation] uses somewhere?
+  Is there a master list of genres that [Emulation Station][emulationstation] uses somewhere?
 
 ---
 
@@ -250,6 +250,7 @@ This project is released under the [MIT Licence][licence].
 [licence]: LICENSE.txt
 [LTA149B780F]: https://www.panelook.com/LTA149B780F_Toshiba_14.9_LCM_parameter_10941.html
 [media-readme]: media/README.md
+[pastebin]: https://pastebin.com/
 [pi4]: https://www.raspberrypi.com/products/raspberry-pi-4-model-b/
 [pi400]: https://www.raspberrypi.com/products/raspberry-pi-400-unit/
 [pi-zero]: https://www.raspberrypi.com/products/raspberry-pi-zero/

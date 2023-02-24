@@ -16,6 +16,7 @@ While *dynquee* was originally intended to run on same computer as Recalbox, it 
     - [Test](#test)
     - [Run At Startup](#run-at-startup)
 - [Help](#help)
+- [Using Other Media Players](#using-other-media-players)
 
 ---
 
@@ -23,7 +24,7 @@ While *dynquee* was originally intended to run on same computer as Recalbox, it 
 ## Requirements
 *dynquee* requires the following to be installed:
 
-- Python v3.7+
+- Python v3.7 or later
 
 - Python package [paho.mqtt.client][py-paho-mqtt]
 
@@ -46,13 +47,15 @@ Follow these steps to install *dynquee* using the install script:
 
 1. Log in to your marquee computer either at the console or via `ssh`
 
-1. Fetch and run the installer: type  
-    `sudo bash -c "$(wget -qO - https://github.com/poppadum/dynquee/raw/main/install/installer-remote.sh )"`
+1. Fetch and run the installer: copy and paste this command and press enter:
+    ```sh
+    sudo bash -c "$(wget -qO - https://github.com/poppadum/dynquee/raw/main/install/install-remote.sh)"
+    ```
     
     **TODO**: test this
 
 1. When prompted, type the hostname or IP address of your Recalbox (default hostname: `recalbox`)  
-    **Note**: if you supply an IP address, make sure that IP address won't change 
+    **Note**: if you supply an IP address, make sure that IP address won't change
     because *dynquee* will try to connect to that IP address every time it starts.
 
 ---
@@ -66,7 +69,9 @@ They assume you are installing *dynquee* on a Raspberry Pi running Raspberry Pi 
 
 ### Install Packages
 Install the required packages with:  
-`sudo apt install python3 python3-paho-mqtt fbi ffmpeg`
+```sh
+sudo apt install python3 python3-paho-mqtt fbi ffmpeg
+```
 
 ### Network Setup
 1. Make sure the marquee computer is connected to the same local network as Recalbox
@@ -115,9 +120,9 @@ Install the required packages with:
     ```
 
 
-1. Optional: make the `media/` directory world-writeable so you can copy files to it without sudo:  
+1. Optional: make the `media/` directory world-writeable so you can copy files to it without `sudo`:  
     ```sh
-    chmod -R +w ./media/
+    chmod -R a+w ./media/
     ```
 
 
@@ -148,6 +153,13 @@ Recent releases of Raspberry Pi OS use [systemd][systemd] so that's what I recom
 1. Copy the `systemd` unit file to the systemd directory, and enable it:
     ```sh
     sudo cp install/dynquee.service /etc/systemd/system/
+    ```
+
+1. If you installed *dynquee* somewhere other than `/opt/dynquee`, edit the file
+   `/etc/systemd/system/dynquee.service` and update `WorkingDirectory` and `ExecStart` lines.
+
+1. Enable the service:
+    ```sh
     sudo systemctl daemon-reload
     sudo systemctl enable dynquee.service
     ```
@@ -183,7 +195,7 @@ If you don't want to use [`fbi`][fbi] or [`ffmpeg`][ffmpeg], look in the config 
 
 Below are a couple of examples of other configs.
 
-[vlc][vlc]:
+### [vlc][vlc]:
 ```ini
 viewer = /usr/bin/cvlc
 viewer_opts = --no-audio --no-video-title-show --loop --quiet
@@ -194,14 +206,11 @@ video_player_opts = --no-audio --no-video-title-show --play-and-exit --quiet
 
 ```
 
-
-[omxplayer][omxplayer]:
+### [omxplayer][omxplayer]:
 ```ini
 video_player = /usr/bin/omxplayer
 video_player_opts = --no-osd --no-keys
 ```
-
-
 
 
 <!-- LINKS & IMAGES -->
@@ -209,7 +218,7 @@ video_player_opts = --no-osd --no-keys
 [fbi]: https://git.kraxel.org/cgit/fbida/
 [ffmpeg]: https://ffmpeg.org
 [omxplayer]: https://github.com/popcornmix/omxplayer/blob/master/README.md
-[pastebin]: https://pastebin.com
+[pastebin]: https://pastebin.com/
 [project-image]: ../dynquee.png
 [py-paho-mqtt]: https://pypi.org/project/paho-mqtt/
 [raspi-os]: https://www.raspberrypi.com/software/
