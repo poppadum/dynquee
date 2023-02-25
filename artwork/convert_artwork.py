@@ -7,7 +7,7 @@
 import os, logging, subprocess, re
 import cairosvg  # type: ignore  # suppress mypy 'missing typehints for cairosvg' error
 from pathlib import Path
-from typing import List
+from typing import List, Dict
 
 # Uncomment for DEBUG
 #logging.basicConfig(level=logging.DEBUG)
@@ -22,6 +22,9 @@ BORDER_HEIGHT: int = 10
 
 # preferred region: eu, us or jp
 REGION:str  = 'eu'
+
+# light background colour
+LIGHT_BG_COLOUR: str = '#ccc'
 
 
 def _convertToPNG(infile: str, outfile: str):
@@ -64,27 +67,38 @@ def convertTheme(inPath: str, outPath: str, dryrun: bool = False) -> None:
     # system directories to skip: virtual systems
     SKIP_SYSTEMS: List[str] = ['auto-allgames', 'auto-lastplayed', 'auto-multiplayer', 'default', 'favorites', 'imageviewer']
 
-    # Recalbox-next logos requiring a light background
-    _SYSTEMS_NEED_LIGHT_BG: List[str] = [
-        '3ds', 'amiga600', 'amigacd32', 'amigacdtv', 'amstradcpc', 'apple2gs', 'atari800',
-        'atomiswave', 'cavestory', 'channelf', 'dreamcast', 'fds', 'gameboy',
-        'gamegear', 'gc', 'gw', 'intellivision', 'kodi', 'macintosh', 'mame',
-        'moonlight', 'msx2', 'naomi', 'naomigd', 'nds', 'neogeo', 'neogeocd',
-        'nes', 'odyssey2', 'palm', 'pc88', 'pc98', 'pcenginecd', 'pcfx',
-        'pokemini', 'ports', 'ps2', 'ps3', 'psp', 'psx', 'satellaview', 'to8',
-        'wonderswan', 'x1', 'zxspectrum'
-    ]
+    # Recalbox-next logos & console images requiring a light background
+    _SYSTEMS_NEED_LIGHT_BG: Dict[str, List[str]] = {
+        'logo': [
+            '3ds', 'amiga600', 'amiga1200', 'amigacd32', 'amigacdtv', 'amstradcpc',
+            'apple2gs', 'atari800', 'atomiswave', 'cavestory', 'channelf',
+            'dreamcast', 'fds', 'gameboy', 'gamegear', 'gc', 'gw', 'intellivision',
+            'kodi', 'macintosh', 'mame', 'moonlight', 'msx2', 'naomi', 'naomigd',
+            'nds', 'neogeo', 'neogeocd', 'nes', 'odyssey2', 'palm', 'pc88', 'pc98',
+            'pcenginecd', 'pcfx', 'pokemini', 'ports', 'ps2', 'ps3', 'psp', 'psx',
+            'satellaview', 'to8', 'wonderswan', 'x1', 'zxspectrum',
+        ],
+        'console': [
+            '64dd', 'amigacd32', 'amiagecdtv', 'amstradcpc', 'atari2600', 'atari5200',
+            'atari7800', 'channelf', 'colecovision', 'gamegear', 'intellivision',
+            'jaguar', 'kodi', 'lynx', 'mastersystem', 'megadrive', 'moolight', 'msx1',
+            'msx2', 'n64', 'neogeo', 'neogeocd', 'odyssey2', 'openbor', 'ps2', 'ps3',
+            'psp', 'saturn', 'sega32x', 'segacd', 'supergrafx', 'vectrex', 'virtualboy',
+            'x68000', 'zx81', 'zxspectrum',
+        ],
+    }
 
     def convertThemeImage(systemId: os.DirEntry, infile: str, suffix: str):
         outFile = f"{outPath}/{systemId.name}.{suffix}.png"
-        print(f"converting to {outFile}", end='')
+        print(f"convert {systemId.name}.{suffix}.svg: ", end='')
         if not dryrun:
             _convertToPNG(infile, outFile)
             _addBorder(outFile)
-            if (suffix == 'logo') and (systemId.name in _SYSTEMS_NEED_LIGHT_BG):
+            if (suffix == 'logo' and systemId.name in _SYSTEMS_NEED_LIGHT_BG['logo']) \
+                or (suffix == 'console' and systemId.name in _SYSTEMS_NEED_LIGHT_BG['console']):
                 print(" (light b/g)", end='')
-                _changeImageBackground(outFile, '#ccc')
-        print('')
+                _changeImageBackground(outFile, LIGHT_BG_COLOUR)
+        print(': OK')
 
 
     # Look through all first level directories in inPath
@@ -94,28 +108,21 @@ def convertTheme(inPath: str, outPath: str, dryrun: bool = False) -> None:
             # skip non-directories and virtual systems
             if systemId.is_dir() and (systemId.name not in SKIP_SYSTEMS):
                 # look for a file named data/logo.svg, or /data/$REGION/logo.svg
-                foundSystem = False
                 # search for system logo
                 for dir in ["data", f"data/{REGION}"]:
                     infile: str = f"{inPath}/{systemId.name}/{dir}/logo.svg"
-                    print(f'looking for {infile}: ', end = '')
                     if os.path.isfile(infile):
                         convertThemeImage(systemId, infile, 'logo')
-                    else:
-                        print(f"not found")
-
-                    # search for console image
+                    # search for console image named data/console.svg, or /data/$REGION/console.svg
                     infile: str = f"{inPath}/{systemId.name}/{dir}/console.svg"
-                    print(f'looking for {infile}: ', end = '')
                     if os.path.isfile(infile):
                         convertThemeImage(systemId, infile, 'console')
-                    else:
-                        print(f"not found")                
         it.close()
     
     # Fixups:
     # Oric has systemId `oricatmos`
-    os.rename(f"{outPath}/oric.logo.png", f"{outPath}/oricatmos.logo.png")
+    if not dryrun:
+        os.rename(f"{outPath}/oric.logo.png", f"{outPath}/oricatmos.logo.png")
 
 
 def convertDanPatrick(inPath: str, outPath: str, dryrun: bool = False) -> None:
@@ -144,7 +151,7 @@ def convertDanPatrick(inPath: str, outPath: str, dryrun: bool = False) -> None:
                     logging.debug(f"basename={basename}")
 
                     outFullPath: str = getUniqueFilename(f"{outPath}/{cat}", basename, 'png')
-                    print(f"converting '{inPath}/{cat}/{image.name}' -> {outFullPath}")
+                    print(f"convert '{cat}.{basename}.png'")
                     if not dryrun:
                         _convertToPNG(
                             infile = f"{inPath}/{cat}/{image.name}",
