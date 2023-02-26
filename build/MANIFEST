@@ -3,6 +3,7 @@ dynquee.ini
 dynquee.log.conf
 dynquee.png
 clear_framebuffer.sh
+play_video_scaled.sh
 LICENSE.txt
 README.md
 media/generic/

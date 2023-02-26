@@ -103,7 +103,7 @@ def test_slideshowMaxVideoTime():
     out.flush()
     sl.stop()
     # check how many times video player launched
-    assert out.getvalue().count(filePath) == 4, f"expected 4 occurrences of file in output, got {out.getvalue().count(filePath)}"
+    assert out.getvalue().count(filePath) == 6, f"expected 6 occurrences of file in output, got {out.getvalue().count(filePath)}"
     log.removeHandler(ch)
     out.close()
     del(sl)

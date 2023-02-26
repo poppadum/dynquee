@@ -4,9 +4,6 @@
 
 # MIT Licence: https://opensource.org/licenses/MIT
 
-# build number: inserted by build system
-__build = "develop"
-
 import os
 import sys
 import logging
@@ -28,6 +25,9 @@ from http.client import HTTPResponse
 from typing import ClassVar, Dict, List, Optional, Final
 
 import paho.mqtt.client as mqtt
+
+# build number: inserted by build system
+__build = "develop"
 
 # Type aliases
 EventParams = Dict[str, str]
@@ -388,21 +388,6 @@ class Slideshow(object):
             os.close(self._read_fd)
             os.close(self._write_fd)
 
-    @classmethod
-    def _getCmdList(cls, cmd: str, cmdOpts: str, **variables) -> List[str]:
-        """Convert command and option strings to a list for passing to subprocess.
-            Substitute variables in the string with values supplied as keyword args.
-            :param cmd: path to external command
-            :param cmdOpts: options to pass to command
-            :param variables: variable substitutions: format variable=value
-        """
-        if variables:  # if not empty
-            cmd = cmd.format(variables)
-            cmdOpts = cmdOpts.format(variables)
-        cmdList: List[str] = [cmd] + cmdOpts.split()
-        log.debug(f"cmdList={cmdList}")
-        return cmdList
-
     def __init__(self):
         """Initialise slideshow object and start queue reader thread.
             Run framebuffer resolution set command if defined in config file.
@@ -472,6 +457,21 @@ class Slideshow(object):
                         f"framebuffer_resolution_cmd to complete: {fbResCmd}"
                     ))
 
+    @classmethod
+    def _getCmdList(cls, cmd: str, cmdOpts: str, **vars) -> List[str]:
+        """Convert command and option strings to a list for passing to subprocess.Popen
+            Substitute variables in the string with values supplied as keyword args.
+            :param cmd: path to external command
+            :param cmdOpts: options to pass to command
+            :param variables: variable substitutions: format variable=value
+            :return: sequence of command args for passing to subprocess.Popen
+        """
+        cmd = cmd.format(**vars)
+        cmdOpts = cmdOpts.format(**vars)
+        cmdList: List[str] = [cmd] + cmdOpts.split()
+        log.debug(f"cmdList={cmdList}")
+        return cmdList
+
     def _runCmd(self, cmd: List[str], waitForExit: bool = False) -> bool:
         """Launch external command
             :param cmd: sequence of program arguments passed to Popen constructor
@@ -515,9 +515,11 @@ class Slideshow(object):
             To stop video, call `_stopVideo()` to terminate video player process.
             :param videoPath: full path to video file
         """
-        cmd: List[str] = [config.get(self._CONFIG_SECTION, 'video_player')] \
-            + config.get(self._CONFIG_SECTION, 'video_player_opts').split() \
-            + [videoPath]
+        cmd: List[str] = self._getCmdList(
+            config.get(self._CONFIG_SECTION, 'video_player'),
+            config.get(self._CONFIG_SECTION, 'video_player_opts'),
+            file=videoPath
+        )
         self._videoFinish.clear()
         self._runCmd(cmd, waitForExit=True)
         self._videoFinish.set()
