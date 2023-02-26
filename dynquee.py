@@ -388,6 +388,21 @@ class Slideshow(object):
             os.close(self._read_fd)
             os.close(self._write_fd)
 
+    @classmethod
+    def _getCmdList(cls, cmd: str, cmdOpts: str, **variables) -> List[str]:
+        """Convert command and option strings to a list for passing to subprocess.
+            Substitute variables in the string with values supplied as keyword args.
+            :param cmd: path to external command
+            :param cmdOpts: options to pass to command
+            :param variables: variable substitutions: format variable=value
+        """
+        if variables:  # if not empty
+            cmd = cmd.format(variables)
+            cmdOpts = cmdOpts.format(variables)
+        cmdList: List[str] = [cmd] + cmdOpts.split()
+        log.debug(f"cmdList={cmdList}")
+        return cmdList
+
     def __init__(self):
         """Initialise slideshow object and start queue reader thread.
             Run framebuffer resolution set command if defined in config file.
@@ -478,16 +493,21 @@ class Slideshow(object):
         """Run the display image command defined in config file
             :param imgPath: full path to image file
         """
-        cmd: List[str] = [config.get(self._CONFIG_SECTION, 'viewer')] \
-            + config.get(self._CONFIG_SECTION, 'viewer_opts').split() \
-            + [imgPath]
+        cmd: List[str] = self._getCmdList(
+            config.get(self._CONFIG_SECTION, 'viewer'),
+            config.get(self._CONFIG_SECTION, 'viewer_opts'),
+            file=imgPath
+        )
         self._runCmd(cmd)
 
     def _clearImage(self):
         """Run the clear image command defined in config file (if any)"""
         clearCmd: str = config.get(self._CONFIG_SECTION, 'clear_cmd')
         if clearCmd:
-            cmd: List[str] = [clearCmd] + config.get(self._CONFIG_SECTION, 'clear_cmd_opts').split()
+            cmd: List[str] = self._getCmdList(
+                clearCmd,
+                config.get(self._CONFIG_SECTION, 'clear_cmd_opts')
+            )
             self._runCmd(cmd)
 
     def _startVideo(self, videoPath: str):
