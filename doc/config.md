@@ -9,6 +9,7 @@
 - [Filename Matching](#filename-matching)
 - [Adding Your Own Images And Videos](#adding-your-own-images-and-videos)
 - [File Formats](#file-formats)
+- [Scaling Media](#scaling-media)
 - [Controlling When The Marquee Changes](#controlling-when-the-marquee-changes)
 - [Starting And Stopping *dynquee* Manually](#starting-and-stopping-dynquee-manually)
 
@@ -96,7 +97,7 @@ Place your media files in the appropriate subdirectory (look at the included fil
 
 - *game-specific* media go in the appropriate system directory; for example:
     - for the arcade version of [Defender] with a ROM named `defender.zip`, put your media file in `mame/` and name it `defender.<something>` e.g. `mame/defender.01.png`
-    - for the Megadrive version of [Aladdin] with a ROM named `aladdin.zip`, put your media file in `megadrive/` and name it `aladdin.<something>` e.g. `megadrive/aladdin.png`
+    - for the Megadrive version of [Aladdin] with a ROM named `aladdin.zip`, put your media file in `megadrive/` and name it `aladdin.<something>` e.g. `megadrive/aladdin.mp4`
 
 - `system/` is for game system media (e.g. console banners and logos);
 the file name must start with Emulation Station's internal system name (use the same names as in `/recalbox/share/roms/`)
@@ -108,11 +109,20 @@ the file name must start with Emulation Station's internal system name (use the 
 
 - `generic/` is for media that doesn't belong anywhere else, to be used if no other files match
 
+Feel free to delete any of the included media files you don't want, but I recommend you leave `media/default.png` as a file of last resort.
+
 
 ## File Formats
 You can use any file format supported by [`fbv`][fbv] or [`ffmpeg`][ffmpeg].
 I recommend `png` for still images, and `mp4` or `mkv` with the H.264 codec for videos.
-Media is resized to fit the screen but the closer you can match the aspect ratio and resolution of your marquee display the better it will look.
+
+
+## Scaling Media
+With default settings, still images are zoomed to fit the marquee screen but keep their original aspect ratio; videos are not resized.
+
+If you want to scale videos to the height of the marquee, a helper script `play_video_scaled.sh` is provided. The comments in the config file explain how to use it. Note that the script uses the `marquee_width` & `marquee_height` settings in the config file to calculate video output size, so change those settings to match your marquee screen. Bear in mind that video scaling can tax the CPU which will leave Recalbox fewer CPU cycles available to run emulators.
+
+The more closely you match your images and videos to the aspect ratio and resolution of your marquee display the better it will look.
 
 
 ## Controlling When The Marquee Changes
@@ -139,6 +149,12 @@ You can start, stop or restart *dynquee* (for example, to reload a changed confi
 ```sh
 /etc/init.d/S32dynquee start|stop|restart|status
 ```
+
+Be aware that if you start *dynquee* when Recalbox is already in the sleep state,
+it will stay on the startup media until Recalbox wakes up.
+If there is only one startup image, that image could be shown for any length of
+time and could cause screen burn-in!
+
 
 <!-- LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
