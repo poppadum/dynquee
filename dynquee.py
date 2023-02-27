@@ -13,7 +13,7 @@ import glob
 import json
 import random
 import re
-from threading import Thread, Event, enumerate as enumerate_threads
+from threading import Thread, Event, get_ident, enumerate as enumerate_threads
 from queue import SimpleQueue, Empty
 import subprocess
 import signal
@@ -553,7 +553,7 @@ class Slideshow(object):
             Gets media set to show from `_currentMedia` property
         """
         mediaPaths: SlideshowMediaSet = self._currentMedia.copy()
-        log.debug(f"slideshow worker thread start")
+        log.debug(f"slideshow worker thread {get_ident()} start")
         while not self._mediaChange.is_set():
             # random order of media each time through slideshow
             random.shuffle(mediaPaths)
@@ -597,7 +597,7 @@ class Slideshow(object):
                 # pause between slideshow images/clips
                 self._mediaChange.wait(timeout=config.getfloat(self._CONFIG_SECTION, 'time_between_slides'))
         # slideshow loop interrupted by _mediaChange event
-        log.debug(f"slideshow worker thread exit")
+        log.debug(f"slideshow worker thread {get_ident()} exit")
 
     def _readMediaQueue(self):
         """Media queue reader thread: read media sets from the media queue
@@ -624,6 +624,7 @@ class Slideshow(object):
                 log.info(f"slideshow media changed: {mediaPaths}")
                 self._mediaChange.set()
                 if self._slideshowThread is not None:
+                    log.debug(f"waiting for _slideshowThread={self._slideshowThread.ident} to exit")
                     self._slideshowThread.join()
                 # record current media set
                 self._currentMedia = mediaPaths
@@ -801,6 +802,10 @@ class EventHandler(object):
 
         # 'wakeup' action always causes a state change as we restore the state before sleep
         if newState.action == 'wakeup':
+            return True
+        # action after 'endgame' always causes a state change
+        # (ensures action's search rules are acted on)
+        if self._currentState.action == 'endgame':
             return True
         # Use rules defined in config file to determine if state has changed
         changeWhen: str = changeRules.get(newState.action, '')
