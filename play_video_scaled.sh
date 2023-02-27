@@ -32,17 +32,6 @@ kill_child() {
 
 }
 
-# wait for ffmpeg to exit and capture exit code
-end() {
-    log "wait for pid=$pid to exit"
-    wait -f $pid
-    rc=$?
-    # exit with ffmpeg's exit code
-    log "$0 exit with code $rc"
-    exit $rc
-}
-
-
 # Get marquee width and height from config file
 marquee_width=$(sed --silent --regexp-extended 's/^\s*marquee_width *= *(.+)\s*$/\1/p' < "$CONFIG_FILE")
 marquee_height=$(sed --silent --regexp-extended 's/^\s*marquee_height *= *(.+)\s*$/\1/p' < "$CONFIG_FILE")
@@ -68,8 +57,6 @@ log "'$1' w=$width h=$height xoffset=$xoffset height_ratio=$height_ratio marquee
 
 # Stop ffmpeg on SIGINT or SIGTERM
 trap "kill_child" SIGINT SIGTERM
-# Report exit code on EXIT
-trap "end" EXIT
 
 # Play video: fork ffmpeg and record pid
 ffmpeg \
@@ -83,3 +70,12 @@ ffmpeg \
     -i "$1" &
 pid=$!
 log "fork ffmpeg pid=$pid"
+
+# wait for ffmpeg to exit
+log "wait for pid=$pid to exit"
+wait -f $pid
+rc=$?
+
+# exit with ffmpeg's exit code
+log "$0 exit with code $rc"
+exit $rc
