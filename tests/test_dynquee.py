@@ -221,6 +221,18 @@ class TestSlideshow(unittest.TestCase):
         self.assertIsNone(self.sl._slideshowThread)
         self.assertIsInstance(self.sl._queueReaderThread, threading.Thread)
 
+    def test_getCmdList(self):
+        cmd = "echo"
+        vars = {
+            'file': 'a filename with spaces.txt',
+            'num': 123,
+        }
+        self.assertEqual(self.sl._getCmdList(cmd, "{file}", file="normal.png"), ['echo', 'normal.png'])
+        self.assertEqual(self.sl._getCmdList(cmd, "{file} {num}", **vars), ['echo', 'a filename with spaces.txt', '123'])
+        self.assertEqual(self.sl._getCmdList(cmd, "{file}", **vars), ['echo', 'a filename with spaces.txt'])
+        self.assertEqual(self.sl._getCmdList(cmd, "{file}", file="a 'funny name"), ['echo', 'a \'funny name'])
+        self.assertEqual(self.sl._getCmdList(cmd, 'this is "a test" {file} xxx-yyy .b_', **vars), ['echo', 'this', 'is', 'a test', 'a filename with spaces.txt', 'xxx-yyy', '.b_'])
+        self.assertEqual(self.sl._getCmdList(cmd, 'abc de"f', **vars), ['echo', 'abc', 'de"f'])
 
 
 class MockEventHandler(EventHandler):

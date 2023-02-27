@@ -12,6 +12,7 @@ from configparser import ConfigParser
 import glob
 import json
 import random
+import re
 from threading import Thread, Event, enumerate as enumerate_threads
 from queue import SimpleQueue, Empty
 import subprocess
@@ -466,9 +467,15 @@ class Slideshow(object):
             :param variables: variable substitutions: format variable=value
             :return: sequence of command args for passing to subprocess.Popen
         """
+        # quote 'file' var if present to support filenames with spaces
+        if "file" in vars.keys():
+            vars["file"] = f'"{vars["file"]}"'
         cmd = cmd.format(**vars)
         cmdOpts = cmdOpts.format(**vars)
-        cmdList: List[str] = [cmd] + cmdOpts.split()
+        # split option string into components keeping quoted strings intact
+        cmdList: List[str] = [cmd] + [
+            opt.strip('"') for opt in re.findall(r'[^"\s]\S*|".+?"', cmdOpts)
+        ]
         log.debug(f"cmdList={cmdList}")
         return cmdList
 
@@ -478,12 +485,12 @@ class Slideshow(object):
             :param waitForExit: if True, blocks until subprocess exits
             :return: True if command launched successfully, or False otherwise
         """
-        log.debug(f"cmd={cmd} waitForExit={waitForExit}")
         try:
             self._subProcess = subprocess.Popen(cmd)
+            log.debug(f"cmd={cmd} pid={self._subProcess.pid} waitForExit={waitForExit}")
             if waitForExit:
                 rc: int = self._subProcess.wait()
-                log.debug(f"subprocess exited with rc={rc}")
+                log.debug(f"subprocess pid={self._subProcess.pid} exited with rc={rc}")
             return True
         except OSError as e:
             log.error(f"failed to run {cmd}: {e}")
@@ -508,7 +515,7 @@ class Slideshow(object):
                 clearCmd,
                 config.get(self._CONFIG_SECTION, 'clear_cmd_opts')
             )
-            self._runCmd(cmd)
+            self._runCmd(cmd, waitForExit=True)
 
     def _startVideo(self, videoPath: str):
         """Launch video player command defined in config file.
@@ -527,16 +534,17 @@ class Slideshow(object):
     def _stopSubProcess(self):
         """Stop running media player (if running) by terminating process"""
         if self._subProcess is not None:
+            pid: int = self._subProcess.pid
             # try to terminate subprocess cleanly
             self._subProcess.terminate()
             try:
                 rc: int = self._subProcess.wait(self._subProcessTimeout)
-                log.debug(f"terminated media player: rc={rc}")
+                log.debug(f"terminated media player pid={pid} rc={rc}")
             except subprocess.TimeoutExpired:
                 # subprocess did not exit within timeout so kill it
                 self._subProcess.kill()
                 log.warning((
-                    f"media player subprocess pid={self._subProcess.pid} did not terminate"
+                    f"media player subprocess pid={pid} did not terminate"
                     f" within {self._subProcessTimeout}s: sent SIGKILL"
                 ))
 
@@ -562,10 +570,10 @@ class Slideshow(object):
                     )
                     self._videoThread.start()
                     log.debug(f"showing video for up to {self._maxVideoTime}s")
-                    events = self._selector.select(timeout=self._maxVideoTime)
-                    # if not events, it timed out
-                    # self._mediaChange.wait(timeout = self._maxVideoTime)
+                    self._selector.select(timeout=self._maxVideoTime)
+                    # if events is None after select() call, it timed out
                     self._stopSubProcess()
+                    self._clearImage()
                 else:
                     # show image, wait for `_imgDisplayTime` to expire or _mediaChange event, then clear it
                     self._showImage(mediaFile)
