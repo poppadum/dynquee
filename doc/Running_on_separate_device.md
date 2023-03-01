@@ -134,7 +134,7 @@ sudo apt install python3 python3-paho-mqtt fbi ffmpeg
 
 1. Edit the config file `dynquee.ini` as follows:
 
-    - in the `[DEFAULT]` section, change `dynquee_path` if you installed dynquee somewhere other than `/opt/dynquee`
+    - in the `[global]` section, change `dynquee_path` if you installed dynquee somewhere other than `/opt/dynquee`
 
     - in the `[recalbox]` section, change `host` to the hostname or IP address of your Recalbox you noted earlier
 
