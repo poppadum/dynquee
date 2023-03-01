@@ -1,16 +1,22 @@
 # Manual Installation
 If you prefer to install *dynquee* manually, follow these steps. 
 
-**Note**: these instructions are for installing *dynquee* on Recalbox; 
+**Note**: these instructions are for installing *dynquee* on Recalbox; if you're installing on a separate machine, see [the guide for running on a separate device][different-device]
 
 ## Download
-1. Log in to recalbox as user `root` either via [ssh][recalbox-ssh] or via the console.
+1. Log in to recalbox as user `root` either [via ssh][recalbox-ssh] or via the console.
 
-1. Create the *dynquee* directory: `mkdir -p /recalbox/share/dynquee`
+1. Create the *dynquee* directory:  
+    ```
+    mkdir -p /recalbox/share/dynquee
+    ```
 
-1. Change to that directory: `cd /recalbox/share/dynquee`
+1. Change to that directory:  
+    ```
+    cd /recalbox/share/dynquee
+    ```
 
-1. Download the *dynquee* release and unzip it:  
+1. Download the latest *dynquee* release and unzip it:  
      ```sh
      wget https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
      unzip dynquee.zip
@@ -49,4 +55,5 @@ If all goes well, reboot Recalbox and check that *dynquee* starts automatically.
 
 <!-- LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
+[different-device]: ./Running_on_separate_device.md
 [recalbox-ssh]: https://wiki.recalbox.com/en/tutorials/system/access/root-access-terminal-cli

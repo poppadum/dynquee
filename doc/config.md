@@ -120,7 +120,18 @@ I recommend `png` for still images, and `mp4` or `mkv` with the H.264 codec for 
 ## Scaling Media
 With default settings, still images are zoomed to fit the marquee screen but keep their original aspect ratio; videos are not resized.
 
-If you want to scale videos to the height of the marquee, a helper script `play_video_scaled.sh` is provided. The comments in the config file explain how to use it. Note that the script uses the `marquee_width` & `marquee_height` settings in the config file to calculate video output size, so change those settings to match your marquee screen. Bear in mind that video scaling can tax the CPU which will leave Recalbox fewer CPU cycles available to run emulators.
+If you want to scale videos to the height of the marquee, a helper script `play_video_scaled.sh` is provided. The comments in the config file explain how to use it. Note that the script uses the `marquee_width` & `marquee_height` settings in the config file to calculate video output size, so change those settings to match your marquee screen. Bear in mind that video scaling can tax the CPU which will leave Recalbox fewer CPU cycles available to run emulators[^cpu-usage].
+
+[^cpu-usage]: Here is the abbreviated output of `top` when running a scaled video at the same time as the Libretro Mame2003+ emulator on my Pi4 2GB: `ffmpeg` is using ~120% of the four cores:
+
+    ```
+      PID USER      PR  NI    VIRT    RES  %CPU  %MEM     TIME+ S COMMAND
+     2047 root      20   0  476.7m  50.1m 119.0   3.4   0:34.02 R ffmpeg -hide_banner -loglevel error -c:v rawvideo -pix_fmt rgb565le -filter:v scale=iw*2/2.58888:360 -fbdev -xoffset 320 /dev/fb0 -re -i /recalbox/share/dynquee/media/mame/cabal.mp4
+     2057 root      20   0  637.0m 159.3m  19.6  10.7   0:07.37 S /usr/bin/retroarch -L /usr/lib/libretro/mame2003_plus_libretro.so --config /recalbox/share/system/configs/retroarch/retroarchcustom.cfg --appendconfig /recalbox/share_init/overlays/mame/mame.cfg|/recalbox/share/system/configs/retroarch/retroarchcustom.cfg
+      515 root       9 -11  986.9m   7.4m   5.9   0.5   0:29.02 S /usr/bin/pulseaudio --exit-idle-time=-1 --log-target=syslog --daemonize --use-pid-file
+     1380 root      20   0 1728.9m 236.9m   5.2  16.0   2:59.84 S /usr/bin/emulationstation
+     …
+     ```
 
 The more closely you match your images and videos to the aspect ratio and resolution of your marquee display the better it will look.
 

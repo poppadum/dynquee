@@ -65,6 +65,15 @@ With the Pi4's default KMS graphics driver both HDMI displays share a single fra
 I have tested *dynquee* running on a different device on the same network as the Recalbox machine.
 It works fine but needs a few config file changes: see [Running *dynquee* on a different device][different-device].
 
+
+### Status
+*dynquee* is now pretty stable but there may still be bugs.
+
+I've tried to minimise the risk of displaying the same image for a long period of time
+because I'm concerned about [image persistence or burn-in][screen-burn-in].
+While this shouldn't be too much of a problem if you're using an LCD  display for your marquee,
+I still recommend keeping an eye on it.
+
 ---
 
 ## Getting Started
@@ -97,7 +106,7 @@ If you prefer to install everything manually, follow [this guide][manual-install
 
 ## Usage
 Most settings can be configured in the config file [`dynquee.ini`](dynquee.ini).
-Read the comments in that file or see the [configuration guide][config-guide] for full details.
+Read the comments in that file and read the [configuration guide][config-guide] for full details.
 
 ---
 
@@ -112,12 +121,12 @@ The logs should provide some clues as to what is wrong.
 **TODO**
 If you still can't get it working, post on forum **TODO: link needed**
 
-Please paste your debug log files on [pastebin][pastebin] and provide a link.
+Please paste your config and debug log files on [pastebin][pastebin] and provide a link.
 
 ---
 
 ## Contributing
-Bug reports/fixes, improvements, documentation, & translations are welcome. When reporting bugs please include a copy of the debug log file `logs/dynquee.debug.log`.
+Bug reports/fixes, improvements, documentation, & translations are welcome. When reporting bugs please include a copy of your config file `dynquee.ini` and the debug log file `logs/dynquee.debug.log`.
 
 
 ## Acknowledgements
@@ -160,3 +169,4 @@ This project is released under the [MIT Licence][licence].
 [recalbox-mqtt]: https://wiki.recalbox.com/en/advanced-usage/scripts-on-emulationstation-events#mqtt
 [recalbox-ssh]: https://wiki.recalbox.com/en/tutorials/system/access/root-access-terminal-cli
 [retropie]: https://retropie.org.uk/
+[screen-burn-in]: https://en.wikipedia.org/wiki/Screen_burn-in

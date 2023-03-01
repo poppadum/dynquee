@@ -101,9 +101,15 @@ sudo apt install python3 python3-paho-mqtt fbi ffmpeg
 ### Download
 1. Decide where to locate *dynquee*: the default is `/opt/dynquee`
 
-1. Create the directory: `sudo mkdir -p /opt/dynquee`
+1. Create the directory:  
+    ```
+    sudo mkdir -p /opt/dynquee
+    ```
 
-1. Change to that directory: `cd /opt/dynquee`
+1. Change to that directory:  
+    ```
+    cd /opt/dynquee
+    ```
 
 1. Download the *dynquee* release and unzip it:  
      ```sh
@@ -156,7 +162,7 @@ Recent releases of Raspberry Pi OS use [systemd][systemd] so that's what I recom
     ```
 
 1. If you installed *dynquee* somewhere other than `/opt/dynquee`, edit the file
-   `/etc/systemd/system/dynquee.service` and update `WorkingDirectory` and `ExecStart` lines.
+   `/etc/systemd/system/dynquee.service` and update the `WorkingDirectory` and `ExecStart` lines.
 
 1. Enable the service:
     ```sh
@@ -169,7 +175,7 @@ Recent releases of Raspberry Pi OS use [systemd][systemd] so that's what I recom
     sudo systemctl start dynquee.service
     ```
 
-If you don't want to use `systemd`, you could add the startup command to root's crontab e.g.  
+If you don't want to use `systemd`, you could add the startup command to `root`'s crontab e.g.  
 `@reboot /opt/dynquee/dynquee.py`  
 or  add it to `/etc/rc.local`
 
@@ -181,21 +187,25 @@ To test, reboot your marquee machine and check that *dynquee* starts automatical
 
 
 ## Help
-If you've checked the log files and still can't get it working, \
+If you've checked the log files and still can't get it working,
 post on the Recalbox forum **TODO: link needed** or discuss on github?
 
-Please paste your debug log files on [pastebin][pastebin] and provide a link when reporting issues.
+Please paste your config file and debug log file on [pastebin][pastebin] and provide a link when reporting issues.
 
 ---
 
 
 ## Using Other Media Players
 If you don't want to use [`fbi`][fbi] or [`ffmpeg`][ffmpeg], look in the config file `dynquee.ini` at the `[slideshow]` section, in particular the settings:  
-`viewer`, `viewer_opts` & `terminate_viewer`, and `video_player` & `video_player_opts`
+- `viewer`
+- `viewer_opts`
+- `terminate_viewer`
+- `video_player`
+- `video_player_opts`
 
-Below are a couple of examples of other configs.
+Below are a couple of examples of other possible configs.
 
-### [vlc][vlc]:
+### Using [vlc][vlc]:
 ```ini
 viewer = /usr/bin/cvlc
 viewer_opts = --no-audio --no-video-title-show --loop --quiet
@@ -206,7 +216,7 @@ video_player_opts = --no-audio --no-video-title-show --play-and-exit --quiet
 
 ```
 
-### [omxplayer][omxplayer]:
+### Using [omxplayer][omxplayer]:
 ```ini
 video_player = /usr/bin/omxplayer
 video_player_opts = --no-osd --no-keys
