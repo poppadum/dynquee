@@ -606,7 +606,7 @@ class Slideshow(object):
 
             Sends `_mediaChangeRequested` event when a new media set is queued.
         """
-        log.debug(f"media queue thread start")
+        log.debug(f"media queue reader thread {get_ident()} start")
         while not self._exitSignalled.is_set():
             log.debug("wait for slideshow media set")
             mediaPaths: SlideshowMediaSet = self._queue.get(block=True)
@@ -641,7 +641,7 @@ class Slideshow(object):
                     # MediaManager.getMedia() always returns default image as last resort
                     log.info("'blank' specified in search precedence rule: blanking display")
         # queue reader loop interrupted by stop() or _exitSignalled event
-        log.debug(f"media queue thread exit")
+        log.debug(f"media queue reader thread {get_ident()} exit")
 
     def setMedia(self, mediaPaths: SlideshowMediaSet):
         """Queue a media set for display.
@@ -854,6 +854,8 @@ config: ConfigParser = _loadConfig()
 # --- main --- #
 
 if __name__ == '__main__':
+    # allow video scaler log file to rotate if necessary
+    logging.getLogger('dynquee.videoscaler').info(f"dynquee (build {__build}) start")
     try:
         log.info(f"dynquee (build {__build}) start")
         eventHandler: EventHandler = EventHandler()

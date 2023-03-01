@@ -8,6 +8,7 @@
 # * ffmpeg & ffprobe
 # * sed
 # * bc
+# * date
 
 CONFIG_FILE="$(dirname "$0")/dynquee.ini"
 LOG_FILE="$(dirname "$0")/logs/play_video_scaled.log"
@@ -22,7 +23,7 @@ error() {
 # output message to log file and stderr
 log() {
     echo $@ >&2
-    echo $@ >> $LOG_FILE
+    echo $(date +"%H:%M:%S") $@ >> $LOG_FILE
 }
 
 # kill ffmpeg process
