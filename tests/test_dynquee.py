@@ -119,14 +119,14 @@ class TestMediaManager(unittest.TestCase):
 
     
     def test_configLoaded(self):
-        self.assertEqual(config.get('media', 'media_path'), 'tests/media')
+        self.assertEqual(config.get('media', 'media_path'), './tests/media')
         self.assertEqual(config.get('media', 'default_image'), 'default.png')
 
     
     def test_getMediaMatching(self):
         '''test that glob patterns work as expected'''
         self.assertEqual(self.mm._getMediaMatching('XXXXXXX'), [])
-        self.assertEqual(self.mm._getMediaMatching('default.*'), ['tests/media/default.png'])
+        self.assertEqual(self.mm._getMediaMatching('default.*'), ['./tests/media/default.png'])
 
     
     def test_getPrecedence(self):
@@ -144,21 +144,21 @@ class TestMediaManager(unittest.TestCase):
             self.mm.getMedia(
                 {'Action': 'rungame', 'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'}
             ),
-            ['tests/media/mame/chasehq.png']
+            ['./tests/media/mame/chasehq.png']
         )
         # publisher media
         self.assertEqual(
             self.mm.getMedia(
                 {'Action': 'rungame', 'SystemId': 'mame', 'GamePath': '/recalbox/share_init/roms/mame/UNKNOWN.zip', 'Publisher': 'Taito'}
             ),
-            ['tests/media/publisher/taito.png']
+            ['./tests/media/publisher/taito.png']
         )
         # publisher media containing space
         self.assertEqual(
             self.mm.getMedia(
                 {'Action': 'rungame', 'SystemId': 'mame', 'GamePath': '/recalbox/share_init/roms/mame/UNKNOWN.zip', 'Publisher': 'Data East'}
             ),
-            ['tests/media/publisher/data east.png']
+            ['./tests/media/publisher/data east.png']
         )
         # scraped game image: should return imagePath
         self.assertEqual(
@@ -172,21 +172,21 @@ class TestMediaManager(unittest.TestCase):
             self.mm.getMedia(
                 {'Action': 'rungame', 'SystemId': 'UNKNOWN', 'GamePath': '/recalbox/share_init/roms/_/UNKNOWN.zip', 'Genre': 'Shooter'}
             ),
-            ['tests/media/genre/shooter.png']
+            ['./tests/media/genre/shooter.png']
         )
         # generic
         self.assertEqual(
             self.mm.getMedia(
                 {'Action': 'rungame', 'SystemId': 'UNKNOWN'}
             ),
-            ['tests/media/generic/10sCountdown.mp4', 'tests/media/generic/1MinCountdown.mp4']
+            ['./tests/media/generic/10sCountdown.mp4', './tests/media/generic/1MinCountdown.mp4']
         )
         # test ROM it won't know: should return generic media file
         self.assertEqual(
             self.mm.getMedia(
                 {'Action': 'gamelistbrowsing', 'SystemId': 'UNKNOWN', 'GamePath': 'XXXX'}
             ),
-            ['tests/media/generic/10sCountdown.mp4', 'tests/media/generic/1MinCountdown.mp4']
+            ['./tests/media/generic/10sCountdown.mp4', './tests/media/generic/1MinCountdown.mp4']
         )
 
         # test complex rule chunk
@@ -195,13 +195,13 @@ class TestMediaManager(unittest.TestCase):
             self.mm.getMedia(
                 {'Action': 'rungame', 'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'}
             ),
-            ['tests/media/mame/chasehq.png', 'tests/media/publisher/taito.png']
+            ['./tests/media/mame/chasehq.png', './tests/media/publisher/taito.png']
         )
 
     
     def test_getStartupMedia(self):
         startupMedia = self.mm.getStartupMedia()
-        self.assertEqual(startupMedia, ['tests/media/startup/startup01.png', 'tests/media/startup/welcome.mp4'])
+        self.assertEqual(startupMedia, ['./tests/media/startup/startup01.png', './tests/media/startup/welcome.mp4'])
 
 
 
@@ -220,7 +220,7 @@ class TestSlideshow(unittest.TestCase):
         self.assertFalse(self.sl._exitSignalled.is_set())
         self.assertIsNone(self.sl._slideshowThread)
         self.assertIsInstance(self.sl._queueReaderThread, threading.Thread)
-        self.assertEqual(config.get(self.sl._CONFIG_SECTION, 'clear_cmd_opts'),  '../clear_framebuffer.sh')
+        self.assertEqual(config.get(self.sl._CONFIG_SECTION, 'clear_cmd_opts'),  './../clear_framebuffer.sh')
 
     def test_getCmdList(self):
         cmd = "echo"

@@ -857,8 +857,6 @@ config: ConfigParser = _loadConfig()
 # --- main --- #
 
 if __name__ == '__main__':
-    # allow video scaler log file to rotate if necessary
-    logging.getLogger('dynquee.videoscaler').info(f"dynquee (build {__build}) start")
     try:
         log.info(f"dynquee (build {__build}) start")
         eventHandler: EventHandler = EventHandler()
@@ -869,3 +867,6 @@ if __name__ == '__main__':
         # log any uncaught exception before exit
         log.critical(f"uncaught exception: {e}", exc_info=True)
         sys.exit(1)
+
+    # allow video scaler log file to rotate if necessary
+    logging.getLogger('dynquee.videoscaler').info(f"dynquee (build {__build}) exit")
