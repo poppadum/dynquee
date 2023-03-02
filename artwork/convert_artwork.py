@@ -14,7 +14,7 @@ from typing import List, Dict
 
 
 # preferred output sizing
-OUT_WIDTH: int = 1920
+OUT_WIDTH: int = 1280
 OUT_HEIGHT: int = 360
 
 BORDER_WIDTH: int = 10
@@ -24,7 +24,7 @@ BORDER_HEIGHT: int = 10
 REGION:str  = 'eu'
 
 # light background colour
-LIGHT_BG_COLOUR: str = '#ccc'
+LIGHT_BG_COLOUR: str = '#555'
 
 
 def _convertToPNG(infile: str, outfile: str):
@@ -119,10 +119,15 @@ def convertTheme(inPath: str, outPath: str, dryrun: bool = False) -> None:
                         convertThemeImage(systemId, infile, 'console')
         it.close()
     
-    # Fixups:
-    # Oric has systemId `oricatmos`
+    # Filename fixups:
     if not dryrun:
-        os.rename(f"{outPath}/oric.logo.png", f"{outPath}/oricatmos.logo.png")
+        for suffix in ['logo', 'console']:
+            os.rename(f"{outPath}/oric.{suffix}.png", f"{outPath}/oricatmos.{suffix}.png")
+            os.rename(f"{outPath}/pc.{suffix}.png", f"{outPath}/dos.{suffix}.png")
+            os.rename(f"{outPath}/wonderswan.{suffix}.png", f"{outPath}/wswan.{suffix}.png")
+            os.rename(f"{outPath}/wonderswancolor.{suffix}.png", f"{outPath}/wswanc.{suffix}.png")
+            os.rename(f"{outPath}/odyssey2.{suffix}.png", f"{outPath}/o2em.{suffix}.png")
+            os.rename(f"{outPath}/to8.{suffix}.png", f"{outPath}/thomson.{suffix}.png")
 
 
 def convertDanPatrick(inPath: str, outPath: str, dryrun: bool = False) -> None:
