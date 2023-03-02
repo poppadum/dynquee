@@ -8,7 +8,7 @@ import os
 import sys
 import logging
 import logging.config
-from configparser import ConfigParser
+from configparser import ConfigParser, ExtendedInterpolation
 import glob
 import json
 import random
@@ -53,7 +53,10 @@ _CONFIG_FILE: Final[str] = "dynquee.ini"
 
 def _loadConfig() -> ConfigParser:
     """Load config file in module directory into ConfigParser instance and return it"""
-    config: ConfigParser = ConfigParser(empty_lines_in_values=False)
+    config: ConfigParser = ConfigParser(
+        empty_lines_in_values=False,
+        interpolation=ExtendedInterpolation()
+    )
     _configFilesRead: List[str] = config.read(
         f"{os.path.dirname(__file__)}/{_CONFIG_FILE}",
     )

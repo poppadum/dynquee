@@ -220,6 +220,7 @@ class TestSlideshow(unittest.TestCase):
         self.assertFalse(self.sl._exitSignalled.is_set())
         self.assertIsNone(self.sl._slideshowThread)
         self.assertIsInstance(self.sl._queueReaderThread, threading.Thread)
+        self.assertEqual(config.get(self.sl._CONFIG_SECTION, 'clear_cmd_opts'),  '../clear_framebuffer.sh')
 
     def test_getCmdList(self):
         cmd = "echo"
