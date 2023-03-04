@@ -116,7 +116,7 @@ sudo apt install python3 python3-paho-mqtt fbi ffmpeg
      sudo wget https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
      sudo unzip dynquee.zip
      ```
-
+<!-- TODO: check link -->
 
 ### Configure
 
@@ -224,7 +224,6 @@ video_player_opts = --no-osd --no-keys
 
 
 <!-- LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 [fbi]: https://git.kraxel.org/cgit/fbida/
 [ffmpeg]: https://ffmpeg.org
 [omxplayer]: https://github.com/popcornmix/omxplayer/blob/master/README.md

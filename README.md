@@ -89,7 +89,7 @@ Releases include a few media files to get started (see [acknowledgements](#ackno
 
 Follow these steps to install *dynquee* using the install script:
 
->  **TODO**: get a permalink to latest release on github
+<!-- **TODO**: check link -->
 
 1. Connect to your recalbox with `ssh` (the [Recalbox wiki][recalbox-ssh] explains how)
 1. Copy and paste this command and press enter:  
@@ -148,7 +148,6 @@ This project is released under the [MIT Licence][licence].
 
 
 <!-- LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 [artwork-readme]: artwork/README.md
 [config-guide]: doc/config.md
 [different-device]: doc/Running_on_separate_device.md

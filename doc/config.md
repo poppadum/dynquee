@@ -168,7 +168,6 @@ time and could cause screen burn-in!
 
 
 <!-- LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 [Aladdin]: https://en.wikipedia.org/wiki/Disney's_Aladdin_(Virgin_Games_video_game)
 [Defender]: https://en.wikipedia.org/wiki/Defender_(1981_video_game)
 [fbv]: https://github.com/godspeed1989/fbv
