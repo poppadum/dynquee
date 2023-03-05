@@ -4,7 +4,7 @@
 
 NAME=dynquee
 BASEDIR=/recalbox/share/dynquee
-RELEASE_URL='<dynquee-release>'
+RELEASE_URL=https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
 INIT_SCRIPT=S32dynquee
 ROMDIR=/recalbox/share/roms
 
@@ -26,7 +26,7 @@ mkdir -p $BASEDIR && \
 cd $BASEDIR || error
 
 echo -e "\nDownloading and extracting latest dynquee release"
-/usr/bin/wget -o dynquee.zip "$RELEASE_URL" && \
+/usr/bin/wget --quiet --output-document=dynquee.zip "$RELEASE_URL" && \
 /usr/bin/unzip -q dynquee.zip && \
 rm dynquee.zip || error
 
