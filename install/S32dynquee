@@ -1,0 +1,82 @@
+#!/bin/sh
+
+#
+# Init script to start/Stop dynquee
+#
+
+NAME=dynquee
+PIDFILE=/var/run/dynquee.pid
+CMD=/usr/bin/python3
+WORKDIR=/recalbox/share/dynquee
+CMD_ARGS=$WORKDIR/dynquee.py
+INIT_SCRIPT=$(basename $0)
+
+
+# return code 0 if process running
+isRunning() {
+    if [ -f "${PIDFILE}" ] && pid=$(cat "$PIDFILE") && ps -e | grep -q "^\s*${pid}"; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+start() {
+    echo "Starting $NAME"
+    recallog -s "$INIT_SCRIPT" -t "$NAME"  "$0 start"
+    cd $WORKDIR
+    start-stop-daemon --start --background --pidfile $PIDFILE --make-pidfile --exec $CMD -- $CMD_ARGS
+}
+
+
+stop() {
+    echo "Stopping $NAME"
+    recallog -s "$INIT_SCRIPT" -t "$NAME" "$0 stop"
+    start-stop-daemon --stop --pidfile $PIDFILE
+}
+
+
+status() {
+    echo "Getting $NAME status"
+    if isRunning; then
+        echo "$NAME is running (pid $pid)"
+        exit 0
+    else
+        echo "$NAME is stopped"
+        exit 1        
+    fi
+}
+
+
+### main ###
+case "$1" in
+    start)
+        start
+        ;;
+
+    stop)
+        stop
+        ;;
+
+    restart)
+        stop
+        echo -n "waiting for $NAME to stop"
+        while isRunning; do
+            sleep 1
+            echo -n "."
+        done
+        echo
+        start
+        ;;
+
+    status)
+        status
+        ;;
+    
+    *)
+        echo "Usage: $0 start|stop|restart|status"
+        exit 2
+        ;;
+esac
+
+exit $?

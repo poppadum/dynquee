@@ -1,0 +1,34 @@
+# generated and cache files
+*.pyc
+.mypy_cache/
+
+# logs
+logs/*
+
+# exclude media files not specifically included
+media/**/*
+!media/generic/
+!media/publisher/
+!media/startup/
+!media/startup/*
+!media/system/
+!media/default.png
+!media/README.md
+
+# exclude artwork fetched from gitlab
+artwork/recalbox-next/
+artwork/recalbox_logos/
+
+# personal sync script
+sync_to_pi.sh*
+
+# exclude release archives & generated VERSION file
+build/dynquee*.zip
+build/release_HOWTO.md
+VERSION
+
+# misc
+examples/
+info/
+scripts/
+todo.md

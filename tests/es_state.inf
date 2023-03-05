@@ -1,0 +1,26 @@
+Version=2.0
+Action=gamelistbrowsing
+ActionData=/recalbox/share/roms/mame/1942.zip
+System=Mame
+SystemId=mame
+Game=1942 (Revision B)
+GamePath=/recalbox/share/roms/mame/1942.zip
+ImagePath=
+IsFolder=0
+ThumbnailPath=
+VideoPath=
+Developer=
+Publisher=
+Players=1
+Region=
+Genre=
+GenreId=0
+Favorite=0
+Hidden=0
+Adult=0
+Emulator=libretro
+Core=mame2003_plus
+DefaultEmulator=libretro
+DefaultCore=mame2003_plus
+State=selected
+TestKey=a long = string
