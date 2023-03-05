@@ -201,6 +201,7 @@ class TestMediaManager(unittest.TestCase):
     
     def test_getStartupMedia(self):
         startupMedia = self.mm.getStartupMedia()
+        startupMedia.sort()
         self.assertEqual(startupMedia, ['./tests/media/startup/startup01.png', './tests/media/startup/welcome.mp4'])
 
 

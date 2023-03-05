@@ -21,7 +21,6 @@ If you prefer to install *dynquee* manually, follow these steps.
      wget https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
      unzip dynquee.zip
      ```
-<!-- TODO: check link -->
 
 ## Test
 Try running the command `python3 dynquee.py`. If all goes well, you should see the startup image on your marquee display. Check that it responds to Recalbox actions by selecting a game system: the marquee should change to the logo or console image of that system.

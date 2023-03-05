@@ -30,8 +30,7 @@ While *dynquee* was originally intended to run on same computer as Recalbox, it 
 
 - Software to show images and play video files. \
     By default *dynquee* uses [`fbi`][fbi] for still images and [`ffmpeg`][ffmpeg] for videos, but if you want to use something else you can configure it via the [config file](#configure).
-
-    **TODO**: Is fbi still available for bullseye? 
+    <!-- **TODO**: Is fbi still available for bullseye? -->
 
     **Note**: because `fbi` and `ffmpeg` write direct to the framebuffer device, dynquee needs to run as `root` (or possibly a member of the `video` group)
 
@@ -51,8 +50,6 @@ Follow these steps to install *dynquee* using the install script:
     ```sh
     sudo bash -c "$(wget -qO - https://github.com/poppadum/dynquee/raw/main/install/install-remote.sh)"
     ```
-    
-    **TODO**: test this
 
 1. When prompted, type the hostname or IP address of your Recalbox (default hostname: `recalbox`)  
     **Note**: if you supply an IP address, make sure that IP address won't change
@@ -102,12 +99,12 @@ sudo apt install python3 python3-paho-mqtt fbi ffmpeg
 1. Decide where to locate *dynquee*: the default is `/opt/dynquee`
 
 1. Create the directory:  
-    ```
+    ```sh
     sudo mkdir -p /opt/dynquee
     ```
 
 1. Change to that directory:  
-    ```
+    ```sh
     cd /opt/dynquee
     ```
 
@@ -116,7 +113,6 @@ sudo apt install python3 python3-paho-mqtt fbi ffmpeg
      sudo wget https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
      sudo unzip dynquee.zip
      ```
-<!-- TODO: check link -->
 
 ### Configure
 
@@ -128,7 +124,7 @@ sudo apt install python3 python3-paho-mqtt fbi ffmpeg
 
 1. Optional: make the `media/` directory world-writeable so you can copy files to it without `sudo`:  
     ```sh
-    chmod -R a+w ./media/
+    sudo chmod -R a+w ./media/
     ```
 
 
@@ -188,7 +184,7 @@ To test, reboot your marquee machine and check that *dynquee* starts automatical
 
 ## Help
 If you've checked the log files and still can't get it working,
-post on the Recalbox forum **TODO: link needed** or discuss on github?
+post on the [Recalbox forum][recalbox-forum-commproj] and I will try to help.
 
 Please paste your config file and debug log file on [pastebin][pastebin] and provide a link when reporting issues.
 
@@ -231,6 +227,7 @@ video_player_opts = --no-osd --no-keys
 [project-image]: ../dynquee.png
 [py-paho-mqtt]: https://pypi.org/project/paho-mqtt/
 [raspi-os]: https://www.raspberrypi.com/software/
+[recalbox-forum-commproj]: https://forum.recalbox.com/category/13/community-projects
 [recalbox-manager]: https://wiki.recalbox.com/en/tutorials/system/access/recalbox-manager-web-interface
 [recalbox-static-ip]: https://wiki.recalbox.com/en/tutorials/network/ip/static-manual-ip
 [systemd]: https://systemd.io/

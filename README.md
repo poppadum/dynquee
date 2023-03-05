@@ -89,8 +89,6 @@ Releases include a few media files to get started (see [acknowledgements](#ackno
 
 Follow these steps to install *dynquee* using the install script:
 
-<!-- **TODO**: check link -->
-
 1. Connect to your recalbox with `ssh` (the [Recalbox wiki][recalbox-ssh] explains how)
 1. Copy and paste this command and press enter:  
     ```sh
@@ -118,15 +116,13 @@ If things aren't working, first check the log files in the `logs/` directory:
 
 The logs should provide some clues as to what is wrong.
 
-**TODO**
-If you still can't get it working, post on forum **TODO: link needed**
-
-Please paste your config and debug log files on [pastebin][pastebin] and provide a link.
+If you still can't get it working, post on the [Recalbox forum] and I will try to help.
+Please paste your config file and debug log file on [pastebin][pastebin] and provide a link when reporting issues.
 
 ---
 
 ## Contributing
-Bug reports/fixes, improvements, documentation, & translations are welcome. When reporting bugs please include a copy of your config file `dynquee.ini` and the debug log file `logs/dynquee.debug.log`.
+Bug reports/fixes, improvements, documentation, & translations are welcome.
 
 
 ## Acknowledgements
@@ -165,6 +161,7 @@ This project is released under the [MIT Licence][licence].
 [pimarquee2]: https://github.com/losernator/PieMarquee2
 [project-image]: dynquee.png
 [recalbox]: https://www.recalbox.com
+[recalbox-forum-commproj]: https://forum.recalbox.com/category/13/community-projects
 [recalbox-mqtt]: https://wiki.recalbox.com/en/advanced-usage/scripts-on-emulationstation-events#mqtt
 [recalbox-ssh]: https://wiki.recalbox.com/en/tutorials/system/access/root-access-terminal-cli
 [retropie]: https://retropie.org.uk/
