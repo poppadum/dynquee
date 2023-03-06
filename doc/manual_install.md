@@ -7,18 +7,18 @@ If you prefer to install *dynquee* manually, follow these steps.
 1. Log in to recalbox as user `root` either [via ssh][recalbox-ssh] or via the console.
 
 1. Create the *dynquee* directory:  
-    ```
+    ```sh
     mkdir -p /recalbox/share/dynquee
     ```
 
 1. Change to that directory:  
-    ```
+    ```sh
     cd /recalbox/share/dynquee
     ```
 
 1. Download the latest *dynquee* release and unzip it:  
      ```sh
-     wget https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
+     wget -O dynquee.zip https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
      unzip dynquee.zip
      ```
 

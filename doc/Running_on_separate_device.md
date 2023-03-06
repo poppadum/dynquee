@@ -61,8 +61,6 @@ Follow these steps to install *dynquee* using the install script:
 If you prefer to install everything manually, follow these instructions. 
 They assume you are installing *dynquee* on a Raspberry Pi running Raspberry Pi OS, but should apply to any debian-like OS.
 
-<details>
-<summary>Click to expand full instructions:</summary>
 
 ### Install Packages
 Install the required packages with:  
@@ -110,7 +108,7 @@ sudo apt install python3 python3-paho-mqtt fbi ffmpeg
 
 1. Download the *dynquee* release and unzip it:  
      ```sh
-     sudo wget https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
+     sudo wget -O dynquee.zip https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
      sudo unzip dynquee.zip
      ```
 
@@ -153,7 +151,7 @@ If you've checked the logs and still can't see what's wrong, see the [help secti
 There are various ways to get dynquee to run when the machine starts. \
 Recent releases of Raspberry Pi OS use [systemd][systemd] so that's what I recommend.
 
-1. Copy the `systemd` unit file to the systemd directory, and enable it:
+1. Copy the `systemd` unit file to the systemd directory:
     ```sh
     sudo cp install/dynquee.service /etc/systemd/system/
     ```
@@ -177,8 +175,6 @@ If you don't want to use `systemd`, you could add the startup command to `root`'
 or  add it to `/etc/rc.local`
 
 To test, reboot your marquee machine and check that *dynquee* starts automatically.
-
-</details>
 
 ---
 

@@ -6,6 +6,6 @@ logs/*                  export-ignore
 scripts/                export-ignore
 tests/                  export-ignore
 
-runTests.sh             export-ignore
+run_tests.sh            export-ignore
 sync_to_pi.sh           export-ignore
 sync_to_pi.sh.exclude   export-ignore

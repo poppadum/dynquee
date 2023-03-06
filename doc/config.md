@@ -4,7 +4,7 @@
 
 ## Contents
 - [Introduction](#introduction)
-- [Emulation Station events](#emulation-station-events)
+- [Emulation Station Events](#emulation-station-events)
 - [Search Rules](#search-rules)
 - [Filename Matching](#filename-matching)
 - [Adding Your Own Images And Videos](#adding-your-own-images-and-videos)
@@ -21,7 +21,7 @@ Most settings can be configured in the config file [`dynquee.ini`](../dynquee.in
 
 For each [Emulation Station event](#emulation-station-events), the config file defines a search precedence rule: an ordered list of search terms indicating where to search for media files.
 
-If no files match a search term *dynquee* moves on to the next term.
+If no files match a search term *dynquee* moves on to the next search term.
 That way you can specify which media files to show in order of priority.
 
 For example, when an arcade game is launched, *dynquee* can:
@@ -32,13 +32,13 @@ For example, when an arcade game is launched, *dynquee* can:
 All media files that match a successful search term are displayed in a random order as a slideshow that loops continuously. How long each image or video is shown can be adjusted in the `[slideshow]` section of the config file.
 
 
-## Emulation Station events
+## Emulation Station Events
 A full list of Emulation Station events can be found in the [Recalbox wiki][wiki-es-events]. They are referred to as *events* or *actions*: the terms are used interchangeably.
 
 The most useful are:
 
-* `systembrowsing`: user is browsing list of systems
-* `gamelistbrowing`: user has selected a system and is browsing list of games
+* `systembrowsing`: user is browsing the list of systems
+* `gamelistbrowing`: user has selected a system and is browsing the list of games
 * `rungame`: user has started a game
 * `endgame`: user has exited a game
 * `sleep`: EmulationStation has entered sleep mode
@@ -68,7 +68,7 @@ e.g.
 will first try to locate media for the rom, publisher and system and show all
 files matching those search terms.
 
-Notes:
+**Notes**:
 1. No search rule is defined for the `endgame` action as Emulation Station
    sends another action (usually `gamelistbrowsing`) immediately after
 1. The `wakeup` action causes *dynquee* to repeat the action that occurred immediately before the `sleep` event
@@ -84,6 +84,10 @@ Media filename matching works as follows:
 1. Names of publishers and genres are converted to lower case and a dot is added to the end
     - e.g. `Data East` becomes `data east.`
 
+1. Recalbox's internal system ID for game systems has a dot added to the end:
+    - e.g. `mame` becomes `mame.`
+    - e.g. `neogeocd` becomes `neogeocd.`
+
 1. Names are then matched against the beginning of media filenames.
     - e.g. a ROM named `Chuckie Egg.zip` would match media files named `Chuckie Egg.*`
     - or a game published by `Bally Midway` would match files named `bally midway.*`
@@ -95,7 +99,7 @@ If for some reason you want to store them somewhere else, change the `media_path
 
 Place your media files in the appropriate subdirectory (look at the included files for examples):
 
-- *game-specific* media go in the appropriate system directory; for example:
+- *game-specific* media go in the appropriate game system directory; for example:
     - for the arcade version of [Defender] with a ROM named `defender.zip`, put your media file in `mame/` and name it `defender.<something>` e.g. `mame/defender.01.png`
     - for the Megadrive version of [Aladdin] with a ROM named `aladdin.zip`, put your media file in `megadrive/` and name it `aladdin.<something>` e.g. `megadrive/aladdin.mp4`
 
@@ -104,12 +108,16 @@ the file name must start with Emulation Station's internal system name (use the 
     - e.g. for a [Sinclair ZX Spectrum][spectrum] logo, name the file `zxspectrum.<something>` e.g. `system/zxspectrum.logo.png`
 
 - `publisher/` is for game publisher banners & logos
+    - e.g. for a game published by [Konami][konami], name the file `konami.<something>` e.g. `publisher/konami.01.png`
 
-- `startup/` is for files to show when *dynquee* first starts up e.g. a welcome banner or video
+- `startup/` is for files to show when *dynquee* first starts up e.g. a welcome banner or video.
+    Filename does not matter, but use the appropriate file extension e.g. `startup/welcome.png`
 
-- `generic/` is for media that doesn't belong anywhere else, to be used if no other files match
+- `generic/` is for media that doesn't belong anywhere else, to be used if no other files match.
+    If you have designed custom artwork for your Recalbox, place it here.
+    Filename does not matter, but use the appropriate file extension e.g. `generic/my_games_machine.mkv`
 
-Feel free to delete any of the included media files you don't want, but I recommend you leave `media/default.png` as a file of last resort.
+Feel free to delete any of the included media files you don't want, but I recommend you leave `media/default.png` (or replace it with your own custom image) as a file of last resort.
 
 
 ## File Formats
@@ -120,9 +128,9 @@ I recommend `png` for still images, and `mp4` or `mkv` with the H.264 codec for 
 ## Scaling Media
 With default settings, still images are zoomed to fit the marquee screen but keep their original aspect ratio; videos are not resized.
 
-If you want to scale videos to the height of the marquee, a helper script `play_video_scaled.sh` is provided. The comments in the config file explain how to use it. Note that the script uses the `marquee_width` & `marquee_height` settings in the config file to calculate video output size, so change those settings to match your marquee screen. Bear in mind that video scaling can tax the CPU which will leave Recalbox fewer CPU cycles available to run emulators[^cpu-usage].
+If you want to scale videos to the height of the marquee, a helper script [`play_video_scaled.sh`](../play_video_scaled.sh) is provided. The comments in the config file explain how to use it. Note that the script uses the `marquee_width` & `marquee_height` settings in the config file to calculate video output size, so change those settings to match your marquee screen. Bear in mind that video scaling can tax the CPU which will leave Recalbox fewer CPU cycles available to run emulators[^cpu-usage].
 
-[^cpu-usage]: Here is the abbreviated output of `top` when running a scaled video at the same time as the Libretro Mame2003+ emulator on my Pi4 2GB: `ffmpeg` is using ~120% of the four cores:
+[^cpu-usage]: Here is the abbreviated output of `top` when running a scaled video at the same time as the Libretro Mame2003+ emulator on my Pi4 2GB: `ffmpeg` is using ~120% of the 400% available on a four-core CPU:
 
     ```
       PID USER      PR  NI    VIRT    RES  %CPU  %MEM     TIME+ S COMMAND
@@ -152,10 +160,10 @@ For each event the change rule can have one of the following values:
 
 I recommend that the rule for the `sleep` event remain set to `always`.
 Changing the rule for `sleep` may prevent the marquee being
-blanked when Recalbox sleeps and cause burn-in on your marquee screen!
+blanked when Recalbox sleeps and cause [burn-in][screen-burn-in] on your marquee screen!
 
 
-## Starting & Stopping *dynquee* Manually
+## Starting And Stopping *dynquee* Manually
 You can start, stop or restart *dynquee* (for example, to reload a changed config file) by typing:  
 ```sh
 /etc/init.d/S32dynquee start|stop|restart|status
@@ -164,7 +172,7 @@ You can start, stop or restart *dynquee* (for example, to reload a changed confi
 Be aware that if you start *dynquee* when Recalbox is already in the sleep state,
 it will stay on the startup media until Recalbox wakes up.
 If there is only one startup image, that image could be shown for any length of
-time and could cause screen burn-in!
+time and could cause [screen burn-in][screen-burn-in]!
 
 
 <!-- LINKS & IMAGES -->
@@ -172,6 +180,8 @@ time and could cause screen burn-in!
 [Defender]: https://en.wikipedia.org/wiki/Defender_(1981_video_game)
 [fbv]: https://github.com/godspeed1989/fbv
 [ffmpeg]: https://ffmpeg.org/
+[konami]: https://en.wikipedia.org/wiki/Konami
 [project-image]: ../dynquee.png
+[screen-burn-in]: https://en.wikipedia.org/wiki/Screen_burn-in
 [spectrum]: https://en.wikipedia.org/wiki/ZX_Spectrum
 [wiki-es-events]: https://wiki.recalbox.com/en/advanced-usage/scripts-on-emulationstation-events#events

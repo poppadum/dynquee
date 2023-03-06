@@ -116,7 +116,7 @@ If things aren't working, first check the log files in the `logs/` directory:
 
 The logs should provide some clues as to what is wrong.
 
-If you still can't get it working, post on the [Recalbox forum] and I will try to help.
+If you still can't get it working, post on the [Recalbox forum][recalbox-forum-commproj] and I will try to help.
 Please paste your config file and debug log file on [pastebin][pastebin] and provide a link when reporting issues.
 
 ---

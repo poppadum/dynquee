@@ -7,7 +7,7 @@ These are not my work: credit goes to the original authors mentioned below.
 ## `recalbox-next/`
 Authors: Recalbox Project Team
 
-This is a copy of system logos from the `recalbox-next` theme.
+This directory holds a copy of system logos from the `recalbox-next` theme.
 Run `update.sh` to fetch the latest version from the official gitlab repo
 
 Source: https://gitlab.com/recalbox/recalbox-themes/-/tree/master/themes/recalbox-next
@@ -27,4 +27,4 @@ Sources:
 ## `startup/`
 Authors: Recalbox Project Team, Chris Laird
 
-Example startup image which reuses elements of the Recalbox startup image
+Example startup images which reuse elements of the Recalbox startup image
