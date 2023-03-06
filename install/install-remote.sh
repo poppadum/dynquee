@@ -91,7 +91,7 @@ echo -e "\nInstalling config file for remote running"
 cp -v install/dynquee-remote.ini ./dynquee.ini || error
 
 # substitute discovered value of recalbox_host in config file
-echo -e "\nSetting Recalbox hostname / IP address to $reacalbox_host in config file"
+echo -e "\nSetting Recalbox hostname / IP address to $recalbox_host in config file"
 /usr/bin/sed -i "s/^host = recalbox$/host = $recalbox_host/" dynquee.ini
 
 # install systemd service
