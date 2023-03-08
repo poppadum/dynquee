@@ -474,7 +474,6 @@ class TestEventHandler(unittest.TestCase):
             'systembrowsing': 'action',
             'gamelistbrowsing': 'system/game',
             'rungame': 'always',
-            'endgame': 'never',
             'runkodi': 'always',
             'sleep': 'always',
         })

@@ -107,7 +107,7 @@ class MQTTSubscriber(object):
     "config file section for MQTTSubscriber"
 
     def __init__(self):
-        self._client = mqtt.Client()
+        self._client: mqtt.Client = mqtt.Client()
         # log mqtt.Client messages to module logger
         self._client.enable_logger(logger=log)
         # queue to hold incoming messages
@@ -174,8 +174,8 @@ class MQTTSubscriber(object):
         """Read event params from ES state file (either local or remote), stripping any CR characters
             :return: a dict mapping param names to their values
         """
+        rawState: List[str]
         if config.getboolean(self._CONFIG_SECTION, 'is_local', fallback=True):
-            rawState: List[str]
             rawState = self._getEventParamsFromLocalhost()
         else:
             rawState = self._getEventParamsFromRemote()
@@ -278,7 +278,7 @@ class MediaManager(object):
         # if search term is `scraped` just return scraped image path (if set)
         if searchTerm == 'scraped':
             imagePath: str = evParams.get('ImagePath', '')
-            log.debug(f"rule part=scraped ImagePath={imagePath}")
+            log.debug(f"searchTerm=scraped ImagePath={imagePath}")
             if imagePath == '':
                 return []
             else:
@@ -311,7 +311,7 @@ class MediaManager(object):
         # get search precedence rule for this action
         action: str = evParams.get('Action', '')
         precedenceRule: List[str] = self._getPrecedenceRule(action)
-        # find best matching media file for system/game, trying each search term of precedence rule in turn
+        # find best matching media files for system/game, trying each search term of precedence rule in turn
         for searchTerm in precedenceRule:
             # if search term is `blank`, return empty list to indicate a blanked display
             if searchTerm == 'blank':
@@ -467,10 +467,10 @@ class Slideshow(object):
             Substitute variables in the string with values supplied as keyword args.
             :param cmd: path to external command
             :param cmdOpts: options to pass to command
-            :param variables: variable substitutions: format variable=value
+            :param vars: variable substitutions: format variable=value
             :return: sequence of command args for passing to subprocess.Popen
         """
-        # quote 'file' var if present to support filenames with spaces
+        # enclose 'file' value in quotes (if present) to support filenames containing spaces
         if "file" in vars.keys():
             vars["file"] = f'"{vars["file"]}"'
         cmd = cmd.format(**vars)
@@ -532,6 +532,7 @@ class Slideshow(object):
         )
         self._videoFinish.clear()
         self._runCmd(cmd, waitForExit=True)
+        # fire _videoFinish event
         self._videoFinish.set()
 
     def _stopSubProcess(self):
@@ -595,7 +596,7 @@ class Slideshow(object):
                     self._clearImage()
                 # exit slideshow if _mediaChangeRequested flag set
                 if self._mediaChange.is_set():
-                    log.debug(f"_mediaChangeRequested flag set")
+                    log.debug(f"_mediaChange event occurred")
                     break
                 # pause between slideshow images/clips
                 self._mediaChange.wait(timeout=config.getfloat(self._CONFIG_SECTION, 'time_between_slides'))
@@ -607,7 +608,7 @@ class Slideshow(object):
             and launch slideshow thread to display them.
             Exit on `_exitSignalled` event.
 
-            Sends `_mediaChangeRequested` event when a new media set is queued.
+            Sends `_mediaChange` event when a new media set is queued.
         """
         log.debug(f"media queue reader thread {get_ident()} start")
         while not self._exitSignalled.is_set():
@@ -666,7 +667,7 @@ class Slideshow(object):
             log.debug(f"waiting for slideshow thread to exit: {self._slideshowThread}")
             self._slideshowThread.join()
         # signal queue reader thread to exit and wait until it does
-        # enqueue an empty slideshow to cause slideshow thread to check _exitSignalled event status
+        # enqueue an empty slideshow to cause queue reader thread to check _exitSignalled event status
         self._exitSignalled.set()
         self.setMedia([])
         log.debug(f"waiting for queue reader thread to exit: {self._queueReaderThread}")
@@ -781,9 +782,9 @@ class EventHandler(object):
         log.debug(f"_currentState={self._currentState}")
         return evParams
 
-    def _getStateChangeRules(self) -> Dict[str, str]:
+    def _getStateChangeRules(self) -> ChangeRuleSet:
         """Look up state change rules in config file
-            :return: mapping from action to change criterion
+            :return: mapping from action to change rule
         """
         _CONFIG_SECTION_CHANGE: str = 'change'
         changeRules: EventHandler.ChangeRuleSet = {
