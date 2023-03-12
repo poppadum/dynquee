@@ -19,6 +19,9 @@ media/**/*
 artwork/recalbox-next/
 artwork/recalbox_logos/
 
+# exclude artwork specific to my arcade
+artwork/astrocade/
+
 # personal sync script
 sync_to_pi.sh*
 
