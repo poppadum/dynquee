@@ -24,7 +24,7 @@ A dynamic digital marquee for [Recalbox]
 ### What Is It?
 *dynquee* (pronounced '[dinky][dinky-definition]') is a program to run a dynamic marquee for [Recalbox]. The name stands for **dyn**amic mar**quee**.
 
-It was originally intended to run on a [Raspberry Pi 4B][pi4] with two displays, Recalbox using the primary display for games and *dynquee* driving a second display for the marquee, similar to the [PiMarquee2][pimarquee2] project for [Retropie][retropie]. But it can also run on a separate device and communicate with Recalbox via the network.
+It was originally intended to run on a [Raspberry Pi 4B][pi4] with two displays, Recalbox using the primary display for games and *dynquee* driving a second display for the marquee, similar to the [PiMarquee2][pimarquee2] project for [Retropie][retropie]. But it can also run on Recalbox on PC, and on a separate device communicating with Recalbox via the network.
 
 ### Why?
 I'm building a bartop arcade machine and I want to have a dynamic marquee which can change depending on which game system is selected and which game is being played.
@@ -46,7 +46,7 @@ I wanted a solution which would be:
 
 
 ### How Does It Work?
-It works very like [Recalbox]'s built-in mini TFT support: 
+On Raspberry Pi it works very like [Recalbox]'s built-in mini TFT support: 
 it listens to [Recalbox's MQTT broker][recalbox-mqtt] for events, and it writes media files direct to the framebuffer using `fbv2` for still images and `ffmpeg` for videos.
 
 With the Pi4's default KMS graphics driver both HDMI displays share a single framebuffer, so marquee images are also visible on the primary display for a second or two when an emulator launches or exits. While this is a bit annoying, it doesn't seem to break anything so I'll put up with it.
@@ -74,13 +74,23 @@ because I'm concerned about [image persistence or burn-in][screen-burn-in].
 While this shouldn't be too much of a problem if you're using an LCD  display for your marquee,
 I still recommend keeping an eye on it.
 
+
+### Tested Platforms
+*dynquee* has been tested on:
+* Recalbox on [Raspberry Pi 4B][pi4]: working
+* Recalbox on PC: working
+* Raspberry Pi 1 (separate device): working, but a bit too slow to be useable
+
+
 ---
 
 ## Getting Started
 
-To get *dynquee* running on your Recalbox follow the instructions below.
+* To get *dynquee* running on Recalbox on Raspberry Pi 4 follow the instructions below.
 
-To get *dynquee* running on a different machine see [the separate instructions here][different-device].
+* To get *dynquee* running on Recalbox on PC see [installing on Recalbox PC][install-recalbox-pc].
+
+* To get *dynquee* running on a different machine see [installing on a different device][install-different-device].
 
 Releases include a few media files to get started (see [acknowledgements](#acknowledgements)) but not a complete set. See the [media README][media-readme] for suggestions of where to find media files.
 
@@ -146,10 +156,11 @@ This project is released under the [MIT Licence][licence].
 <!-- LINKS & IMAGES -->
 [artwork-readme]: artwork/README.md
 [config-guide]: doc/config.md
-[different-device]: doc/Running_on_separate_device.md
 [dinky-definition]: https://dictionary.cambridge.org/dictionary/english/dinky
 [DV190FBM]: https://www.panelook.com/DV190FBM-NB0_BOE_19.1_LCM_overview_32860.html
 [emulationstation]: https://wiki.recalbox.com/en/basic-usage/getting-started/emulationstation
+[install-different-device]: doc/Running_on_separate_device.md
+[install-recalbox-pc]: doc/install_on_Recalbox_PC.md
 [licence]: LICENSE.txt
 [LTA149B780F]: https://www.panelook.com/LTA149B780F_Toshiba_14.9_LCM_parameter_10941.html
 [manual-install]: doc/manual_install.md
