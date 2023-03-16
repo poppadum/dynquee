@@ -2,60 +2,128 @@
 
 # Install dynquee on Recalbox
 
-NAME=dynquee
-BASEDIR=/recalbox/share/dynquee
-RELEASE_URL=https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
-INIT_SCRIPT=S32dynquee
-ROMDIR=/recalbox/share/roms
+# constants
+readonly NAME=dynquee
+readonly RELEASE_URL=https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
+readonly ROMDIR=/recalbox/share/roms
+readonly INIT_SCRIPT=S32dynquee
+readonly XRANDR_CMD_FILE=xrandr_cmd.txt
 
-error() {
-    echo Sorry, something went wrong
-    exit 1
+BASEDIR=/recalbox/share/dynquee
+
+# Check this script is running on a Recalbox; exit if not
+checkRecalbox() {
+    if [ ! -d /recalbox ]; then
+        echo "$NAME install script is intended to be run on Recalbox"
+        exit 1
+    fi
 }
 
-# Check we are running on Recalbox: is /recalbox directory present?
-if [ ! -d /recalbox ]; then
-    echo "$NAME install script is intended to be run on Recalbox"
-    exit 1
-fi
+# Create base dynquee directory & change to it
+createBaseDir() {
+    echo -e "\nCreating directory $BASEDIR"
+    mkdir -p $BASEDIR && \
+    cd $BASEDIR || error
+}
 
-
-# Create a directory for *dynquee* and download release
-echo -e "\nCreating directory $BASEDIR"
-mkdir -p $BASEDIR && \
-cd $BASEDIR || error
-
-echo -e "\nDownloading and extracting latest dynquee release"
-/usr/bin/wget --quiet --output-document=dynquee.zip "$RELEASE_URL" && \
-/usr/bin/unzip -q dynquee.zip && \
-rm dynquee.zip || error
-
-
-# Copy init script & make it executable
-echo -e "\nMounting root filesystem read/write"
-/bin/mount -o rw,remount / || error
-
-echo "Installing init script to run at startup"
-cp -vf install/$INIT_SCRIPT /etc/init.d/ && \
-chmod -v +x /etc/init.d/$INIT_SCRIPT || error
-
-echo "Remounting root filesystem read-only"
-/bin/mount -o ro,remount /
-
+# Download latest dynquee release ZIP file & unzip it
+downloadDynqueeRelease() {
+    echo -e "\nDownloading and extracting latest dynquee release"
+    /usr/bin/wget --quiet --output-document=dynquee.zip "$RELEASE_URL" && \
+    /usr/bin/unzip -q dynquee.zip && \
+    rm dynquee.zip || error
+}
 
 # Create system directories within media directory
-echo -e "\nCreating system directories in $BASEDIR/media"
-for dir in $ROMDIR/*/; do
-    if [ "$dir" != "$ROMDIR/240ptestsuite/" ]; then
-        mkdir -p "$BASEDIR/media/$(basename "$dir")"
-    fi
-done
+createSystemDirs() {
+    echo -e "\nCreating system directories in $BASEDIR/media"
+    for dir in $ROMDIR/*/; do
+        if [ "$dir" != "$ROMDIR/240ptestsuite/" ]; then
+            mkdir -p "$BASEDIR/media/$(basename "$dir")"
+        fi
+    done
+}
 
 # Start dynquee via init script
-echo -e "\nStarting $NAME"
-/etc/init.d/$INIT_SCRIPT start || error
+start_rpi() {
+    echo -e "\nStarting $NAME"
+    /etc/init.d/$INIT_SCRIPT start || error
+}
 
-# Report finished
+# Performs:
+#   - install PC startup script & config files
+#   - adjust Openbox config
+#   - modify xinitrc to start dynquee
+install_PC() {
+    # Copy PC startup script & PC config file to program directory
+    echo -e "\nInstalling startup script"
+    cp -vf install/startup_pc.sh ./ || error
+
+    echo -e "\nInstalling PC config file"
+    cp -vf install/dynquee-pc.ini ./dynquee.ini || error
+
+    fixOpenboxConfig
+
+    local xrandr_cmd=$(< "$XRANDR_CMD_FILE")
+    fixXinitrc "$xrandr_cmd"
+}
+
+# Start dynquee via ES restart (causes X to exit and restart)
+start_PC() {
+    echo -e "\nRestarting Emulation Station and starting dynquee"
+    es stop
+    sleep 3
+    es start
+    return $?
+}
+
+
+
+# --- main ---
+
+checkRecalbox
+createBaseDir
+downloadDynqueeRelease
+
+# Are we on RPi, PC or something else?
+arch=$(cat /recalbox/recalbox.arch) || error
+
+# FOR TESTING ONLY:
+#arch=x86_64
+#arch=rpi4_x64
+echo "Detected arch: $arch"
+
+# Include library functions
+source ./install/install_common.sh
+
+# FOR TESTING ONLY:
+#source ./tests/install_common.sh
+
+
+createSystemDirs
+remountRootRW
+
+case "$arch" in
+    x86*)
+        recordScreenLayout "$XRANDR_CMD_FILE"
+        install_PC
+        start_PC
+        ;;
+    rpi*)
+        install_rpi_init
+        start_rpi
+        ;;
+    *)
+        # e.g. odroidxu4, odroidgo
+        echo "$NAME is not yet tested on this hardware: trying the Raspberry Pi config"
+        install_rpi_init
+        start_rpi
+        ;;
+esac
+
+remountRootRO
+
+# Report installation complete
 cat <<END
 
 Installation complete: $NAME is now installed in $BASEDIR

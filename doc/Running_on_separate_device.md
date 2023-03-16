@@ -52,14 +52,14 @@ Follow these steps to install *dynquee* using the install script:
     ```
 
 1. When prompted, type the hostname or IP address of your Recalbox (default hostname: `recalbox`)  
-    **Note**: if you supply an IP address, make sure that IP address won't change
+    **Note**: if you use an IP address, make sure that IP address won't change
     because *dynquee* will try to connect to that IP address every time it starts.
 
 ---
 
 ## Manual Installation
 If you prefer to install everything manually, follow these instructions. 
-They assume you are installing *dynquee* on a Raspberry Pi running Raspberry Pi OS, but should apply to any debian-like OS.
+They assume you are installing *dynquee* on a Raspberry Pi running Raspberry Pi OS, but should apply to any debian-like Linux OS.
 
 
 ### Install Packages
@@ -106,7 +106,7 @@ sudo apt install python3 python3-paho-mqtt fbi ffmpeg
     cd /opt/dynquee
     ```
 
-1. Download the *dynquee* release and unzip it:  
+1. Download the latest *dynquee* release and unzip it:  
      ```sh
      sudo wget -O dynquee.zip https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
      sudo unzip dynquee.zip
@@ -117,7 +117,7 @@ sudo apt install python3 python3-paho-mqtt fbi ffmpeg
 
 1. Copy the config file for remote running:
     ```sh
-    sudo cp install/dynquee-remote.ini ./dynquee.ini
+    sudo cp -f install/dynquee-remote.ini ./dynquee.ini
     ```
 
 
@@ -172,7 +172,8 @@ Recent releases of Raspberry Pi OS use [systemd][systemd] so that's what I recom
 
 If you don't want to use `systemd`, you could add the startup command to `root`'s crontab e.g.  
 `@reboot /opt/dynquee/dynquee.py`  
-or  add it to `/etc/rc.local`
+or  add it to `/etc/rc.local`,
+but bear in mind it needs the network to be up when it starts so it can communicate with your Recalbox.
 
 To test, reboot your marquee machine and check that *dynquee* starts automatically.
 

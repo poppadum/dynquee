@@ -14,5 +14,4 @@ media/default.png
 media/README.md
 logs/
 install/*
-doc/EmulationStation_events.md
-doc/Running_on_separate_device.md
+doc/*

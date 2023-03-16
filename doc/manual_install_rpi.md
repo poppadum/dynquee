@@ -1,7 +1,14 @@
-# Manual Installation
+![dynquee: dynamic marquee for Recalbox][project-image]  
+# Manual Installation of *dynquee* on Raspberry Pi
+===
+
 If you prefer to install *dynquee* manually, follow these steps. 
 
-**Note**: these instructions are for installing *dynquee* on Recalbox; if you're installing on a separate machine, see [the guide for running on a separate device][different-device]
+## Note
+These instructions are for installing *dynquee* on Recalbox on Raspberry Pi.
+If you're installing on Recalbox on PC, see [the Recalbox PC manual install guide][manual-install-pc].
+If you're installing on a separate machine, see [the guide for running on a separate device][different-device].
+
 
 ## Download
 1. Log in to recalbox as user `root` either [via ssh][recalbox-ssh] or via the console.
@@ -24,7 +31,7 @@ If you prefer to install *dynquee* manually, follow these steps.
 
 
 ## Test
-Try running the command `python3 dynquee.py`. If all goes well, you should see the startup image on your marquee display. Check that it responds to Recalbox actions by selecting a game system: the marquee should change to the logo or console image of that system.
+Try running the command `python3 -m dynquee`. If all goes well, you should see the startup image on your marquee display. Check that it responds to Recalbox actions by selecting a game system: the marquee should change to the logo or console image of that system.
 
 Press Ctrl+C to stop the program.
 
@@ -56,4 +63,6 @@ If all goes well, reboot Recalbox and check that *dynquee* starts automatically.
 
 <!-- LINKS & IMAGES -->
 [different-device]: ./Running_on_separate_device.md
+[manual-install-pc]: manual_install_pc.md
+[project-image]: ../dynquee.png
 [recalbox-ssh]: https://wiki.recalbox.com/en/tutorials/system/access/root-access-terminal-cli

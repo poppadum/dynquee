@@ -1,0 +1,35 @@
+#!/bin/sh
+
+### matchbox doesn't seems to correctly handle qt5 apps, at least for doplhin-emu,
+### replace it with openbox: http://openbox.org/wiki/Main_Page
+# matchbox-window-manager -use_titlebar no -use_desktop_mode no -use_lowlight no &
+
+# set the keyboard
+systemsetting="recalbox_settings"
+settings_lang="`$systemsetting -command load -key system.language`"
+
+# not always true (en_US for us), but it's really better than always english
+map_name=$(echo $settings_lang | cut -c 1-2)
+setxkbmap "${map_name}"
+
+# disable dpms to prevent screen to turns blank
+xset -dpms
+xset s off
+
+# to disable a video output (multi-screen setup) and prevent ES to be stretcht on all screens, 
+# uncomment the line below, and replace output_name by the output that you want disable on ES startup (ex: HDMI-0)
+# xrandr --output output_name --off
+
+/usr/bin/externalscreen.sh
+
+# auto hide cursor each 5 sec of inactivity
+hhpc -i 5 &
+
+#
+export HOME=/recalbox/share/system
+export LC_ALL="${settings_lang}.UTF-8"
+
+## without windowed, time must be sleeped to wait that matchbox ended to initialize :-(
+#exec emulationstation --windowed
+## Emulationstation must be started at the same time
+openbox --config-file /etc/openbox/rc.xml --startup "emulationstation --windowed"

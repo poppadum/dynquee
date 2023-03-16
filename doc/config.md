@@ -73,7 +73,7 @@ files matching those search terms.
    sends another action (usually `gamelistbrowsing`) immediately after
 1. The `wakeup` action causes *dynquee* to repeat the action that occurred immediately before the `sleep` event
 1. The `blank` search term causes dynquee to stop processing a search rule, so you can't combine it with other search terms
-
+1. If you want *dynquee* to ignore an action completely, comment out or remove its search rule.
 
 ## Filename Matching
 Media filename matching works as follows:
@@ -128,7 +128,7 @@ I recommend `png` for still images, and `mp4` or `mkv` with the H.264 codec for 
 ## Scaling Media
 With default settings, still images are zoomed to fit the marquee screen but keep their original aspect ratio; videos are not resized.
 
-If you want to scale videos to the height of the marquee, a helper script [`play_video_scaled.sh`](../play_video_scaled.sh) is provided. The comments in the config file explain how to use it. Note that the script uses the `marquee_width` & `marquee_height` settings in the config file to calculate video output size, so change those settings to match your marquee screen. Bear in mind that video scaling can tax the CPU which will leave Recalbox fewer CPU cycles available to run emulators[^cpu-usage].
+If you want to scale videos to the height of the marquee, a helper script [`play_video_scaled.sh`](../play_video_scaled.sh) is provided for Raspberry Pi. The comments in the config file explain how to use it. Note that the script uses the `marquee_width` & `marquee_height` settings in the config file to calculate video output size, so change those settings to match your marquee screen. Bear in mind that video scaling can tax the CPU which will leave Recalbox fewer CPU cycles available to run emulators[^cpu-usage].
 
 [^cpu-usage]: Here is the abbreviated output of `top` when running a scaled video at the same time as the Libretro Mame2003+ emulator on my Pi4 2GB: `ffmpeg` is using ~120% of the 400% available on a four-core CPU:
 

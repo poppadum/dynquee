@@ -8,7 +8,7 @@ NAME=dynquee
 PIDFILE=/var/run/dynquee.pid
 CMD=/usr/bin/python3
 WORKDIR=/recalbox/share/dynquee
-CMD_ARGS=$WORKDIR/dynquee.py
+CMD_ARGS="-m dynquee"
 INIT_SCRIPT=$(basename $0)
 
 

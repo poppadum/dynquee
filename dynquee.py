@@ -813,7 +813,8 @@ class EventHandler(object):
             return True
         # Use rules defined in config file to determine if state has changed
         changeWhen: str = changeRules.get(newState.action, '')
-        # no change if no action sent yet (at startup) or `never` specified
+        # no change if no action change rule found, no event sent yet
+        # (at startup) or `never` specified
         if (changeWhen == '') or (changeWhen == 'never'):
             return False
         # always change if `always` specified?

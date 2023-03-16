@@ -35,3 +35,13 @@ examples/
 info/
 scripts/
 todo.md
+
+# ignore files copied from install/ by install scripts
+xrandr_cmd.txt
+startup_pc.sh
+
+# ignore files created when testing PC install script
+tests/xinitrc
+tests/rc.xml
+tests/rc.xml.dynquee.orig
+tests/xinitrc.dynquee.orig

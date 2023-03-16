@@ -46,49 +46,53 @@ I wanted a solution which would be:
 
 
 ### How Does It Work?
-On Raspberry Pi it works very like [Recalbox]'s built-in mini TFT support: 
-it listens to [Recalbox's MQTT broker][recalbox-mqtt] for events, and it writes media files direct to the framebuffer using `fbv2` for still images and `ffmpeg` for videos.
+It works very like [Recalbox]'s built-in mini TFT support: 
+it listens to [Recalbox's MQTT broker][recalbox-mqtt] for events,
+and displays still images or videos in response to those events.
 
-With the Pi4's default KMS graphics driver both HDMI displays share a single framebuffer, so marquee images are also visible on the primary display for a second or two when an emulator launches or exits. While this is a bit annoying, it doesn't seem to break anything so I'll put up with it.
+On PC it uses `mpv` to display media on the secondary screen.
+On Raspberry Pi it writes media files direct to the framebuffer using `fbv2` for still images and `ffmpeg` for videos.
 
-*dynquee* is mostly written in Python 3.
+With the Pi4's default KMS graphics driver both HDMI displays share a single framebuffer, so marquee images are also visible on the primary display for a second or two when an emulator launches or exits. While this is a bit annoying, it doesn't seem to break anything so I put up with it.
+
+*dynquee* is written in Python 3 with a few supporting bash scripts.
 
 
 ### Requirements
 - [Recalbox] v8.1.1 Electron or later
-- Python v3.7 or later (Recalbox 8.1.1 ships with Python v3.9.5)
-- EITHER:
+- one of:
     - a Raspberry [Pi 4B][pi4] or [Pi 400][pi400] with a second display connected to the Pi's second HDMI port
-- OR:
+    - a PC with dual video outputs and two displays
     - a separate device with a connected display: an older Pi or [Pi Zero][pi-zero] should be ideal
 
 I have tested *dynquee* running on a different device on the same network as the Recalbox machine.
-It works fine but needs a few config file changes: see [Running *dynquee* on a different device][different-device].
+It works fine but needs a few config file changes: see [Running *dynquee* on a different device][install-different-device].
 
 
 ### Status
 *dynquee* is now pretty stable but there may still be bugs.
 
 I've tried to minimise the risk of displaying the same image for a long period of time
-because I'm concerned about [image persistence or burn-in][screen-burn-in].
-While this shouldn't be too much of a problem if you're using an LCD  display for your marquee,
-I still recommend keeping an eye on it.
+because I'm concerned about [image persistence or burn-in][screen-burn-in] (probably a habit I picked up in the 1980s).
+While this shouldn't be too much of a problem if you're using a modern LCD display for your marquee, I still recommend keeping an eye on it.
 
 
 ### Tested Platforms
-*dynquee* has been tested on:
-* Recalbox on [Raspberry Pi 4B][pi4]: working
-* Recalbox on PC: working
-* Raspberry Pi 1 (separate device): working, but a bit too slow to be useable
+*dynquee* has been tested on the following platforms:
 
+* Running on Recalbox:
+    * Recalbox v8.1.1 & v9.0 on Raspberry Pi 4B: working
+    * Recalbox v9.0.1 on PC: working
+
+* Running on a separate device:
+    * Raspberry Pi Zero: working
+    * Raspberry Pi 1B: working, but a bit too slow to be useable
 
 ---
 
 ## Getting Started
 
-* To get *dynquee* running on Recalbox on Raspberry Pi 4 follow the instructions below.
-
-* To get *dynquee* running on Recalbox on PC see [installing on Recalbox PC][install-recalbox-pc].
+* To get *dynquee* running on Recalbox follow the instructions below.
 
 * To get *dynquee* running on a different machine see [installing on a different device][install-different-device].
 
@@ -108,9 +112,10 @@ Follow these steps to install *dynquee* using the install script:
 
 
 ### Manual Installation
-If you prefer to install everything manually, follow [this guide][manual-install].
+If you prefer to install everything manually,
+follow [this guide for Raspberry Pi][manual-install-rpi]
+or [this guide for PC][manual-install-pc].
 
----
 
 ## Usage
 Most settings can be configured in the config file [`dynquee.ini`](dynquee.ini).
@@ -125,6 +130,8 @@ If things aren't working, first check the log files in the `logs/` directory:
 - `logs/dynquee.debug.log` contains the full debug log
 
 The logs should provide some clues as to what is wrong.
+
+If you are having trouble getting *dynquee* to start on PC, also check the file `/tmp/dynquee_start.log`.
 
 If you still can't get it working, post on the [Recalbox forum][recalbox-forum-commproj] and I will try to help.
 Please paste your config file and debug log file on [pastebin][pastebin] and provide a link when reporting issues.
@@ -142,6 +149,7 @@ For convenience, releases include some starter images collected from various sou
 Most of these are not my work: credit remains with the original authors.
 See the [artwork README file][artwork-readme] for sources.
 
+Many thanks to @toniosj for Recalbox PC testing.
 
 ## To Do
 - [ ] Genre matching is very dumb: make it more useful.  
@@ -160,11 +168,13 @@ This project is released under the [MIT Licence][licence].
 [DV190FBM]: https://www.panelook.com/DV190FBM-NB0_BOE_19.1_LCM_overview_32860.html
 [emulationstation]: https://wiki.recalbox.com/en/basic-usage/getting-started/emulationstation
 [install-different-device]: doc/Running_on_separate_device.md
-[install-recalbox-pc]: doc/install_on_Recalbox_PC.md
+[install-recalbox-pc]: doc/manual_install_pc.md
 [licence]: LICENSE.txt
 [LTA149B780F]: https://www.panelook.com/LTA149B780F_Toshiba_14.9_LCM_parameter_10941.html
-[manual-install]: doc/manual_install.md
+[manual-install-rpi]: doc/manual_install_rpi.md
+[manual-install-pc]: doc/manual_install_pc.md
 [media-readme]: media/README.md
+[mpv]: https://mpv.io/
 [pastebin]: https://pastebin.com/
 [pi4]: https://www.raspberrypi.com/products/raspberry-pi-4-model-b/
 [pi400]: https://www.raspberrypi.com/products/raspberry-pi-400-unit/

@@ -3,5 +3,8 @@
 # Script to launch dynquee from `/etc/X11/xinit/xinitrc` on Recalbox PC
 
 emulationstation --windowed &
+
+LOGFILE=/tmp/dynquee_start.log
 cd /recalbox/share/dynquee
-python3 dynquee.py >/dev/null 2>&1 &
+pwd >>$LOGFILE
+python3 -m dynquee >>$LOGFILE 2>&1 &
