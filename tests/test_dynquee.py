@@ -204,6 +204,11 @@ class TestMediaManager(unittest.TestCase):
         startupMedia.sort()
         self.assertEqual(startupMedia, ['./tests/media/startup/startup01.png', './tests/media/startup/welcome.mp4'])
 
+    def test_getScreensaverMedia(self):
+        self.assertEqual(
+            self.mm.getMedia({'Action': 'sleep'}),
+            ['./tests/media/screensaver/screensaver.01.png', './tests/media/screensaver/screensaver.02.png']
+        )
 
 
 class TestSlideshow(unittest.TestCase):

@@ -23,10 +23,11 @@ If you're installing on a separate machine, see [the guide for running on a sepa
     cd /recalbox/share/dynquee
     ```
 
-1. Download the latest *dynquee* release and unzip it:  
+1. Download the latest *dynquee* release, unzip it and tidy up:  
      ```sh
      wget -O dynquee.zip https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
      unzip dynquee.zip
+     rm dynquee.zip
      ```
 
 

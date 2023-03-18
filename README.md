@@ -133,7 +133,7 @@ The logs should provide some clues as to what is wrong.
 
 If you are having trouble getting *dynquee* to start on PC, also check the file `/tmp/dynquee_start.log`.
 
-If you still can't get it working, post on the [Recalbox forum][recalbox-forum-commproj] and I will try to help.
+If you still can't get it working, post on the [Recalbox forum][recalbox-forum-dynquee] or [message me on Discord][discord-poppadum] and I will try to help.
 Please paste your config file and debug log file on [pastebin][pastebin] and provide a link when reporting issues.
 
 ---
@@ -165,6 +165,7 @@ This project is released under the [MIT Licence][licence].
 [artwork-readme]: artwork/README.md
 [config-guide]: doc/config.md
 [dinky-definition]: https://dictionary.cambridge.org/dictionary/english/dinky
+[discord-poppadum]: https://discord.com/users/1086033618532565032
 [DV190FBM]: https://www.panelook.com/DV190FBM-NB0_BOE_19.1_LCM_overview_32860.html
 [emulationstation]: https://wiki.recalbox.com/en/basic-usage/getting-started/emulationstation
 [install-different-device]: doc/Running_on_separate_device.md
@@ -182,7 +183,7 @@ This project is released under the [MIT Licence][licence].
 [pimarquee2]: https://github.com/losernator/PieMarquee2
 [project-image]: dynquee.png
 [recalbox]: https://www.recalbox.com
-[recalbox-forum-commproj]: https://forum.recalbox.com/category/13/community-projects
+[recalbox-forum-dynquee]: https://forum.recalbox.com/topic/29921/
 [recalbox-mqtt]: https://wiki.recalbox.com/en/advanced-usage/scripts-on-emulationstation-events#mqtt
 [recalbox-ssh]: https://wiki.recalbox.com/en/tutorials/system/access/root-access-terminal-cli
 [retropie]: https://retropie.org.uk/

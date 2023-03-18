@@ -6,6 +6,8 @@
 
 - `startup/startup.0[12].png`: default startup images which reuse elements of Recalbox startup screen
 
+- `screensaver/screensaver.0[12].png`: default images shown when screensaver is active
+
 - `system/*.png`: system logos and banners. Includes
     - system logos from [`recalbox-next`](https://gitlab.com/recalbox/recalbox-themes/-/tree/master/themes/recalbox-next) theme
     - platform logos from [Dan Patrick's v2 Platform Logos](https://archive.org/details/console-logos-professionally-redrawn-plus-official-versions)

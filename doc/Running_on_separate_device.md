@@ -106,16 +106,17 @@ sudo apt install python3 python3-paho-mqtt fbi ffmpeg
     cd /opt/dynquee
     ```
 
-1. Download the latest *dynquee* release and unzip it:  
+1. Download the latest *dynquee* release, unzip it and tidy up:  
      ```sh
      sudo wget -O dynquee.zip https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
      sudo unzip dynquee.zip
+     sudo rm dynquee.zip
      ```
 
 
 ### Configure
 
-1. Copy the config file for remote running:
+1. Copy the config file for running on a separate machine:
     ```sh
     sudo cp -f install/dynquee-remote.ini ./dynquee.ini
     ```

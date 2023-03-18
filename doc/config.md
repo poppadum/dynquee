@@ -58,6 +58,8 @@ A search rules consists of one or more of the following search terms:
 * `genre`: media relating to genre of game e.g. shooters, platform games
 * `system`: media relating to game system e.g. Sinclair Spectrum or SNES banner
 * `generic`: generic media unrelated to a game, system or publisher
+* `screensaver`: media to be shown when EmulationStation goes to sleep
+    and the screensaver is active
 * `blank`: blank the display e.g. when EmulationStation goes to sleep  
 
 Search terms can be combined at the same precedence level with the `+` character
@@ -116,6 +118,8 @@ the file name must start with Emulation Station's internal system name (use the 
 - `generic/` is for media that doesn't belong anywhere else, to be used if no other files match.
     If you have designed custom artwork for your Recalbox, place it here.
     Filename does not matter, but use the appropriate file extension e.g. `generic/my_games_machine.mkv`
+
+- `screensaver/` is for files to show when EmulationStation goes to sleep and activates the screensaver
 
 Feel free to delete any of the included media files you don't want, but I recommend you leave `media/default.png` (or replace it with your own custom image) as a file of last resort.
 

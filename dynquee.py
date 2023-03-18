@@ -230,6 +230,7 @@ class MediaManager(object):
         'genre': "genre/{genre}.*",
         'system': "system/{systemId}.*",
         'generic': "generic/*",
+        'screensaver': "screensaver/*",
         'startup': "startup/*"  # files to show on startup
     }
     "glob patterns to find media files for each search term"
