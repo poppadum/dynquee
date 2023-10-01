@@ -1,0 +1,16 @@
+[Basic]
+argument-naming-style = camelCase
+attr-naming-style = camelCase
+function-naming-style = any
+method-naming-style = any
+variable-naming-style = camelCase
+
+module-rgx = test(_+|s)
+
+disable = 
+    line-too-long,
+    protected-access,
+    super-init-not-called,
+    missing-function-docstring
+
+good-names = ms, mm, eh, sl, ch

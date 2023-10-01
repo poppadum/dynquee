@@ -3,7 +3,6 @@
 # Run this script after a Recalbox upgrade to restore changes
 # that Recalbox has overwritten
 
-readonly XRANDR_CMD_FILE=xrandr_cmd.txt
 BASEDIR=/recalbox/share/dynquee
 
 

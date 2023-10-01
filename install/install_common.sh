@@ -2,6 +2,10 @@
 
 # Library functions for dynquee install scripts
 
+# constants
+readonly INIT_SCRIPT=S32dynquee
+readonly XRANDR_CMD_FILE=xrandr_cmd.txt
+
 # suffix to add to original config files before modifying
 readonly BACKUP_SUFFIX=dynquee.orig
 
@@ -47,17 +51,23 @@ yesNo() {
 # args
 #  $1 - optional error message
 error() {
-    echo Sorry, something went wrong
-    [ ! -z "$1" ] && echo "$1"
+    echo "Sorry, something went wrong. Please report this bug at https://github.com/poppadum/dynquee/issues" >&2
+    [ ! -z "$1" ] && echo "$1" >&2
     exit 1
 }
 
 # Install RPi init script
+# args
+#  $1 - destination directory (default /etc/init.d)
 install_rpi_init() {
-    # Copy init script to /etc/init.d & make it executable
+    local dest=/etc/init.d
+    if ! [ -z "$1" ]; then
+        dest="$1"
+    fi
+    # Copy init script to destination & make it executable
     echo "Installing init script to run at startup"
-    cp -vf install/$INIT_SCRIPT /etc/init.d/ && \
-    chmod -v +x /etc/init.d/$INIT_SCRIPT || error
+    cp -vf install/$INIT_SCRIPT $dest/ && \
+    chmod -v +x $dest/$INIT_SCRIPT || error
 }
 
 # Insert the following XML into a document as a subnode of <applications>:
@@ -99,8 +109,8 @@ recordScreenLayout() {
     if [ "$new_xrandr_file" == "yes" ]; then
         xrandr_cmd=$(bash "$BASEDIR/install/find_marquee_output.sh") || error
         # record screen layout command to screen layout command file
-        echo "Recording screen layout to file '$1'"
-        echo "$xrandr_cmd" > "$1" || error
+        echo "Recording screen layout to file '$XRANDR_CMD_FILE'"
+        echo "$xrandr_cmd" > "$XRANDR_CMD_FILE" || error
     fi
 }
 

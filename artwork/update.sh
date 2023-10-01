@@ -14,6 +14,6 @@ echo "Fetching latest version of recalbox-next theme from gitlab"
 wget --output-document="$OUTFILE" --show-progress $REPO_URL && \
 
 echo "extracting logo.svg & console.svg files to recalbox-next/" ; 
-echo tar -jxvf "$OUTFILE" --strip-components=2 --wildcards --no-anchored 'logo.svg' 'console.svg' --directory="$basedir/" && \
+tar -jxvf "$OUTFILE" --strip-components=2 --wildcards --no-anchored 'logo.svg' 'console.svg' --directory="$basedir/" && \
 
 if [ -f "$OUTFILE" ]; then rm "$OUTFILE"; fi

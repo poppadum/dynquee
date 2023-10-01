@@ -1,0 +1,10 @@
+[Basic]
+argument-naming-style = camelCase
+attr-naming-style = camelCase
+function-naming-style = camelCase
+method-naming-style = camelCase
+variable-naming-style = camelCase
+
+good-names = __build, rc
+
+disable=too-many-instance-attributes

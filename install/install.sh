@@ -6,8 +6,6 @@
 readonly NAME=dynquee
 readonly RELEASE_URL=https://github.com/poppadum/dynquee/releases/latest/download/dynquee.zip
 readonly ROMDIR=/recalbox/share/roms
-readonly INIT_SCRIPT=S32dynquee
-readonly XRANDR_CMD_FILE=xrandr_cmd.txt
 
 BASEDIR=/recalbox/share/dynquee
 
@@ -42,11 +40,12 @@ createSystemDirs() {
             mkdir -p "$BASEDIR/media/$(basename "$dir")"
         fi
     done
+    # create arcade meta-system directory
+    mkdir -p "$BASEDIR/media/arcade"
 }
 
 # Start dynquee via init script
 start_rpi() {
-    echo -e "\nStarting $NAME"
     /etc/init.d/$INIT_SCRIPT start || error
 }
 
@@ -77,6 +76,16 @@ start_PC() {
     return $?
 }
 
+# Report an error and exit with non-zero code
+# Note: error() needs to be in this script as well as install-common.sh
+# because it is used before dynquee release is downloaded
+# args
+#  $1 - optional error message
+error() {
+    echo "Sorry, something went wrong. Please report this bug at https://github.com/poppadum/dynquee/issues" >&2
+    [ ! -z "$1" ] && echo "$1" >&2
+    exit 1
+}
 
 
 # --- main ---
@@ -105,7 +114,7 @@ remountRootRW
 
 case "$arch" in
     x86*)
-        recordScreenLayout "$XRANDR_CMD_FILE"
+        recordScreenLayout
         install_PC
         start_PC
         ;;

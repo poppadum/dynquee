@@ -28,3 +28,8 @@ Sources:
 Authors: Recalbox Project Team, Chris Laird
 
 Example startup images which reuse elements of the Recalbox startup image
+
+# `screensaver/`
+Author: Chris Laird
+
+Example images shown when screensaver is active

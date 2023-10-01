@@ -53,7 +53,10 @@ If you're installing on a separate machine, see [the guide for running on a sepa
      ```
 
 ## Identify Video Outputs
-If you don't want to do the next step manually, run `install/find_marquee_output.sh`
+If you don't want to do the next step manually, run
+```sh
+bash install/find_marquee_output.sh > xrandr_cmd.txt
+```
 which will walk you through the process and generate the `xrandr` command for you.
 Then skip on to the [next section](#set-up-screen-layout).
 
@@ -64,7 +67,7 @@ and which output you want to use for your marquee.
 ### Example 1: Samsung NP305VC laptop
 This laptop has a built-in display and both HDMI and VGA outputs.
 I connected my marquee display via HDMI:
-```
+```console
 # xrandr
 Screen 0: minimum 320 x 200, current 1366 x 768, maximum 16384 x 16384
 LVDS-1 connected primary 1366x768+0+0 (normal left inverted right x axis y axis) 344mm x 193mm
@@ -82,7 +85,7 @@ In this case `LVDS-1` is the primary (Recalbox) display and `HDMI-1` is the marq
 This PC has HDMI and VGA outputs.
 I connected my primary display via HDMI and my marquee display via VGA:
 
-```
+```console
 # xrandr          
 Screen 0: minimum 320 x 200, current 1920 x 1080, maximum 8192 x 8192
 HDMI-1 connected primary 1920x1080+0+0 (normal left inverted right x axis y axis) 16mm x 9mm
@@ -117,12 +120,10 @@ Make a note of your `xrandr` command for later.
 The install script records this command in the file `xrandr_cmd.txt`, so I suggest doing the same.
 It will be useful if a later Recalbox upgrade removes your startup script.
 
-**TODO**: get script to write `xrandr_cmd.txt` file and execute command?
-
 
 ### Example 1: Samsung NP305VC laptop
 
-```
+```console
 # xrandr --output LDVS-1 --auto --primary --output HDMI-1 --auto --right-of LVDS-1
 # xrandr
 Screen 0: minimum 320 x 200, current 1920 x 1848, maximum 16384 x 16384
@@ -135,7 +136,7 @@ HDMI-1 connected 1920x1080+1366+0 (normal left inverted right x axis y axis) 16m
 ```
 
 ### Example 2: Intel Atom net-top PC
-```
+```console
 # xrandr --output HDMI-1 --auto --primary --output VGA-1 --auto --right-of HDMI-1
 # xrandr
 Screen 0: minimum 320 x 200, current 3841 x 1080, maximum 8192 x 8192
@@ -198,7 +199,7 @@ Copy the PC version of the *dynquee* config file to the program directory:
 cp -vf install/dynquee-pc.ini ./dynquee.ini
 ```
 
-Optional: if you have a video card that supports hardware acceleration, you could add the [`mpv --hwdec` option][mpv--hwdec] to the `video_player_opts` setting
+Optional: if you have a video card that supports hardware acceleration, you could add the [`mpv --hwdec` option][mpv--hwdec] to the `video_player_opts` setting in `dynquee.ini`
 e.g. `--hwdec nvdec` for nVidia GPUs or `--hwdec vaapi` for AMD or Intel GPUs.
 This may take some load off the CPU if you are using video marquees.
 

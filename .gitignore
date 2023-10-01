@@ -26,14 +26,18 @@ artwork/astrocade/
 sync_to_pi.sh*
 
 # exclude release archives & generated BUILD file
+BUILD
 build/dynquee*.zip
 build/release_HOWTO.md
-BUILD
+build/patch_HOWTO.md
+releases/
 
 # misc
 examples/
 info/
 scripts/
+recalbox_images/
+demo
 todo.md
 
 # ignore files copied from install/ by install scripts
@@ -45,3 +49,8 @@ tests/xinitrc
 tests/rc.xml
 tests/rc.xml.dynquee.orig
 tests/xinitrc.dynquee.orig
+
+# ignore update test files
+tests/update/
+tests/config
+tests/init.d/

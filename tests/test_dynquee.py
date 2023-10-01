@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 
-# Unit tests for dynquee module
+"""Unit tests for dynquee module"""
 
-import unittest, os, logging, time, random, queue, threading
-from dynquee import MQTTSubscriber, MediaManager, EventHandler, Slideshow, log, config
+import unittest
+import os
+import logging
+import time
+import random
+import queue
+import threading
 from typing import Optional
+from dynquee import MQTTSubscriber, MediaManager, EventHandler, Slideshow, log, config
 
 # uncomment for debug output
 # log.setLevel(logging.DEBUG)
@@ -13,27 +19,30 @@ from typing import Optional
 # set up config for test environment
 def setupTestConfig():
     '''read test config file'''
-    configFile = "%s/test_dynquee.ini" % os.path.dirname(__file__)
+    configFile = f"{os.path.dirname(__file__)}/test_dynquee.ini"
     config.read(configFile)
-    log.info("loaded test config file: %s" % configFile)
+    log.info("loaded test config file: %s", configFile)
 
 setupTestConfig()
 
 
 class MockMQTTSubscriber(MQTTSubscriber):
+    """Mock MQTTSubscriber class for testing"""
+
     _VALID_ACTIONS = ['systembrowsing','gamelistbrowsing','rungame','endgame']
     def __init__(self):
         super().__init__()
         self._disconnect = False
-    def start(self):
+    def start(self, *_args):
         pass
     def stop(self):
         self._disconnect = True
     def getEvent(self, checkInterval: float = 5.0) -> Optional[str]:
-        if self._disconnect: return None
+        if self._disconnect:
+            return None
         time.sleep(1)
         action:str = random.choice(self._VALID_ACTIONS)
-        log.info(f"generate action {action}")
+        log.info("generate action %s", action)
         return action
 
 #@unittest.skip('temp skip')
@@ -46,9 +55,9 @@ class TestMQTTSubscriber(unittest.TestCase):
 
     def tearDown(self):
         '''delete MQTTSubscriber instance'''
-        del(self.ms)
+        del self.ms
 
-    
+
     def testConfigLoaded(self):
         self.assertEqual(config.get('recalbox', 'host'), 'localhost')
         self.assertEqual(config.getint('recalbox', 'port'), 1883)
@@ -56,7 +65,7 @@ class TestMQTTSubscriber(unittest.TestCase):
         self.assertEqual(config.get('recalbox', 'es_state_local_file'), 'tests/es_state.inf')
         self.assertEqual(config.get('recalbox', 'es_state_remote_url'), 'http://localhost/get?option=readFile&params=file=/tmp/es_state.inf')
 
-    
+
     def test_getEventParams(self):
         '''test reading event params from mock ES state file'''
         params = self.ms.getEventParams()
@@ -90,13 +99,13 @@ class TestMQTTSubscriber(unittest.TestCase):
         })
 
 
-    
+
     def test_getEvent(self):
         '''test getting events from the mock MQTT client'''
         # start MQTT client
         self.ms.start()
         # read 3 events
-        for i in range(1, 4):
+        for _count in range(1, 4):
             event = self.ms.getEvent()
             if not event:
                 break
@@ -109,40 +118,56 @@ class TestMQTTSubscriber(unittest.TestCase):
 #@unittest.skip('temp skip')
 class TestMediaManager(unittest.TestCase):
     '''unit tests for MediaManager'''
-    
+
     def setUp(self):
         '''create a MediaManager instance'''
         self.mm = MediaManager()
 
     def tearDown(self):
-        del(self.mm)
+        del self.mm
 
-    
+
     def test_configLoaded(self):
         self.assertEqual(config.get('media', 'media_path'), './tests/media')
         self.assertEqual(config.get('media', 'default_image'), 'default.png')
 
-    
+
+    def test_caseInsensitiveGlobPattern(self):
+        # alpha characters should return an lower & upper pair in square brackets
+        self.assertEqual(self.mm._caseInsensitiveGlobPattern('aBÉö'), '[aA][bB][éÉ][öÖ]')
+        # non-alpha characters should be returned unchanged
+        self.assertEqual(self.mm._caseInsensitiveGlobPattern('6_?*%]+='), '6_?*%]+=')
+        # in mixed alpha/non-alpha strings, only alpha chars should be replaced
+        self.assertEqual(self.mm._caseInsensitiveGlobPattern('abc_99_red.balloons!'), '[aA][bB][cC]_99_[rR][eE][dD].[bB][aA][lL][lL][oO][oO][nN][sS]!')
+        # opening square brackets should be escaped
+        self.assertEqual(self.mm._caseInsensitiveGlobPattern('[PAL]'), '[[][pP][aA][lL]]')
+        self.assertEqual(self.mm._caseInsensitiveGlobPattern('[[['), '[[][[][[]')
+
+
     def test_getMediaMatching(self):
         '''test that glob patterns work as expected'''
         self.assertEqual(self.mm._getMediaMatching('XXXXXXX'), [])
         self.assertEqual(self.mm._getMediaMatching('default.*'), ['./tests/media/default.png'])
+        # test special character escaping
+        self.assertEqual(self.mm._getMediaMatching('specialchars/Game 1 [eu].*'), ['./tests/media/specialchars/game 1 [eu].jpg'])
+        self.assertEqual(self.mm._getMediaMatching('specialchars/Game 2 [.*'), ['./tests/media/specialchars/Game 2 [.png'])
+        self.assertEqual(self.mm._getMediaMatching('specialchars/game (]3 [pal][!].*'), ['./tests/media/specialchars/Game (]3 [PAL][!].banner.01.mkv'])
 
-    
+
     def test_getPrecedence(self):
         self.assertEqual(self.mm._getPrecedenceRule('default'), ['generic'])
         self.assertEqual(self.mm._getPrecedenceRule('__NOT_FOUND'), ['generic'])
         self.assertEqual(self.mm._getPrecedenceRule('gamelistbrowsing'), ['system', 'generic'])
 
-    
+
     def test_getMedia(self):
         # test getting ROM-specific media
         precedence = 'rom scraped publisher system genre generic'
         config.set(self.mm._CONFIG_SECTION, 'rungame', precedence)
-        
+
         self.assertEqual(
             self.mm.getMedia(
-                {'Action': 'rungame', 'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'}
+                {'Action': 'rungame', 'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chaseHQ.zip', 'Publisher':'Taito'}
             ),
             ['./tests/media/mame/chasehq.png']
         )
@@ -193,12 +218,12 @@ class TestMediaManager(unittest.TestCase):
         config.set(self.mm._CONFIG_SECTION, 'rungame', 'rom+publisher+system scraped')
         self.assertEqual(
             self.mm.getMedia(
-                {'Action': 'rungame', 'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chasehq.zip', 'Publisher':'Taito'}
+                {'Action': 'rungame', 'SystemId':'mame', 'GamePath':'/recalbox/share_init/roms/mame/chaseHQ.zip', 'Publisher':'Taito'}
             ),
             ['./tests/media/mame/chasehq.png', './tests/media/publisher/taito.png']
         )
 
-    
+
     def test_getStartupMedia(self):
         startupMedia = self.mm.getStartupMedia()
         startupMedia.sort()
@@ -211,7 +236,10 @@ class TestMediaManager(unittest.TestCase):
         )
 
 
+#@unittest.skip('temp skip')
 class TestSlideshow(unittest.TestCase):
+    '''unit tests for Slideshow'''
+
     def setUp(self):
         self.sl = Slideshow()
 
@@ -226,23 +254,59 @@ class TestSlideshow(unittest.TestCase):
         self.assertFalse(self.sl._exitSignalled.is_set())
         self.assertIsNone(self.sl._slideshowThread)
         self.assertIsInstance(self.sl._queueReaderThread, threading.Thread)
-        self.assertEqual(config.get(self.sl._CONFIG_SECTION, 'clear_cmd_opts'),  './../clear_framebuffer.sh')
+        self.assertEqual(config.get(self.sl._CONFIG_SECTION, 'clear_cmd_opts'),  './clear_framebuffer.sh')
+
+        # test config options set from config file
+        self.assertEqual(self.sl._imgDisplayTime, 5.0)
+        self.assertEqual(self.sl._maxVideoTime, 15.0)
+        self.assertFalse(self.sl._shuffleMedia)
+
 
     def test_getCmdList(self):
         cmd = "echo"
-        vars = {
+        _vars = {
             'file': 'a filename with spaces.txt',
             'num': 123,
         }
         self.assertEqual(self.sl._getCmdList(cmd, "{file}", file="normal.png"), ['echo', 'normal.png'])
-        self.assertEqual(self.sl._getCmdList(cmd, "{file} {num}", **vars), ['echo', 'a filename with spaces.txt', '123'])
-        self.assertEqual(self.sl._getCmdList(cmd, "{file}", **vars), ['echo', 'a filename with spaces.txt'])
+        self.assertEqual(self.sl._getCmdList(cmd, "{file} {num}", **_vars), ['echo', 'a filename with spaces.txt', '123'])
+        self.assertEqual(self.sl._getCmdList(cmd, "{file}", **_vars), ['echo', 'a filename with spaces.txt'])
         self.assertEqual(self.sl._getCmdList(cmd, "{file}", file="a 'funny name"), ['echo', 'a \'funny name'])
-        self.assertEqual(self.sl._getCmdList(cmd, 'this is "a test" {file} xxx-yyy .b_', **vars), ['echo', 'this', 'is', 'a test', 'a filename with spaces.txt', 'xxx-yyy', '.b_'])
-        self.assertEqual(self.sl._getCmdList(cmd, 'abc de"f', **vars), ['echo', 'abc', 'de"f'])
+        self.assertEqual(self.sl._getCmdList(cmd, 'this is "a test" {file} xxx-yyy .b_', **_vars), ['echo', 'this', 'is', 'a test', 'a filename with spaces.txt', 'xxx-yyy', '.b_'])
+        self.assertEqual(self.sl._getCmdList(cmd, 'abc de"f', **_vars), ['echo', 'abc', 'de"f'])
 
+    def test_getMediaPaths(self):
+        self.sl._currentMedia = [
+            'megadrive/Sonic The Hedgehog.03.jpg',
+            'megadrive/Sonic The Hedgehog.01.jpg',
+            'system/megadrive.logo.png',
+            'system/megadrive.console.png',
+            'generic/astrocade.05.png',
+            'generic/astrocade.03.png',
+        ]
+        sortedList = [
+            'generic/astrocade.03.png',
+            'generic/astrocade.05.png',
+            'system/megadrive.console.png',
+            'system/megadrive.logo.png',
+            'megadrive/Sonic The Hedgehog.01.jpg',
+            'megadrive/Sonic The Hedgehog.03.jpg',
+        ]
+        # test with shuffle off
+        self.sl._shuffleMedia = False
+        self.assertEqual(self.sl._getMediaPaths(), sortedList)
+        # Test with shuffle on:
+        # shuffle list multiple times; check list is different to sorted list at least once
+        self.sl._shuffleMedia = True
+        different = False
+        for _count in range(5):
+            # check if shuffled list is different to ordered list
+            different = different or self.sl._getMediaPaths() != sortedList
+        self.assertTrue(different)
 
 class MockEventHandler(EventHandler):
+    """Mock of EventHandler class"""
+
     def __init__(self):
         self._ms: MQTTSubscriber = MockMQTTSubscriber()
         self._mm: MediaManager = MediaManager()
@@ -265,26 +329,26 @@ class TestEventHandler(unittest.TestCase):
         'Action': 'systembrowsing',
         'SystemId': 'mame',
         'GamePath': '',
-        'IsFolder': '0'        
+        'IsFolder': '0'
     }
 
-    @classmethod
-    def getInitState(cls, action, evParams={}):
-        return EventHandler.ESState(
-            action = action,
-            system = evParams.get('SystemId', cls._INIT_EV_PARAMS['SystemId']),
-            game = evParams.get('GamePath', cls._INIT_EV_PARAMS['GamePath']),
-            isFolder = evParams.get('IsFolder', cls._INIT_EV_PARAMS['IsFolder'])
-        )
+    # @classmethod
+    # def getInitState(cls, action, evParams={}):
+    #     return EventHandler.ESState(
+    #         action = action,
+    #         system = evParams.get('SystemId', cls._INIT_EV_PARAMS['SystemId']),
+    #         game = evParams.get('GamePath', cls._INIT_EV_PARAMS['GamePath']),
+    #         isFolder = evParams.get('IsFolder', cls._INIT_EV_PARAMS['IsFolder'])
+    #     )
 
-    @classmethod
-    def getNewState(cls, action = None, evParams={}):
-        return EventHandler.ESState(
-            action = action or cls._NEW_EV_PARAMS['Action'],
-            system = evParams.get('SystemId', cls._NEW_EV_PARAMS['SystemId']),
-            game = evParams.get('GamePath', cls._NEW_EV_PARAMS['GamePath']),
-            isFolder = evParams.get('IsFolder', cls._NEW_EV_PARAMS['IsFolder'])
-        )
+    # @classmethod
+    # def getNewState(cls, action = None, evParams={}):
+    #     return EventHandler.ESState(
+    #         action = action or cls._NEW_EV_PARAMS['Action'],
+    #         system = evParams.get('SystemId', cls._NEW_EV_PARAMS['SystemId']),
+    #         game = evParams.get('GamePath', cls._NEW_EV_PARAMS['GamePath']),
+    #         isFolder = evParams.get('IsFolder', cls._NEW_EV_PARAMS['IsFolder'])
+    #     )
 
 
 
@@ -303,9 +367,64 @@ class TestEventHandler(unittest.TestCase):
 
     def tearDown(self):
         self.eh._sl.stop()
-        del(self.eh)
+        del self.eh
 
-    
+
+    def test_convertArcadeSystems(self):
+        # check evParams unchanged when arcade meta system disabled
+        self.eh._arcadeSystemEnabled = False
+        evParams = self._NEW_EV_PARAMS.copy()
+        self.assertEqual(self.eh._convertArcadeSystems(evParams), self._NEW_EV_PARAMS)
+        # check evParams unchanged when arcade meta system enabled, but systemId not an arcade system
+        self.eh._arcadeSystemEnabled = True
+        self.eh._arcadeSystems = ''
+        evParams = self._NEW_EV_PARAMS.copy()
+        evParams['SystemId'] = "megadrive"
+        self.assertEqual(self.eh._convertArcadeSystems(evParams), {
+            'Action': 'systembrowsing',
+            'SystemId': 'megadrive',
+            'GamePath': '',
+            'IsFolder': '0'
+        })
+        self.eh._arcadeSystems = 'fbneo mame'
+        evParams = self._NEW_EV_PARAMS.copy()
+        evParams['SystemId'] = "snes"
+        self.assertEqual(self.eh._convertArcadeSystems(evParams), {
+            'Action': 'systembrowsing',
+            'SystemId': 'snes',
+            'GamePath': '',
+            'IsFolder': '0'
+        })
+        # check evParams change when arcade meta system enabled and systemId is an arcade system
+        evParams = self._NEW_EV_PARAMS.copy()
+        evParams['SystemId'] = "fbneo"
+        self.assertEqual(self.eh._convertArcadeSystems(evParams), {
+            'Action': 'systembrowsing',
+            'SystemId': 'arcade',
+            'GamePath': '',
+            'IsFolder': '0'
+        })
+        # check evParams don't change when arcade meta system enabled and systemId is not an arcade system
+        evParams = self._NEW_EV_PARAMS.copy()
+        evParams['SystemId'] = "zxspectrum"
+        self.assertEqual(self.eh._convertArcadeSystems(evParams), {
+            'Action': 'systembrowsing',
+            'SystemId': 'zxspectrum',
+            'GamePath': '',
+            'IsFolder': '0'
+        })
+        # check system ID does not change when arcade meta system enabled and systemId is blank
+        self.eh._arcadeSystemEnabled = True
+        evParams = self._NEW_EV_PARAMS.copy()
+        evParams['SystemId'] = ""
+        self.assertEqual(self.eh._convertArcadeSystems(evParams)['SystemId'], "")
+        # check system ID does not change when arcade meta system enabled and systemId is "False"
+        evParams = self._NEW_EV_PARAMS.copy()
+        evParams['SystemId'] = "False"
+        self.assertEqual(self.eh._convertArcadeSystems(evParams)['SystemId'], "False")
+
+
+
     def test_updateState(self):
         self.assertEqual(self.eh._currentState.action, '')
         self.assertEqual(self.eh._currentState.system, '')
@@ -413,7 +532,7 @@ class TestEventHandler(unittest.TestCase):
         self._newEvParams['SystemId'] = 'mame'
         self._newEvParams['GamePath'] = 'asteroid.zip'
         self.assertTrue(self.eh._hasStateChanged(self._newEvParams, self._changeRules))
-    
+
 
     def test_stateChangeOnSystemOrGame(self):
         self._changeRules['systembrowsing'] = 'system/game'
@@ -486,6 +605,7 @@ class TestEventHandler(unittest.TestCase):
 
 #@unittest.skip('temp skip')
 class TestESState(unittest.TestCase):
+    '''unit tests for ESState'''
 
     def testInit(self):
         # test constructor with no args

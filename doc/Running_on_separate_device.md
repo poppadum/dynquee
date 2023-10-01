@@ -30,7 +30,6 @@ While *dynquee* was originally intended to run on same computer as Recalbox, it 
 
 - Software to show images and play video files. \
     By default *dynquee* uses [`fbi`][fbi] for still images and [`ffmpeg`][ffmpeg] for videos, but if you want to use something else you can configure it via the [config file](#configure).
-    <!-- **TODO**: Is fbi still available for bullseye? -->
 
     **Note**: because `fbi` and `ffmpeg` write direct to the framebuffer device, dynquee needs to run as `root` (or possibly a member of the `video` group)
 
@@ -48,7 +47,7 @@ Follow these steps to install *dynquee* using the install script:
 
 1. Fetch and run the installer: copy and paste this command and press enter:
     ```sh
-    sudo bash -c "$(wget -qO - https://github.com/poppadum/dynquee/raw/main/install/install-remote.sh)"
+    sudo bash -c "$(wget -qO - https://github.com/poppadum/dynquee/raw/main/install/install_remote.sh)"
     ```
 
 1. When prompted, type the hostname or IP address of your Recalbox (default hostname: `recalbox`)  
@@ -65,6 +64,7 @@ They assume you are installing *dynquee* on a Raspberry Pi running Raspberry Pi 
 ### Install Packages
 Install the required packages with:  
 ```sh
+sudo apt update
 sudo apt install python3 python3-paho-mqtt fbi ffmpeg
 ```
 
@@ -74,7 +74,7 @@ sudo apt install python3 python3-paho-mqtt fbi ffmpeg
 1. Optional: give Recalbox a static IP, either by [editing the Recalbox config file][recalbox-static-ip] or adding a reservation in your DHCP server
 
 1. Test connectivity by pinging Recalbox by hostname or IP address from your marquee machine:  
-    ```sh
+    ```console
     $ ping -c 5 recalbox
     PING recalbox (10.0.0.70) 56(84) bytes of data.
     64 bytes from recalbox (10.0.0.70): icmp_seq=1 ttl=64 time=5.93 ms

@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 
-# tests for dynquee.Slideshow class
+"""Tests for dynquee.Slideshow class"""
 
-import logging, logging.config, glob, time, io, os, threading
+import logging
+import logging.config
+import glob
+import time
+import io
+import os
+import threading
 from dynquee import Slideshow, log, config
 
 log.setLevel(logging.DEBUG)
@@ -10,9 +16,9 @@ log.setLevel(logging.DEBUG)
 # set up config for test environment
 def setupTestConfig():
     '''read test config file'''
-    configFile = "%s/test_dynquee.ini" % os.path.dirname(__file__)
+    configFile = f"{os.path.dirname(__file__)}/test_dynquee.ini"
     config.read(configFile)
-    log.info("loaded test config file: %s" % configFile)
+    log.info("loaded test config file: %s", configFile)
     # use live media dir to test
     config.set('media', 'media_path', './media')
 
@@ -25,20 +31,20 @@ def test_slideshowExit():
     imagePaths = glob.glob('./media/**/*.png')
     sl.setMedia(imagePaths)
     # capture output
-    out = io.StringIO()   
+    out = io.StringIO()
     # count seconds: should reach 40 before loop exits
-    for c in range(1, 41):
-        log.info('sleeping %d', c)
-        out.write('sleeping %d\n' % c)
+    for count in range(1, 41):
+        log.info('sleeping %d', count)
+        out.write(f'sleeping {count}\n')
         time.sleep(1)
-        if c == 25:
+        if count == 25:
             # end slideshow thread after 25s
             sl.stop()
     log.info('finished')
     # check we reached 40 before loop ended
     assert out.getvalue().endswith('sleeping 40\n'), f"output:\n{out.getvalue()}"
     out.close()
-    del(sl)
+    del sl
 
 
 def test_slideshow():
@@ -48,8 +54,8 @@ def test_slideshow():
     imagePaths = glob.glob('./media/**/*')
     sl.setMedia(imagePaths)
     time.sleep(60)
-    sl.stop()  
-    del(sl)
+    sl.stop()
+    del sl
 
 
 def test_slideshow1File():
@@ -60,10 +66,11 @@ def test_slideshow1File():
     sl.setMedia(imagePaths)
     time.sleep(10)
     sl.stop()
-    del(sl)
+    del sl
 
 
 def test_slideshowMediaChange():
+    """test interruption of video when mediaChange event occurs"""
     log.info('')
     sl = Slideshow()
     imagePaths = ['./media/default.png', './tests/media/generic/1MinCountdown.mp4']
@@ -75,17 +82,19 @@ def test_slideshowMediaChange():
     sl._mediaChange.set()
     time.sleep(10)
     sl.stop()
-    del(sl)
+    del sl
 
 
 def test_slideshowVideoFinish():
+    """test that slideshow ends when stop() called"""
     log.info('')
     sl = Slideshow()
     imagePaths = ['./tests/media/generic/10sCountdown.mp4', './media/default.png']
     sl.setMedia(imagePaths)
     time.sleep(45)
     sl.stop()
-    del(sl)
+    assert len(threading.enumerate()) == 1, "expected only MainThread"
+    del sl
 
 
 def test_slideshowMaxVideoTime():
@@ -103,10 +112,11 @@ def test_slideshowMaxVideoTime():
     out.flush()
     sl.stop()
     # check how many times video player launched
-    assert out.getvalue().count(filePath) == 6, f"expected 6 occurrences of file in output, got {out.getvalue().count(filePath)}"
+    assert out.getvalue().count(filePath) == 6, \
+        f"expected 6 occurrences of file in output, got {out.getvalue().count(filePath)}"
     log.removeHandler(ch)
     out.close()
-    del(sl)
+    del sl
 
 
 if __name__ == '__main__':
@@ -122,4 +132,4 @@ if __name__ == '__main__':
     # report threads on exit: should only be MainThread
     time.sleep(1)
     print(f"threads remaining: {threading.enumerate()}")
-    assert len(threading.enumerate()) == 1, f"expected only MainThread"
+    assert len(threading.enumerate()) == 1, "expected only MainThread"

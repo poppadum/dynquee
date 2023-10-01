@@ -10,6 +10,7 @@ import logging
 import logging.config
 from configparser import ConfigParser, ExtendedInterpolation
 import glob
+from pathlib import PurePath
 import json
 import random
 import re
@@ -53,18 +54,18 @@ _CONFIG_FILE: Final[str] = "dynquee.ini"
 
 def _loadConfig() -> ConfigParser:
     """Load config file in module directory into ConfigParser instance and return it"""
-    config: ConfigParser = ConfigParser(
+    _config: ConfigParser = ConfigParser(
         empty_lines_in_values=False,
         interpolation=ExtendedInterpolation()
     )
-    _configFilesRead: List[str] = config.read(
+    _configFilesRead: List[str] = _config.read(
         f"{os.path.dirname(__file__)}/{_CONFIG_FILE}",
     )
-    logging.info(f"loaded config file(s): {_configFilesRead}")
-    return config
+    logging.info("loaded config file(s): %s", _configFilesRead)
+    return _config
 
 
-class SignalHandler(object):
+class SignalHandler:
     """Signals all registered Event objects if SIGTERM received to allow graceful exit"""
 
     def __init__(self):
@@ -82,12 +83,12 @@ class SignalHandler(object):
 
     def _sigReceived(self, signum: int, _stackFrame):
         """Called when SIGTERM received: set exit flags on registered Event objects"""
-        log.info(f'received signal {signal.Signals(signum).name}')
+        log.info('received signal %s', signal.Signals(signum).name)
         for event in self._events:
             event.set()
 
 
-class MQTTSubscriber(object):
+class MQTTSubscriber:
     """MQTT subscriber: handles connection to broker to receive events from
         EmulationStation and read event params from event file.
 
@@ -131,7 +132,7 @@ class MQTTSubscriber(object):
         host: str = config.get(self._CONFIG_SECTION, 'host')
         port: int = config.getint(self._CONFIG_SECTION, 'port')
         keepalive: int = config.getint(self._CONFIG_SECTION, 'keepalive', fallback=60)
-        log.info(f"connecting to MQTT broker host={host} port={port} keepalive={keepalive}")
+        log.info("connecting to MQTT broker host=%s port=%d keepalive=%d", host, port, keepalive)
         self._client.connect(
             host=host,
             port=port,
@@ -141,20 +142,21 @@ class MQTTSubscriber(object):
         self._client.loop_start()
 
     def stop(self):
+        """Disconnect from the MQTT broker"""
         self._client.disconnect()
 
-    def _onConnect(self, client, user, flags, rc: int):
+    def _onConnect(self, _client, _user, _flags, rc: int):
         topic: str = config.get(self._CONFIG_SECTION, 'topic')
         self._client.subscribe(topic)
-        log.info(f"connected to MQTT broker rc={rc} topic={topic}")
+        log.info("connected to MQTT broker rc=%d topic=%s", rc, topic)
 
-    def _onDisconnect(self, client, userdata, rc: int):
-        log.info(f"disconnected from MQTT broker rc={rc}")
+    def _onDisconnect(self, _client, _userdata, rc: int):
+        log.info("disconnected from MQTT broker rc=%d", rc)
         self._client.loop_stop()
 
-    def _onMessage(self, client, userdata, message: mqtt.MQTTMessage):
+    def _onMessage(self, _client, _userdata, message: mqtt.MQTTMessage):
         """Add incoming message to message queue"""
-        log.debug(f"message topic={message.topic} payload={message.payload}")
+        log.debug("message topic=%s payload=%s", str(message.topic), str(message.payload))
         self._messageQueue.put(message)
 
     def getEvent(self, checkInterval: float = 5.0) -> Optional[str]:
@@ -171,7 +173,7 @@ class MQTTSubscriber(object):
         return None
 
     def getEventParams(self) -> EventParams:
-        """Read event params from ES state file (either local or remote), stripping any CR characters
+        """Read event params from ES state file (either local or remote), stripping any CR chars
             :return: a dict mapping param names to their values
         """
         rawState: List[str]
@@ -184,41 +186,44 @@ class MQTTSubscriber(object):
             # split line on first = character
             key, value = line.strip().split('=', 1)
             params[key] = value
-        log.debug(f"params={params}")
+        log.debug("params=%s", params)
         return params
 
     def _getEventParamsFromLocalhost(self) -> List[str]:
         """Read event params from local file.
             :return: contents of ES state file as a list of str
         """
-        with open(config.get(self._CONFIG_SECTION, 'es_state_local_file')) as f:
-            return f.readlines()
+        with open(config.get(self._CONFIG_SECTION, 'es_state_local_file'), encoding="utf8") as esf:
+            return esf.readlines()
 
     def _getEventParamsFromRemote(self) -> List[str]:
         """Read event params from ES State file on a remote host.
 
-            Uses Recalbox Manager's `/get` route (see Recalbox file `/usr/recalbox-manager2/dist/routes/get.js`)
+            Uses Recalbox Manager's `/get` route
+              (see Recalbox file `/usr/recalbox-manager2/dist/routes/get.js`)
             :return: contents of remote ES state file as a list of str, with CR characters removed
         """
         url: str = config.get(self._CONFIG_SECTION, 'es_state_remote_url')
         try:
             response: HTTPResponse
             with urlopen(url) as response:
-                log.debug(f"HTTP response status={response.status} reason={response.reason}")
+                log.debug("HTTP response status=%s reason=%s", response.status, response.reason)
                 jsonResponse: dict = json.load(response)
-                log.debug(f"remote ES state JSON={jsonResponse}")
+                log.debug("remote ES state JSON=%s", jsonResponse)
                 # retrieve relevant JSON property & split into lines
                 return jsonResponse["data"]["readFile"].split('\r\n')
         except (URLError, json.decoder.JSONDecodeError, KeyError):
-            log.error(f"failed to get ES state from remote host: url={url}", exc_info=True)
+            log.error("failed to get ES state from remote host: url=%s", url, exc_info=True)
             return []
 
 
-class MediaManager(object):
-    """Locates appropriate media files for an EmulationStation action using ordered search precendence rules.
-        Rules are defined for each action in `[media]` section of config file: see config file for documentation.
+class MediaManager:
+    """Locates appropriate media files for an EmulationStation action using ordered search
+        precendence rules. Rules are defined for each action in `[media]` section of config file:
+        see config file for documentation.
 
-        Call `getMedia()` to return a list of media files suitable for the action and selected system or game.
+        Call `getMedia()` to return a list of media files suitable for the action and selected
+        system or game.
     """
 
     _CONFIG_SECTION: Final[str] = 'media'
@@ -245,15 +250,33 @@ class MediaManager(object):
                 return True
         return False
 
+    @classmethod
+    def _caseInsensitiveGlobPattern(cls, pattern: str) -> str:
+        """Replace a simple glob pattern with its case insensitive equivalent
+            e.g. 'cat' => '[cC][aA][tT]'
+        """
+
+        def _upperOrLowerChar(char: str) -> str:
+            """Replace an alpha character with its upper & lower case alternative
+                e.g. 'a' => '[aA]'
+            """
+            return f"[{char.lower()}{char.upper()}]" if char.isalpha() else char
+
+        # escape opening square bracket in filename
+        pattern = pattern.replace('[', '[[]')
+        return ''.join(_upperOrLowerChar(char) for char in pattern)
+
     def _getMediaMatching(self, globPattern: str) -> SlideshowMediaSet:
-        """Search for media files matching globPattern within media directory
+        """Search for media files matching globPattern within media directory.
+            File & directory names are searched case-insensitively.
             :return: list of paths of matching files, or []
         """
-        log.debug(f"searching for media files matching {globPattern}")
+        globPattern = self._caseInsensitiveGlobPattern(globPattern)
+        log.debug("searching for media files matching %s", globPattern)
         files: SlideshowMediaSet = glob.glob(
             f"{config.get(self._CONFIG_SECTION, 'media_path')}/{globPattern}"
         )
-        log.debug(f"found {len(files)} files: {files}")
+        log.debug("found %d files: %s", len(files), files)
         return files
 
     def _getPrecedenceRule(self, action: str) -> List[str]:
@@ -266,7 +289,7 @@ class MediaManager(object):
             # if no rule defined for this action, use the default rule
             fallback=config.get(self._CONFIG_SECTION, 'default')
         ).split()
-        log.debug(f"action={action}; search precedence={precedence}")
+        log.debug("action=%s; search precedence=%s", action, precedence)
         return precedence
 
     def _getMediaForSearchTerm(self, searchTerm: str, evParams: EventParams) -> SlideshowMediaSet:
@@ -279,18 +302,17 @@ class MediaManager(object):
         # if search term is `scraped` just return scraped image path (if set)
         if searchTerm == 'scraped':
             imagePath: str = evParams.get('ImagePath', '')
-            log.debug(f"searchTerm=scraped ImagePath={imagePath}")
+            log.debug("searchTerm=scraped ImagePath=%s", imagePath)
             if imagePath == '':
                 return []
-            else:
-                return [imagePath]
+            return [imagePath]
         # skip unrecognised search terms
         if searchTerm not in self._GLOB_PATTERNS:
-            log.warning(f"skipped unrecognised search term '{searchTerm}'")
+            log.warning("skipped unrecognised search term '%s'", searchTerm)
             return []
         # get game filename without directory and extension (only last extension removed)
         gameBasename: str = os.path.splitext(os.path.basename(evParams.get('GamePath', '')))[0]
-        log.debug(f"gameBasename={gameBasename}")
+        log.debug("gameBasename=%s", gameBasename)
         # insert event params into search term's glob pattern
         globPattern: str = self._GLOB_PATTERNS[searchTerm].format(
             gameBasename=gameBasename,
@@ -298,7 +320,7 @@ class MediaManager(object):
             publisher=evParams.get('Publisher', '').lower(),
             genre=evParams.get('Genre', '').lower(),
         )
-        log.debug(f"searchTerm={searchTerm} globPattern={globPattern}")
+        log.debug("searchTerm=%s globPattern=%s", searchTerm, globPattern)
         # return media files matching this glob pattern, if any
         return self._getMediaMatching(globPattern)
 
@@ -308,11 +330,12 @@ class MediaManager(object):
             :param evParams: a dict of event parameters
             :return: list of paths to media files, or [] if marquee should be blank
         """
-        log.debug(f"params={evParams}")
+        log.debug("params=%s", evParams)
         # get search precedence rule for this action
         action: str = evParams.get('Action', '')
         precedenceRule: List[str] = self._getPrecedenceRule(action)
-        # find best matching media files for system/game, trying each search term of precedence rule in turn
+        # find best matching media files for system/game, trying each search term of precedence
+        # rule in turn
         for searchTerm in precedenceRule:
             # if search term is `blank`, return empty list to indicate a blanked display
             if searchTerm == 'blank':
@@ -322,29 +345,31 @@ class MediaManager(object):
             files: SlideshowMediaSet = []
             for subTerm in searchTerm.split('+'):
                 subTermFiles = self._getMediaForSearchTerm(subTerm, evParams)
-                log.debug(f"subTerm={subTerm} subTermFiles={subTermFiles}")
+                log.debug("subTerm=%s subTermFiles=%s", subTerm, subTermFiles)
                 files += subTermFiles
             # if matching files were found for this term, return them
             if files:
                 return files
-        # if no matching files were found for any search term, return the default image as a last resort
-        else:
-            return [
-                f"{config.get(self._CONFIG_SECTION, 'media_path')}/{config.get(self._CONFIG_SECTION, 'default_image')}"
-            ]
+        # if no matching files were found for any search term, return the default image as a
+        # last resort
+        return [
+            f"{config.get(self._CONFIG_SECTION, 'media_path')}/"
+            f"{config.get(self._CONFIG_SECTION, 'default_image')}"
+        ]
 
     def getStartupMedia(self) -> SlideshowMediaSet:
         """Get list of media files to be played at program startup"""
-        log.debug(f"getting startup media files")
+        log.debug("getting startup media files")
         globPattern: str = self._GLOB_PATTERNS['startup']
         return self._getMediaMatching(globPattern)
 
 
-class Slideshow(object):
+class Slideshow:
     """Displays slideshow of images/videos on the marquee.
         Uses 2 threads:
         1. _queueReaderThread: watches queue for new media & dispatches slideshow thread
-        2. _slideshowThread: runs slideshow in continuous loop; waits for a media change event before exiting
+        2. _slideshowThread: runs slideshow in continuous loop; waits for a media change event
+           before exiting
 
         Call `setMedia()` to change the media set displayed.
 
@@ -366,42 +391,61 @@ class Slideshow(object):
         """
 
         def __init__(self):
-            self._read_fd, self._write_fd = os.pipe()
+            # create a pipe between read & write file descriptors
+            self._readFD: int
+            self._writeFd: int
+            self._readFd, self._writeFd = os.pipe()
 
-        def wait(self, timeout=None):
-            rfds, wfds, efds = select.select([self._read_fd], [], [], timeout)
-            return self._read_fd in rfds
+        def wait(self, timeout=None) -> bool:
+            """Wait for event to occur (max timeout ms).
+                @return bool True if event has occurred before timeout
+            """
+            rfds, _wfds, _efds = select.select([self._readFd], [], [], timeout)
+            return self._readFd in rfds
 
-        def is_set(self):
+        def is_set(self) -> bool: # pylint: disable = invalid-name
+            """Test if event flag is set"""
             return self.wait(0)
 
-        def clear(self):
+        def clear(self) -> None:
+            """Clear event flag"""
             if self.is_set():
-                os.read(self._read_fd, 1)
+                os.read(self._readFd, 1)
 
-        def set(self):
+        def set(self) -> None:
+            """Set event flag"""
             if not self.is_set():
-                os.write(self._write_fd, b'1')
+                os.write(self._writeFd, b'1')
 
-        def fileno(self):
+        def fileno(self) -> int:
             """Return the FD number of the read side of the pipe; allows this object to
             be used with select.select().
             """
-            return self._read_fd
+            return self._readFd
 
         def __del__(self):
-            os.close(self._read_fd)
-            os.close(self._write_fd)
+            os.close(self._readFd)
+            os.close(self._writeFd)
 
     def __init__(self):
         """Initialise slideshow object and start queue reader thread.
             Run framebuffer resolution set command if defined in config file.
         """
 
-        self._imgDisplayTime: float = config.getfloat(self._CONFIG_SECTION, 'image_display_time', fallback=10)
+        self._imgDisplayTime: float = config.getfloat(
+            self._CONFIG_SECTION,
+            'image_display_time',
+            fallback=10
+        )
         "how long to display each image in a slideshow (seconds)"
-        self._maxVideoTime: float = config.getfloat(self._CONFIG_SECTION, 'max_video_time', fallback=120)
+        self._maxVideoTime: float = config.getfloat(
+            self._CONFIG_SECTION,
+            'max_video_time',
+            fallback=120
+        )
         "maximum time to let video file play before being stopped (seconds)"
+        self._shuffleMedia: bool = config.getboolean(self._CONFIG_SECTION, 'shuffle', fallback=True)
+        "if True show media files in a random order; if False, show in filename sort order"
 
         # properties for communication between threads
         self._queue: SimpleQueue[SlideshowMediaSet] = SimpleQueue()
@@ -424,6 +468,8 @@ class Slideshow(object):
         "media queue reader thread"
         self._subProcess: Optional[subprocess.Popen] = None
         "media player/viewer subprocess"
+        self._videoThread: Optional[Thread] = None
+        "video player thread"
 
         # handle program exit cleanly
         self._exitSignalled: Event = Event()
@@ -457,30 +503,30 @@ class Slideshow(object):
                 try:
                     self._subProcess.wait(self._subProcessTimeout)
                 except subprocess.TimeoutExpired:
-                    log.warning((
-                        f"timed out waiting {self._subProcessTimeout}s for "
-                        f"framebuffer_resolution_cmd to complete: {fbResCmd}"
-                    ))
+                    log.warning(
+                        "timed out waiting %ds for framebuffer_resolution_cmd to complete: %s",
+                        self._subProcessTimeout, fbResCmd
+                    )
 
     @classmethod
-    def _getCmdList(cls, cmd: str, cmdOpts: str, **vars) -> List[str]:
+    def _getCmdList(cls, cmd: str, cmdOpts: str, **varsubs) -> List[str]:
         """Convert command and option strings to a list for passing to subprocess.Popen
             Substitute variables in the string with values supplied as keyword args.
             :param cmd: path to external command
             :param cmdOpts: options to pass to command
-            :param vars: variable substitutions: format variable=value
+            :param varsubs: variable substitutions: format variable=value
             :return: sequence of command args for passing to subprocess.Popen
         """
         # enclose 'file' value in quotes (if present) to support filenames containing spaces
-        if "file" in vars.keys():
-            vars["file"] = f'"{vars["file"]}"'
-        cmd = cmd.format(**vars)
-        cmdOpts = cmdOpts.format(**vars)
+        if "file" in varsubs:
+            varsubs["file"] = f'"{varsubs["file"]}"'
+        cmd = cmd.format(**varsubs)
+        cmdOpts = cmdOpts.format(**varsubs)
         # split option string into components keeping quoted strings intact
         cmdList: List[str] = [cmd] + [
             opt.strip('"') for opt in re.findall(r'[^"\s]\S*|".+?"', cmdOpts)
         ]
-        log.debug(f"cmdList={cmdList}")
+        log.debug("cmdList=%s", cmdList)
         return cmdList
 
     def _runCmd(self, cmd: List[str], waitForExit: bool = False) -> bool:
@@ -490,14 +536,16 @@ class Slideshow(object):
             :return: True if command launched successfully, or False otherwise
         """
         try:
-            self._subProcess = subprocess.Popen(cmd)
-            log.debug(f"cmd={cmd} pid={self._subProcess.pid} waitForExit={waitForExit}")
+            # Note: using with block causes stop() method to hang
+            # for 60s at _queueReaderThread.join() call
+            self._subProcess = subprocess.Popen(cmd) # pylint: disable=consider-using-with
+            log.debug("cmd=%s pid=%d waitForExit=%s", cmd, self._subProcess.pid, waitForExit)
             if waitForExit:
                 rc: int = self._subProcess.wait()
-                log.debug(f"subprocess pid={self._subProcess.pid} exited with rc={rc}")
+                log.debug("subprocess pid=%d exited with rc=%d", self._subProcess.pid, rc)
             return True
-        except OSError as e:
-            log.error(f"failed to run {cmd}: {e}")
+        except OSError as err:
+            log.error("failed to run %s: %s", cmd, err)
             return False
 
     def _showImage(self, imgPath: str):
@@ -544,45 +592,66 @@ class Slideshow(object):
             self._subProcess.terminate()
             try:
                 rc: int = self._subProcess.wait(self._subProcessTimeout)
-                log.debug(f"terminated media player pid={pid} rc={rc}")
+                log.debug("terminated media player pid=%d rc=%d", pid, rc)
             except subprocess.TimeoutExpired:
                 # subprocess did not exit within timeout so kill it
                 self._subProcess.kill()
-                log.warning((
-                    f"media player subprocess pid={pid} did not terminate"
-                    f" within {self._subProcessTimeout}s: sent SIGKILL"
-                ))
+                log.warning(
+                    "media player subprocess pid=%d did not terminate within %ds: sent SIGKILL",
+                    pid, self._subProcessTimeout
+                )
+
+    def _getMediaPaths(self) -> SlideshowMediaSet:
+        """Get list of media paths from the `_currentMedia` property.
+            If the shuffle config option is on, shuffle the order of media each time through
+            the slideshow, otherwise sort the list.
+        """
+
+        def fileStem(path: str) -> str:
+            """Return the stem (filename minus last suffix) of a file path converted to lower case
+                (key function for `list.sort()`)
+            """
+            return PurePath(path).stem.lower()
+
+        mediaPaths: SlideshowMediaSet = self._currentMedia.copy()
+        # if shuffle config option on, randomise order of media
+        if self._shuffleMedia:
+            random.shuffle(mediaPaths)
+        # otherwise sort list by file stem (case insensitive)
+        else:
+            mediaPaths.sort(key=fileStem)
+        return mediaPaths
 
     def _runSlideshow(self):
         """Slideshow thread: loop a slideshow media set until a `_mediaChange` event occurs.
-            Gets media set to show from `_currentMedia` property
         """
-        mediaPaths: SlideshowMediaSet = self._currentMedia.copy()
-        log.debug(f"slideshow worker thread {get_ident()} start")
+        log.debug("slideshow worker thread %s start", get_ident())
         while not self._mediaChange.is_set():
-            # random order of media each time through slideshow
-            random.shuffle(mediaPaths)
+            # fetch list of media each time through slideshow in case we need to shuffle
+            mediaPaths: SlideshowMediaSet = self._getMediaPaths()
             for mediaFile in mediaPaths:
                 # is file still image or video?
                 if MediaManager.isVideo(mediaFile):
                     # start video, wait for clip to finish or `_maxVideoTime` to expire
                     #  or _mediaChange event to occur, then stop it
-                    self._videoThread: Thread = Thread(
+                    self._videoThread = Thread(
                         name="video_thread",
                         target=self._startVideo,
                         args=(mediaFile,),
                         daemon=True
                     )
                     self._videoThread.start()
-                    log.debug(f"showing video for up to {self._maxVideoTime}s")
+                    log.debug("showing video for up to %ds", self._maxVideoTime)
                     self._selector.select(timeout=self._maxVideoTime)
                     # if events is None after select() call, it timed out
                     self._stopSubProcess()
                     self._clearImage()
                 else:
-                    # show image, wait for `_imgDisplayTime` to expire or _mediaChange event, then clear it
+                    # show image, wait for `_imgDisplayTime` to expire or _mediaChange event,
+                    # then clear it
                     self._showImage(mediaFile)
-                    # If we only have one image, just display it and wait until _mediaChange signalled
+                    # If we only have one image, just display it
+                    # and wait until _mediaChange signalled
                     # Note: this only works if viewer leaves image up on framebuffer like fbv?
                     if len(mediaPaths) == 1 and not MediaManager.isVideo(mediaPaths[0]):
                         log.debug("single image file in slideshow: waiting for _mediaChange event")
@@ -590,19 +659,21 @@ class Slideshow(object):
                     else:
                         # leave image showing for configured time
                         self._mediaChange.wait(timeout=self._imgDisplayTime)
-                        log.debug(f"showing image for up to {self._imgDisplayTime}s")
+                        log.debug("showing image for up to %ds", self._imgDisplayTime)
                     # terminate image viewer if option set in config file
                     if config.getboolean(self._CONFIG_SECTION, 'terminate_viewer'):
                         self._stopSubProcess()
                     self._clearImage()
                 # exit slideshow if _mediaChangeRequested flag set
                 if self._mediaChange.is_set():
-                    log.debug(f"_mediaChange event occurred")
+                    log.debug("_mediaChange event occurred")
                     break
                 # pause between slideshow images/clips
-                self._mediaChange.wait(timeout=config.getfloat(self._CONFIG_SECTION, 'time_between_slides'))
+                self._mediaChange.wait(
+                    timeout=config.getfloat(self._CONFIG_SECTION, 'time_between_slides')
+                )
         # slideshow loop interrupted by _mediaChange event
-        log.debug(f"slideshow worker thread {get_ident()} exit")
+        log.debug("slideshow worker thread %s exit", get_ident())
 
     def _readMediaQueue(self):
         """Media queue reader thread: read media sets from the media queue
@@ -611,7 +682,7 @@ class Slideshow(object):
 
             Sends `_mediaChange` event when a new media set is queued.
         """
-        log.debug(f"media queue reader thread {get_ident()} start")
+        log.debug("media queue reader thread %s start", get_ident())
         while not self._exitSignalled.is_set():
             log.debug("wait for slideshow media set")
             mediaPaths: SlideshowMediaSet = self._queue.get(block=True)
@@ -622,14 +693,20 @@ class Slideshow(object):
             if self._exitSignalled.is_set():
                 break
             # only change slideshow if new media set is different
-            mediaChanged: bool = not (mediaPaths == self._currentMedia)
-            log.debug(f"media changed={mediaChanged} mediaPaths={mediaPaths} _currentMedia={self._currentMedia}")
+            mediaChanged: bool = mediaPaths != self._currentMedia
+            log.debug(
+                "media changed=%s mediaPaths=%s _currentMedia=%s",
+                mediaChanged, mediaPaths, self._currentMedia
+            )
             if mediaChanged:
                 # signal a media change and wait for current slideshow (if any) to exit
-                log.info(f"slideshow media changed: {mediaPaths}")
+                log.info("slideshow media changed: %s", mediaPaths)
                 self._mediaChange.set()
                 if self._slideshowThread is not None:
-                    log.debug(f"waiting for _slideshowThread={self._slideshowThread.ident} to exit")
+                    log.debug(
+                        "waiting for _slideshowThread=%s to exit",
+                        self._slideshowThread.ident
+                    )
                     self._slideshowThread.join()
                 # record current media set
                 self._currentMedia = mediaPaths
@@ -646,7 +723,7 @@ class Slideshow(object):
                     # MediaManager.getMedia() always returns default image as last resort
                     log.info("'blank' specified in search precedence rule: blanking display")
         # queue reader loop interrupted by stop() or _exitSignalled event
-        log.debug(f"media queue reader thread {get_ident()} exit")
+        log.debug("media queue reader thread %d exit", get_ident())
 
     def setMedia(self, mediaPaths: SlideshowMediaSet):
         """Queue a media set for display.
@@ -665,19 +742,21 @@ class Slideshow(object):
         # signal any running slideshow thread to exit & wait until it does
         self._mediaChange.set()
         if (self._slideshowThread is not None) and self._slideshowThread.is_alive():
-            log.debug(f"waiting for slideshow thread to exit: {self._slideshowThread}")
+            log.debug("waiting for slideshow thread to exit: %s", self._slideshowThread)
             self._slideshowThread.join()
-        # signal queue reader thread to exit and wait until it does
-        # enqueue an empty slideshow to cause queue reader thread to check _exitSignalled event status
+        # Signal queue reader thread to exit and wait until it does.
+        # Enqueue an empty slideshow to cause queue reader thread to check
+        # _exitSignalled event status
         self._exitSignalled.set()
         self.setMedia([])
-        log.debug(f"waiting for queue reader thread to exit: {self._queueReaderThread}")
+        log.debug("waiting for queue reader thread to exit: %s", self._queueReaderThread)
         self._queueReaderThread.join()
-        log.debug(f"remaining threads: {enumerate_threads()}")
+        log.debug("remaining threads: %s", enumerate_threads())
 
 
-class EventHandler(object):
-    """Receives events from MQTTSubscriber, uses MediaManager to locate media files and Slideshow to show them.
+class EventHandler:
+    """Receives events from MQTTSubscriber, uses MediaManager to locate media files
+        and Slideshow to show them.
 
         Call `readEvents()` to start event reading loop.
         Call `startup()` to queue startup media for display.
@@ -685,12 +764,14 @@ class EventHandler(object):
 
     _CONFIG_SECTION: Final[str] = 'media'
     "config file section for EventHandler"
+    _CONFIG_SECTION_CHANGE: Final[str] = 'change'
+    "config file section for marquee change settings"
 
     # type alias
     ChangeRuleSet = Dict[str, str]
 
     @dataclass(frozen=True)
-    class ESState(object):
+    class ESState:
         """Keeps track of state of Emulation Station (immutable)"""
         action: str = ''
         system: str = ''
@@ -708,7 +789,9 @@ class EventHandler(object):
             )
 
     def __init__(self):
-        """Create `MQTTSubscriber`, `MediaManager` & `Slideshow` instances; start the `MQTTSubscriber` read loop."""
+        """Create `MQTTSubscriber`, `MediaManager` & `Slideshow` instances;
+            start the `MQTTSubscriber` read loop.
+        """
         self._mqttSubscriber: MQTTSubscriber = MQTTSubscriber()
         self._mediaManager: MediaManager = MediaManager()
         self._slideshow: Slideshow = Slideshow()
@@ -721,6 +804,17 @@ class EventHandler(object):
         # in case first event is 'sleep', initialise state before sleep
         self._stateBeforeSleep = self._currentState
         "EmulationStation state before last sleep action"
+        # get Arcade meta-system config options from config file
+        self._arcadeSystemEnabled: bool = config.getboolean(
+            self._CONFIG_SECTION,
+            'arcade_system_enabled',
+            fallback=False
+        )
+        self._arcadeSystems: str = config.get(self._CONFIG_SECTION, 'arcade_systems', fallback='')
+        log.debug(
+            "_arcadeSystemEnabled=%s _arcadeSystems = %s",
+            self._arcadeSystemEnabled, self._arcadeSystems
+        )
 
     def readEvents(self):
         """Read and handle all events from the MQTTSubscriber. Exit on SIGTERM."""
@@ -730,7 +824,7 @@ class EventHandler(object):
             if not event:
                 self._slideshow.stop()
                 break
-            log.debug(f'event received: {event}')
+            log.debug("event received: %s", event)
             params: EventParams = self._mqttSubscriber.getEventParams()
             self._handleEvent(params)
 
@@ -738,37 +832,56 @@ class EventHandler(object):
         """Find appropriate media files for the event and display them
             :param evParams: a dict of event parameters
         """
-        log.info(f"event params={evParams}")
+        # If arcade meta-system is enabled in config file, convert arcade systemIds to same value
+        if self._arcadeSystemEnabled:
+            evParams = self._convertArcadeSystems(evParams)
+        log.info("event params=%s", evParams)
         stateChangeRules: EventHandler.ChangeRuleSet = self._getStateChangeRules()
         # has EmulationStation state changed?
         stateChanged: bool = self._hasStateChanged(evParams, stateChangeRules)
         # update state: on wakeup, restore state & evParams from before sleep
         evParams = self._updateState(evParams)
         if stateChanged:
-            log.info(f"EmulationStation state changed: _currentState={self._currentState}")
+            log.info("EmulationStation state changed: _currentState=%s", self._currentState)
             # locate media files and queue them for display
             mediaPaths: SlideshowMediaSet = self._mediaManager.getMedia(evParams)
-            log.debug(f'queue slideshow media={mediaPaths}')
+            log.debug("queue slideshow media=%s", mediaPaths)
             self._slideshow.setMedia(mediaPaths)
+
+    def _convertArcadeSystems(self, evParams: EventParams) -> EventParams:
+        """Convert arcade systemIds to 'arcade'; arcade systemIds are set by
+            config file option `arcade_systems`.
+        """
+        systemId: str = evParams.get('SystemId', '')
+        # Note: check systemId is not '' as that would match any _arcadeSystems string
+        if self._arcadeSystemEnabled and systemId and systemId in self._arcadeSystems:
+            log.debug(
+                "_arcadeSystemEnabled=True _arcadeSystems='%s': convert systemId=%s to 'arcade'",
+                self._arcadeSystems, systemId
+            )
+            log.info("convert event systemId=%s to 'arcade'", systemId)
+            evParams['SystemId'] = 'arcade'
+        return evParams
 
     def startup(self):
         """Queue slideshow of startup media"""
         mediaPaths: SlideshowMediaSet = self._mediaManager.getStartupMedia()
-        log.info(f"startup slideshow media={mediaPaths}")
+        log.info("startup slideshow media=%s", mediaPaths)
         if mediaPaths:
             self._slideshow.setMedia(mediaPaths)
 
     def _updateState(self, evParams: EventParams) -> EventParams:
         """Update record of EmulationStation state with provided values
             :param evParams: event params
-            :return: either same event params as passed in, or event params before sleep if action is `wakeup`
+            :return: either same event params as passed in, or event params before sleep
+              if action is `wakeup`
         """
         # Workaround for ES bug: ES doesn't consistently fire another event after wakeup
         # if action is sleep, record state before sleep so we can restore it after wakeup
         action: str = evParams.get('Action', '')
         if action == 'sleep':
             self._stateBeforeSleep = self._currentState
-            log.info(f"record _stateBeforeSleep={self._stateBeforeSleep}")
+            log.info("record _stateBeforeSleep=%s", self._stateBeforeSleep)
         # update record of evParams unless action is sleep or wakeup
         if action not in ['sleep', 'wakeup']:
             self._previousEvParams = evParams.copy()
@@ -778,19 +891,19 @@ class EventHandler(object):
         if action == 'wakeup':
             self._currentState = self._stateBeforeSleep
             evParams = self._previousEvParams
-            log.info(f"restore _stateBeforeSleep={self._stateBeforeSleep}")
-            log.info(f"restore _evParams={evParams}")
-        log.debug(f"_currentState={self._currentState}")
+            log.info("restore _stateBeforeSleep=%s", self._stateBeforeSleep)
+            log.info("restore _evParams=%s", evParams)
+        log.debug("_currentState=%s", self._currentState)
         return evParams
 
-    def _getStateChangeRules(self) -> ChangeRuleSet:
+    @classmethod
+    def _getStateChangeRules(cls) -> ChangeRuleSet: # pylint: disable=undefined-variable
         """Look up state change rules in config file
             :return: mapping from action to change rule
         """
-        _CONFIG_SECTION_CHANGE: str = 'change'
         changeRules: EventHandler.ChangeRuleSet = {
-            action: config.get(_CONFIG_SECTION_CHANGE, action)
-            for action in config.options(_CONFIG_SECTION_CHANGE)
+            action: config.get(cls._CONFIG_SECTION_CHANGE, action)
+                for action in config.options(cls._CONFIG_SECTION_CHANGE)
         }
         return changeRules
 
@@ -802,8 +915,8 @@ class EventHandler(object):
             :return: True if state has changed
         """
         newState: EventHandler.ESState = EventHandler.ESState.fromEvent(evParams)
-        log.debug(f"changeRules={changeRules}")
-        log.debug(f"_currentState={self._currentState} newState={newState}")
+        log.debug("changeRules=%s", changeRules)
+        log.debug("_currentState=%s newState=%s", self._currentState, newState)
 
         # 'wakeup' action always causes a state change as we restore the state before sleep
         if newState.action == 'wakeup':
@@ -816,32 +929,34 @@ class EventHandler(object):
         changeWhen: str = changeRules.get(newState.action, '')
         # no change if no action change rule found, no event sent yet
         # (at startup) or `never` specified
-        if (changeWhen == '') or (changeWhen == 'never'):
+        if changeWhen in ['', 'never']:
             return False
         # always change if `always` specified?
-        elif changeWhen == 'always':
+        if changeWhen == 'always':
             return True
         # has action changed from previous action?
-        elif changeWhen == 'action':
+        if changeWhen == 'action':
             return not newState.action == self._currentState.action
         # has system changed?
-        elif changeWhen == 'system':
+        if changeWhen == 'system':
             return not newState.system == self._currentState.system
         # has game changed?
-        elif changeWhen == 'game':
+        if changeWhen == 'game':
             return not newState.game == self._currentState.game
         # has system OR game changed?
-        elif changeWhen == 'system/game':
-            return not ((newState.system == self._currentState.system) and (newState.game == self._currentState.game))
-        else:
-            # unrecognised state change rule: log it
-            log.error((
-                "Unrecognised state change rule - check config file: "
-                f" changeWhen='{changeWhen}'"
-                f" _currentState={self._currentState} newState={newState}"
-            ))
-            # change marquee
-            return True
+        if changeWhen == 'system/game':
+            return not (
+                (newState.system == self._currentState.system) and
+                (newState.game == self._currentState.game)
+            )
+        # unrecognised state change rule: log it
+        log.error(
+            "Unrecognised state change rule - check config file: "
+            " changeWhen='%s' _currentState=%s newState=%s",
+            changeWhen, self._currentState, newState
+        )
+        # change marquee
+        return True
 
 
 # --- Module init --- #
@@ -861,15 +976,15 @@ config: ConfigParser = _loadConfig()
 
 if __name__ == '__main__':
     try:
-        log.info(f"dynquee (build {__build}) start")
+        log.info("dynquee (build %s) start", __build)
         eventHandler: EventHandler = EventHandler()
         eventHandler.startup()
         eventHandler.readEvents()
         log.info('dynquee exit')
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         # log any uncaught exception before exit
-        log.critical(f"uncaught exception: {e}", exc_info=True)
+        log.critical("uncaught exception: %s", e, exc_info=True)
         sys.exit(1)
 
     # allow video scaler log file to rotate if necessary
-    logging.getLogger('dynquee.videoscaler').info(f"dynquee (build {__build}) exit")
+    logging.getLogger('dynquee.videoscaler').info("dynquee (build %s) exit", __build)

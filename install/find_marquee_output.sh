@@ -16,9 +16,8 @@ chooseScreen() {
     local found
     while : ; do
         read -r -p "Which screen is your $1 screen: " screen
-        # convert user response to uppercase
-        screen=${screen^^}
-        if [[ ! -z "$screen" && "$screens" =~ "$screen" ]]
+        # warn if screen not found in xrandr list
+        if printf '%s\n' "${screens[@]}" | grep -Fxq -- "$screen"
         then
             found="screen '$screen' found: use it? (Y/N) "
         else
@@ -40,12 +39,13 @@ source $(dirname "$0")/install_common.sh
 cat >&2 <<END
 From the list below identify which screen is your Recalbox screen
 and which screen you want to use for your marquee:
+(screen name is the first item on each line and is case-sensitive)
 
 END
 
 # List detected screens (exclude modes to keep list readable)
 xrandr --query | grep -v '^ ' | grep -v '^Screen' | grep '^\S*' >&2
-screens=$(xrandr --query | grep -v '^Screen' | grep -o '^\S*')
+screens=( $(xrandr --query | grep -v '^Screen' | grep -o '^\S*') )
 
 # Ask user to choose Recalbox screen
 scr_recalbox=$(chooseScreen "Recalbox")

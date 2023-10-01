@@ -6,7 +6,6 @@ clear_framebuffer.sh
 play_video_scaled.sh
 LICENSE.txt
 README.md
-changelog.md
 media/generic/
 media/publisher/*
 media/startup/*

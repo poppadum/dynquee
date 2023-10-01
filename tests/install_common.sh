@@ -4,11 +4,12 @@
 # changes to install_common.sh constants for testing only
 
 # Base dynquee directory
-BASEDIR=/net/bungle/chris/projects/Retrocade_2022/dynquee
+BASEDIR=/net/bungle/chris/projects/Astrocade_2022/dynquee
 
 # Test config files
 OPENBOX_CFG=$BASEDIR/tests/rc.xml
 XINITRC=$BASEDIR/tests/xinitrc
+XRANDR_CMD_FILE=$BASEDIR/tests/xrandr_cmd.txt
 
 
 # make a copy of the original files to test on

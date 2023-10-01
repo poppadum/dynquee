@@ -26,6 +26,9 @@ A dynamic digital marquee for [Recalbox]
 
 It was originally intended to run on a [Raspberry Pi 4B][pi4] with two displays, Recalbox using the primary display for games and *dynquee* driving a second display for the marquee, similar to the [PiMarquee2][pimarquee2] project for [Retropie][retropie]. But it can also run on Recalbox on PC, and on a separate device communicating with Recalbox via the network.
 
+Click on the image below for a short demo of *dynquee* in use:  
+[![dynquee demo video thumbnail](https://img.youtube.com/vi/sIJ1Uy8Zxvs/hqdefault.jpg)](https://www.youtube.com/v/sIJ1Uy8Zxvs)
+
 ### Why?
 I'm building a bartop arcade machine and I want to have a dynamic marquee which can change depending on which game system is selected and which game is being played.
 
@@ -63,7 +66,7 @@ With the Pi4's default KMS graphics driver both HDMI displays share a single fra
 - one of:
     - a Raspberry [Pi 4B][pi4] or [Pi 400][pi400] with a second display connected to the Pi's second HDMI port
     - a PC with dual video outputs and two displays
-    - a separate device with a connected display: an older Pi or [Pi Zero][pi-zero] should be ideal
+    - a separate device with a connected display: an older Pi or [Pi Zero W][pi-zero] should be ideal
 
 I have tested *dynquee* running on a different device on the same network as the Recalbox machine.
 It works fine but needs a few config file changes: see [Running *dynquee* on a different device][install-different-device].
@@ -81,12 +84,12 @@ While this shouldn't be too much of a problem if you're using a modern LCD displ
 *dynquee* has been tested on the following platforms:
 
 * Running on Recalbox:
-    * Recalbox v8.1.1 & v9.0 on Raspberry Pi 4B: working
-    * Recalbox v9.0.1 on PC: working
+    * Recalbox v9.1, v9.0, v8.1.1 on Raspberry Pi 4B: working
+    * Recalbox v9.1, v9.0.1 on PC: working
 
 * Running on a separate device:
-    * Raspberry Pi Zero: working
-    * Raspberry Pi 1B: working, but a bit too slow to be useable
+    * Raspberry Pi Zero W: working
+    * Raspberry Pi 1B: working, but too slow to be useable
 
 ---
 
@@ -149,7 +152,7 @@ For convenience, releases include some starter images collected from various sou
 Most of these are not my work: credit remains with the original authors.
 See the [artwork README file][artwork-readme] for sources.
 
-Many thanks to @toniosj for Recalbox PC testing.
+Many thanks to [@toniosj](https://github.com/toniosj) for Recalbox PC testing.
 
 ## To Do
 - [ ] Genre matching is very dumb: make it more useful.  

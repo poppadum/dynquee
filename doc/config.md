@@ -89,9 +89,10 @@ Media filename matching works as follows:
 1. Recalbox's internal system ID for game systems has a dot added to the end:
     - e.g. `mame` becomes `mame.`
     - e.g. `neogeocd` becomes `neogeocd.`
+    - Note: there is an option to treat all arcade system IDs as a single system named `arcade` (see the option `arcade_system_enabled` in the config file).
 
-1. Names are then matched against the beginning of media filenames.
-    - e.g. a ROM named `Chuckie Egg.zip` would match media files named `Chuckie Egg.*`
+1. Names are then matched (case insensitively) against the beginning of media filenames.
+    - e.g. a ROM named `Chuckie Egg.zip` would match media files named `Chuckie Egg.*` or `chuckie egg.*`
     - or a game published by `Bally Midway` would match files named `bally midway.*`
 
 
@@ -102,12 +103,14 @@ If for some reason you want to store them somewhere else, change the `media_path
 Place your media files in the appropriate subdirectory (look at the included files for examples):
 
 - *game-specific* media go in the appropriate game system directory; for example:
-    - for the arcade version of [Defender] with a ROM named `defender.zip`, put your media file in `mame/` and name it `defender.<something>` e.g. `mame/defender.01.png`
+    - for the Mame version of [Defender] with a ROM named `defender.zip`, put your media file in `mame/` and name it `defender.<something>` e.g. `mame/defender.01.png`
     - for the Megadrive version of [Aladdin] with a ROM named `aladdin.zip`, put your media file in `megadrive/` and name it `aladdin.<something>` e.g. `megadrive/aladdin.mp4`
+    - Note: if the config file option `arcade_system_enabled` is on, put your arcade media files in `arcade/`
 
 - `system/` is for game system media (e.g. console banners and logos);
 the file name must start with Emulation Station's internal system name (use the same names as in `/recalbox/share/roms/`)
     - e.g. for a [Sinclair ZX Spectrum][spectrum] logo, name the file `zxspectrum.<something>` e.g. `system/zxspectrum.logo.png`
+    - If the config file option `arcade_system_enabled` is on, all arcade games will have the system name `arcade`, so name your arcade files `system/arcade.<something>`
 
 - `publisher/` is for game publisher banners & logos
     - e.g. for a game published by [Konami][konami], name the file `konami.<something>` e.g. `publisher/konami.01.png`
@@ -126,7 +129,7 @@ Feel free to delete any of the included media files you don't want, but I recomm
 
 ## File Formats
 You can use any file format supported by [`fbv`][fbv] or [`ffmpeg`][ffmpeg].
-I recommend `png` for still images, and `mp4` or `mkv` with the H.264 codec for videos.
+I recommend `png` or`jpeg` for still images, and `mp4` or `mkv` with the H.264 codec for videos.
 
 
 ## Scaling Media
@@ -169,9 +172,17 @@ blanked when Recalbox sleeps and cause [burn-in][screen-burn-in] on your marquee
 
 ## Starting And Stopping *dynquee* Manually
 You can start, stop or restart *dynquee* (for example, to reload a changed config file) by typing:  
-```sh
+
+Raspberry Pi: 
+```console
 /etc/init.d/S32dynquee start|stop|restart|status
 ```
+
+PC:
+```console
+es start|stop|restart
+```
+
 
 Be aware that if you start *dynquee* when Recalbox is already in the sleep state,
 it will stay on the startup media until Recalbox wakes up.

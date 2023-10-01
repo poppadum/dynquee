@@ -1,0 +1,5 @@
+[Basic]
+argument-naming-style = camelCase
+attr-naming-style = camelCase
+method-naming-style = camelCase
+variable-naming-style = camelCase

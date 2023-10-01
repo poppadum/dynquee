@@ -1,5 +1,30 @@
 # Change Log
 
+## v0.9.8
+
+- Added support for new games systems in Recalbox v9.1
+- Media file matching is now case-insensitive  
+  e.g. a rom named `Star Wars.zip` now matches media files named `star wars.*`
+- Added config option `shuffle` (`[slideshow]` section) to control whether matching media are shown in a random order (`shuffle = yes`) or in sequential filename order
+- Added config option `arcade_system_enabled` (`[media]` section) to treat all arcade systems as a single 'arcade' meta-system
+- Added link to a short demo video in the README
+- Added more sources of marquee images to the media README file
+
+### Fixes
+- Fixed bugs in install scripts; improved PC script for locating display outputs
+- Fixed bug in theme update script `artwork/update.sh`
+- Fixed typo in artwork converter script `artwork/convert_artwork.py`
+- Fixed malformed header block in RasPi manual install instructions
+
+### Other Changes
+- Documentation improvements
+- Installation script improvements
+- Refactored artwork converter script
+- Renamed remote install script for consistency
+- systemd unit file (for remote machine use) now starts program with `python3 -m dynquee`
+- Code linting fixes
+
+
 ## v0.9.7
 New feature: can now show media files while screensaver active (configurable)
 
@@ -8,10 +33,10 @@ New feature: can now show media files while screensaver active (configurable)
 - PC config file uses `--quiet` option to `mpv` to reduce log noise
 
 #### Documentation improvements
-    - add Changelog
-    - add Discord link to help section of README
-    - manual install instructions: add step to remove release ZIP file
-    - update `install/README.md` and `media/README.md`
+- add Changelog
+- add Discord link to help section of README
+- manual install instructions: add step to remove release ZIP file
+- update `install/README.md` and `media/README.md`
 
 
 ## v0.9.6
@@ -25,7 +50,7 @@ Add support for Recalbox on PC
 - add PC-specific config file
 - update 'after upgrade' instructions
 
-### Changes
+### Other Changes
 - include all docs in releases
 - init script: start program with python3 -m dynquee
 - make scaled video play script executable

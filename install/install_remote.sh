@@ -11,20 +11,21 @@ APT_PACKAGES=(python3 python3-paho-mqtt fbi ffmpeg)
 
 ROMDIRS=( \
     3do 64dd amiga1200 amiga600 amigacd32 amigacdtv amstradcpc apple2 \
-    apple2gs atari2600 atari5200 atari7800 atari800 atarist atomiswave \
+    apple2gs arcade arduboy atari2600 atari5200 atari7800 atari800 atarist atomiswave \
     bbcmicro bk c64 cdi channelf colecovision daphne dos dragon dreamcast \
-    easyrpg fbneo fds gamegear gb gba gbc gw gx4000 intellivision jaguar \
-    lowresnx lutro lynx mame mastersystem megadrive megaduck moonlight msx1 \
-    msx2 msxturbor multivision n64 naomi naomigd neogeo neogeocd nes ngp \
-    ngpc o2em openbor oricatmos palm pc88 pc98 pcengine pcenginecd pcfx pcv2 \
-    pico8 pokemini ports psp psx samcoupe satellaview saturn scummvm scv \
+    easyrpg fba fbneo fds gamecube gamegear gb gba gbc gw gx4000 intellivision jaguar \
+    lowresnx lutro lynx macintosh mame mastersystem megadrive megaduck model3 moonlight \
+    msx1 msx2 msxturbor multivision n64 naomi naomigd nds neogeo neogeocd nes \
+    ngp ngpc o2em openbor oricatmos palm pc88 pc98 pcengine pcenginecd pcfx pcv2 \
+    pico8 pokemini ports ps2 psp psx samcoupe satellaview saturn scummvm scv \
     sega32x segacd sg1000 snes solarus spectravideo sufami supergrafx \
     supervision thomson ti994a tic80 trs80coco uzebox vectrex vic20 \
-    videopacplus virtualboy wswan wswanc x1 x68000 zx81 zxspectrum \
+    vg5000 videopacplus virtualboy wasm4 wii wswan wswanc x1 x68000 \
+    zmachine zx81 zxspectrum \
 )
 
 error() {
-    echo -e "\nSorry, something went wrong"
+    echo -e "\nSorry, something went wrong. Please report this bug at https://github.com/poppadum/dynquee/issues" >&2
     exit 1
 }
 
@@ -42,6 +43,8 @@ if [[ $EUID != 0 ]]; then
 fi
 
 # Install required packages
+echo -e "\nUpdating list of available packages"
+/usr/bin/apt update || error
 echo -e "\nInstalling required packages: ${APT_PACKAGES[@]}"
 /usr/bin/apt install -y ${APT_PACKAGES[@]} || error
 

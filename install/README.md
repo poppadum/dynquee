@@ -7,7 +7,7 @@ Contains install scripts and helper files.
 - `S32dynquee`: init script for Recalbox RasPi
 - `startup_pc.sh`: startup script for Recalbox PC
 
-- `install-remote.sh` installs *dynquee* on a non-Recalbox machine
+- `install_remote.sh` installs *dynquee* on a non-Recalbox machine
 - `dynquee-remote.ini`: config file for non-Recalbox machines
 - `dynquee.service`: systemd unit file for non-Recalbox machines
 

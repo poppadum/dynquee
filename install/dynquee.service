@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=/opt/dynquee
-ExecStart=/opt/dynquee/dynquee.py
+ExecStart=/usr/bin/python3 -m dynquee
 Type=exec
 Restart=on-failure
 RestartSec=10

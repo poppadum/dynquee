@@ -1,5 +1,5 @@
 ![dynquee: dynamic marquee for Recalbox][project-image]  
-# Manual Installation of *dynquee* on Raspberry Pi
+Manual Installation of *dynquee* on Raspberry Pi
 ===
 
 If you prefer to install *dynquee* manually, follow these steps. 
